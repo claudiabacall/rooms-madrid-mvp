@@ -168,7 +168,26 @@ document.querySelectorAll('[data-saved-filter]').forEach(button=>button.addEvent
 document.querySelector('#savedSort').addEventListener('change',event=>ping(`Ordenado por ${event.target.value.toLowerCase()}`));
 document.querySelector('#createCollection').addEventListener('click',()=>open(collectionModal));
 document.querySelectorAll('[data-collection-visibility]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('[data-collection-visibility]').forEach(item=>item.classList.toggle('active',item===button))));
-document.querySelector('#saveCollection').addEventListener('click',()=>{const name=document.querySelector('#collectionName').value.trim()||'Nueva colección',button=document.createElement('button');button.type='button';button.innerHTML=`<span>＋</span><b>${name.replace(/[<>]/g,'')}</b><small>0 elementos</small>`;button.addEventListener('click',()=>ping(`Colección ${name} abierta`));document.querySelector('.collection-grid').appendChild(button);closeAll();ping('Colección creada')});
+document.querySelector('#saveCollection').addEventListener('click',async()=>{
+  const name=document.querySelector('#collectionName').value.trim();
+  const visibility=document.querySelector('[data-collection-visibility].active')?.textContent.trim()==='Compartida'?'shared':'private';
+
+  if(!name){
+    ping('Pon un nombre a la colección');
+    return;
+  }
+
+  const result=await window.roomsBackend?.createSavedCollection?.(name,visibility);
+
+  if(result?.error){
+    ping('No se pudo crear la colección');
+    return;
+  }
+
+  document.querySelector('#collectionName').value='';
+  closeAll();
+  ping('Colección creada');
+});
 document.querySelectorAll('[data-move-saved]').forEach(button=>button.addEventListener('click',()=>ping('Movido a Para ver con Marta')));
 document.querySelectorAll('[data-send-home]').forEach(button=>button.addEventListener('click',()=>{ping('Añadido a Candidatos de tu Hogar');if(button.closest('#compareModal'))closeAll()}));
 document.querySelectorAll('[data-remove-saved]').forEach(button=>button.addEventListener('click',()=>{const card=button.closest('[data-saved-type]');card.classList.add('removing');setTimeout(()=>{card.hidden=true;ping('Eliminado de Guardados')},180)}));
