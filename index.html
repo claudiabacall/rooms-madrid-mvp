@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="assets/css/mobile.css">
   <link rel="stylesheet" href="assets/css/onboarding.css">
   <link rel="stylesheet" href="assets/css/feed.css">
+  <link rel="stylesheet" href="assets/css/supabase.css">
 </head>
 <body>
   <section class="onboarding" id="onboarding" aria-labelledby="onboardingTitle">
@@ -403,6 +404,9 @@
   <div class="modal" id="collectionModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail collection-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">NUEVA COLECCIÓN</p><h2>Organiza tus guardados</h2><label>Nombre<input id="collectionName" value="Favoritos con Marta" placeholder="Nombre de la colección"></label><div class="collection-options"><button class="active" type="button" data-collection-visibility>Privada</button><button type="button" data-collection-visibility>Compartida</button></div><button class="cta" type="button" id="saveCollection">Crear colección</button></article></div>
   <div class="modal" id="compareModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail compare-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">COMPARAR VIVIENDAS</p><h2>¿Cuál encaja mejor?</h2><div class="comparison-table"><div class="comparison-head"><span></span><b>Chamberí</b><b>Retiro</b></div><div><span>Match</span><b class="best">92%</b><b>91%</b></div><div><span>Precio</span><b class="best">850 €</b><b>1.850 €</b></div><div><span>Tipo</span><b>Habitación</b><b>Piso entero</b></div><div><span>Entrada</span><b class="best">15 sep</b><b>1 oct</b></div><div><span>Fiabilidad</span><b class="best">Muy fiable</b><b>Fiable</b></div><div><span>Mascotas</span><b class="best">Sí</b><b>Consultar</b></div></div><button class="cta" type="button" data-send-home>Enviar ambas a mi Hogar</button></article></div>
   <div class="toast" id="toast">Guardado en tus favoritos</div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-config.js"></script>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/supabase-app.js"></script>
 </body>
 </html>
