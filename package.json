@@ -1,0 +1,13 @@
+{
+  "name": "rooms-madrid-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MVP interactivo de Rooms para encontrar vivienda y compañeros compatibles en Madrid.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

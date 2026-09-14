@@ -1,0 +1,19 @@
+.clear-filters{border:0;background:transparent;padding:10px 6px;color:#5c5c57;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-weight:600}
+.clear-filters:hover{color:#101010}
+.clear-filters[hidden]{display:none}
+@media(max-width:620px){.toolbar{flex-wrap:wrap}.toolbar>div{display:flex;width:100%;flex-wrap:wrap}.toolbar .clear-filters{order:3;margin-left:auto}}
+.budget-field{border:0;border-right:1px solid #d8d7d1;margin:0;padding:10px 20px;min-width:0}
+.budget-field legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.budget-values{display:flex;align-items:center;justify-content:space-between;color:#70706b;font-size:12px;margin-bottom:9px}
+.budget-values span{padding:0 6px}
+.range-wrap{--start:0%;--end:100%;position:relative;height:18px;background:linear-gradient(to right,#dededb var(--start),#101010 var(--start),#101010 var(--end),#dededb var(--end));background-size:100% 4px;background-repeat:no-repeat;background-position:center}
+.range-wrap input{position:absolute;inset:0;width:100%;height:18px;margin:0;background:transparent;pointer-events:none;appearance:none;-webkit-appearance:none}
+.range-wrap input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:17px;height:17px;border-radius:50%;border:2px solid #fff;background:#101010;box-shadow:0 0 0 1px #101010;pointer-events:auto;cursor:grab}
+.range-wrap input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:#101010;box-shadow:0 0 0 1px #101010;pointer-events:auto;cursor:grab}
+.range-wrap input::-webkit-slider-runnable-track{height:4px;background:transparent}
+.range-wrap input::-moz-range-track{height:4px;background:transparent}
+@media(max-width:900px){.budget-field{border-right:0}}
+@media(max-width:620px){.budget-field{padding:16px 20px;border-bottom:1px solid #d8d7d1}.budget-values{font-size:14px;margin-bottom:11px}}
+.date-field input{border:0;background:transparent;width:100%;font:600 16px 'DM Sans',sans-serif;outline:none;color:#101010;min-height:24px}
+.date-field input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.65}
+.availability{display:inline-block;margin-top:4px;color:#101010;font-size:11px;font-weight:700;letter-spacing:.5px}
