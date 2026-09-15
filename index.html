@@ -259,13 +259,37 @@
   </main>
 
   <main class="explore-main" id="exploreView" hidden>
+    <nav class="explore-mode-switch" aria-label="Qué quieres explorar">
+      <button class="active" type="button" data-explore-mode="homes">
+        Viviendas
+      </button>
+      <button type="button" data-explore-mode="people">
+        Personas
+      </button>
+    </nav>
+
     <section class="explore-search-header">
-      <label><span aria-hidden="true">⌕</span><input id="exploreSearch" type="search" placeholder="¿Dónde quieres vivir?" aria-label="¿Dónde quieres vivir?"></label>
-      <button type="button" id="exploreFilters">Filtros <i id="exploreFilterCount" hidden>0</i></button>
+      <label>
+        <span aria-hidden="true">⌕</span>
+        <input
+          id="exploreSearch"
+          type="search"
+          placeholder="¿Dónde quieres vivir?"
+          aria-label="Buscar en Explore"
+        >
+      </label>
+      <button type="button" id="exploreFilters">
+        Filtros <i id="exploreFilterCount" hidden>0</i>
+      </button>
     </section>
     <section class="explore-controls">
       <div class="view-toggle" role="group" aria-label="Tipo de vista"><button class="active" type="button" data-explore-view="list">Lista</button><button type="button" data-explore-view="map">Mapa</button></div>
-      <label>Ordenar por <select id="exploreSort"><option value="match">Mejor match</option><option value="recent">Más recientes</option><option value="price">Precio</option><option value="reliable">Más fiables</option></select></label>
+      <label>Ordenar por <select id="exploreSort">
+  <option value="recent">Más recientes</option>
+  <option value="price">Precio</option>
+  <option value="match" disabled>Mejor match · Próximamente</option>
+  <option value="reliable" disabled>Más fiables · Próximamente</option>
+</select></label>
     </section>
     <section class="explore-list" id="exploreList" aria-live="polite">
       <p class="explore-count"><strong>24</strong> opciones que encajan contigo</p>
@@ -544,8 +568,118 @@
   <div class="modal" id="publishModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail create-menu"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">CREAR EN ROOMS</p><h2>¿Qué quieres hacer?</h2><div class="choices"><button type="button" data-publish-type="room"><b>Ofrecer habitación</b><small>Encuentra a la persona que encaja con vuestro hogar</small><span>→</span></button><button type="button" data-publish-type="flat"><b>Publicar piso</b><small>Enseña la vivienda y recibe personas interesadas</small><span>→</span></button><button type="button" data-publish-type="mate"><b>Buscar compañero</b><small>Rooms creará tu card social automáticamente</small><span>→</span></button><button type="button" data-publish-type="external"><b>Compartir un piso</b><small>Pega un enlace y completamos los datos</small><span>→</span></button><button type="button" data-publish-type="post"><b>Crear publicación</b><small>Pregunta, recomienda o comparte una experiencia</small><span>→</span></button></div><p class="safe">✓ Puedes guardar el borrador y continuar después</p></article></div>
   <div class="modal" id="publishFlowModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail publish-flow-shell"><header><button type="button" id="publishFlowBack" aria-label="Volver">←</button><div><small id="publishFlowKind">OFRECER HABITACIÓN</small><div class="publish-progress"><span id="publishProgressBar"></span></div></div><button type="button" data-close aria-label="Cerrar">×</button></header><div class="publish-flow-content" id="publishFlowContent"></div><footer><button type="button" id="savePublishDraft">Guardar borrador</button><button type="button" id="publishFlowContinue">Continuar →</button></footer></article></div>
   <div class="modal" id="feedFilterModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">AFINA TU FEED</p><h2>Filtros</h2><div class="feed-modal-options"><button type="button" aria-pressed="true">Madrid</button><button type="button" aria-pressed="false">Hasta 1.000 €</button><button type="button" aria-pressed="false">Entrada en septiembre</button><button type="button" aria-pressed="false">92% match o más</button></div><button class="cta" type="button" data-toast="Filtros aplicados">Aplicar filtros</button></article></div>
-  <div class="modal" id="exploreFilterModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail explore-filter-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">BÚSQUEDA CON INTENCIÓN</p><h2>Filtros</h2><div class="filter-section"><h3>Zona</h3><div class="filter-chips"><button type="button" aria-pressed="true">Chamberí</button><button type="button" aria-pressed="false">Centro</button><button type="button" aria-pressed="false">Retiro</button><button type="button" aria-pressed="false">+ Añadir zona</button></div></div><div class="filter-section"><h3>Presupuesto mensual</h3><div class="filter-budget"><b>600 €</b><span></span><b>1.000 €</b></div></div><div class="filter-grid"><label>Tipo<select><option>Habitación o piso</option><option>Habitación</option><option>Piso entero</option></select></label><label>Fecha de entrada<input type="date" value="2026-09-15"></label><label>Duración<select><option>6–12 meses</option><option>1–3 meses</option><option>3–6 meses</option><option>Más de 1 año</option></select></label><label>Nº habitaciones<select><option>Cualquiera</option><option>1+</option><option>2+</option><option>3+</option></select></label><label>Match mínimo<select><option>80% o más</option><option>90% o más</option><option>Cualquiera</option></select></label></div><div class="filter-section"><h3>Características</h3><div class="filter-chips"><button type="button" aria-pressed="false">Mascotas</button><button type="button" aria-pressed="true">Amueblado</button><button type="button" aria-pressed="false">Exterior</button><button type="button" aria-pressed="false">Ascensor</button><button type="button" aria-pressed="false">Terraza</button><button type="button" aria-pressed="false">Baño privado</button><button type="button" aria-pressed="false">Aire acondicionado</button><button type="button" aria-pressed="false">Teletrabajo</button><button type="button" aria-pressed="false">Zona tranquila</button><button type="button" aria-pressed="true">Cerca de metro</button></div></div><div class="explore-filter-actions"><button type="button" data-clear-explore-filters>Borrar</button><button type="button" data-apply-explore-filters>Ver 24 resultados</button></div></article></div>
-  <div class="modal" id="chatInboxModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail inbox-shell"><header><div><small>MENSAJES</small><h2>Chat</h2></div><button type="button" data-close aria-label="Cerrar">×</button></header><label class="inbox-search"><span>⌕</span><input type="search" placeholder="Buscar conversación"></label><div class="inbox-filters"><button class="active" type="button" data-chat-filter="all">Todos</button><button type="button" data-chat-filter="person">Personas</button><button type="button" data-chat-filter="home">Hogares</button><button type="button" data-chat-filter="listing">Anuncios</button></div><div class="conversation-list"><button type="button" data-conversation="lucia" data-chat-type="person"><img src="assets/images/lucia-profile.png" alt="Lucía"><div><b>Lucía</b><p>La zona sí. Preguntaría por el ruido.</p><small>91% MATCH</small></div><time>10:34</time><i>2</i></button><button type="button" data-conversation="home" data-chat-type="home"><span class="home-chat-icon">CML</span><div><b>Buscar piso con Marta</b><p>Marta ha compartido un piso.</p><small>HOGAR · 3 MIEMBROS</small></div><time>10:24</time></button><button type="button" data-conversation="listing" data-chat-type="listing"><span class="listing-chat-icon">⌂</span><div><b>Habitación en Ponzano</b><p>Álvaro: ¿Cuándo podrías verla?</p><small>ANUNCIO · 92% MATCH</small></div><time>Ayer</time></button></div></article></div>
+  <div class="modal" id="exploreFilterModal" aria-hidden="true">
+  <div class="backdrop" data-close></div>
+
+  <article class="detail explore-filter-shell">
+    <button class="close" data-close aria-label="Cerrar">×</button>
+
+    <p class="eyebrow">BÚSQUEDA CON INTENCIÓN</p>
+    <h2>Filtros</h2>
+
+    <div class="filter-section">
+      <h3>Zona</h3>
+
+      <div class="filter-chips" id="exploreZoneFilters">
+        <button type="button" data-explore-zone="Chamberí" aria-pressed="false">Chamberí</button>
+        <button type="button" data-explore-zone="Centro" aria-pressed="false">Centro</button>
+        <button type="button" data-explore-zone="Retiro" aria-pressed="false">Retiro</button>
+        <button type="button" data-explore-zone="Moncloa" aria-pressed="false">Moncloa</button>
+        <button type="button" data-explore-zone="Argüelles" aria-pressed="false">Argüelles</button>
+        <button type="button" data-explore-zone="Salamanca" aria-pressed="false">Salamanca</button>
+        <button type="button" data-explore-zone="Malasaña" aria-pressed="false">Malasaña</button>
+        <button type="button" id="addExploreZone">＋ Añadir zona</button>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <h3>Presupuesto mensual</h3>
+
+      <div class="explore-budget-inputs">
+        <label>
+          <span>Desde</span>
+          <div><input id="exploreBudgetMin" type="number" min="0" step="50" placeholder="600"><b>€</b></div>
+        </label>
+
+        <span class="budget-separator">—</span>
+
+        <label>
+          <span>Hasta</span>
+          <div><input id="exploreBudgetMax" type="number" min="0" step="50" placeholder="1.000"><b>€</b></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <label>
+        Tipo
+        <select id="exploreTypeFilter">
+          <option value="">Habitación o piso</option>
+          <option value="room">Habitación</option>
+          <option value="apartment">Piso entero</option>
+        </select>
+      </label>
+
+      <label>
+        Fecha de entrada
+        <input id="exploreDateFilter" type="date">
+      </label>
+
+      <label>
+        Duración
+        <select id="exploreDurationFilter">
+          <option value="">Cualquiera</option>
+          <option value="1–3 meses">1–3 meses</option>
+          <option value="3–6 meses">3–6 meses</option>
+          <option value="6–12 meses">6–12 meses</option>
+          <option value="Más de 1 año">Más de 1 año</option>
+        </select>
+      </label>
+
+      <label>
+        Nº habitaciones
+        <select id="exploreRoomsFilter">
+          <option value="">Cualquiera</option>
+          <option value="1">1+</option>
+          <option value="2">2+</option>
+          <option value="3">3+</option>
+        </select>
+      </label>
+
+      <label>
+        Match mínimo
+        <select disabled>
+          <option>Próximamente</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="filter-section">
+      <h3>Características</h3>
+
+      <div class="filter-chips" id="exploreFeatureFilters">
+        <button type="button" data-explore-feature="Mascotas" aria-pressed="false">Mascotas</button>
+        <button type="button" data-explore-feature="Amueblado" aria-pressed="false">Amueblado</button>
+        <button type="button" data-explore-feature="Exterior" aria-pressed="false">Exterior</button>
+        <button type="button" data-explore-feature="Ascensor" aria-pressed="false">Ascensor</button>
+        <button type="button" data-explore-feature="Terraza" aria-pressed="false">Terraza</button>
+        <button type="button" data-explore-feature="Baño privado" aria-pressed="false">Baño privado</button>
+        <button type="button" data-explore-feature="Aire acondicionado" aria-pressed="false">Aire acondicionado</button>
+        <button type="button" data-explore-feature="Teletrabajo" aria-pressed="false">Teletrabajo</button>
+        <button type="button" data-explore-feature="Zona tranquila" aria-pressed="false">Zona tranquila</button>
+        <button type="button" data-explore-feature="Cerca de metro" aria-pressed="false">Cerca de metro</button>
+      </div>
+    </div>
+
+    <div class="explore-filter-actions">
+      <button type="button" data-clear-explore-filters>Borrar</button>
+      <button type="button" data-apply-explore-filters id="applyExploreFilters">
+        Ver resultados
+      </button>
+    </div>
+  </article>
+</div>
+<div class="modal" id="chatInboxModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail inbox-shell"><header><div><small>MENSAJES</small><h2>Chat</h2></div><button type="button" data-close aria-label="Cerrar">×</button></header><label class="inbox-search"><span>⌕</span><input type="search" placeholder="Buscar conversación"></label><div class="inbox-filters"><button class="active" type="button" data-chat-filter="all">Todos</button><button type="button" data-chat-filter="person">Personas</button><button type="button" data-chat-filter="home">Hogares</button><button type="button" data-chat-filter="listing">Anuncios</button></div><div class="conversation-list"><button type="button" data-conversation="lucia" data-chat-type="person"><img src="assets/images/lucia-profile.png" alt="Lucía"><div><b>Lucía</b><p>La zona sí. Preguntaría por el ruido.</p><small>91% MATCH</small></div><time>10:34</time><i>2</i></button><button type="button" data-conversation="home" data-chat-type="home"><span class="home-chat-icon">CML</span><div><b>Buscar piso con Marta</b><p>Marta ha compartido un piso.</p><small>HOGAR · 3 MIEMBROS</small></div><time>10:24</time></button><button type="button" data-conversation="listing" data-chat-type="listing"><span class="listing-chat-icon">⌂</span><div><b>Habitación en Ponzano</b><p>Álvaro: ¿Cuándo podrías verla?</p><small>ANUNCIO · 92% MATCH</small></div><time>Ayer</time></button></div></article></div>
   <div class="modal" id="conversationModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail conversation-shell"><header><button type="button" id="conversationBack" aria-label="Volver">←</button><img id="conversationAvatar" src="assets/images/lucia-profile.png" alt="Lucía"><span class="conversation-symbol" id="conversationSymbol" hidden>⌂</span><div><b id="conversationName">Lucía</b><span id="conversationContext">91% Match · Conectadas</span></div><button type="button" data-conversation-options aria-label="Opciones">•••</button></header><div class="conversation-options-menu" id="conversationOptionsMenu" hidden><button type="button" data-toast="Abriendo perfil o anuncio">Ver perfil o anuncio</button><button type="button" data-report="conversación con Lucía">Reportar</button><button type="button" data-block-user>Bloquear</button></div><div class="conversation-body" id="conversationBody"><div class="chat-day">HOY</div><div class="chat-message other"><b>Lucía</b><p>¡Hola! He visto que también estás buscando por Chamberí.</p><small>10:18</small></div><div class="chat-message mine"><p>Sí, y creo que tenemos horarios bastante parecidos.</p><small>10:21</small></div><article class="message-listing-card" data-listing-id="1"><img src="assets/images/chamberi-villanueva.jpg" alt="Habitación compartida en el chat"><div><span>92% MATCH · MUY FIABLE</span><h3>850 €/mes · Chamberí</h3><p>Habitación · Disponible 15 sep</p><div><i>Amueblado</i><i>Mascotas</i></div></div></article><div class="chat-message other"><p>Este me gusta muchísimo. ¿Lo añadimos al Hogar?</p><small>10:34</small></div></div><form class="conversation-composer" id="conversationForm"><button type="button" id="chatAttach" aria-label="Adjuntar">＋</button><input id="conversationInput" placeholder="Escribe un mensaje…" aria-label="Mensaje"><button type="submit">Enviar</button></form><div class="attachment-menu" id="attachmentMenu" hidden><button type="button" data-toast="Selector de fotos abierto">Foto</button><button type="button" data-toast="Elige un perfil para compartir">Perfil</button><button type="button" data-toast="Elige una vivienda para compartir">Vivienda</button><button type="button" data-toast="Invitación al Hogar enviada">Invitación a Hogar</button><button type="button" data-toast="Pega un enlace externo">Enlace</button></div></article></div>
   <div class="modal" id="notificationsModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail notifications-shell"><header><div><small>ACTIVIDAD</small><h2>Notificaciones</h2></div><div><button type="button" id="notificationSettings" aria-label="Ajustes">⚙</button><button type="button" data-close aria-label="Cerrar">×</button></div></header><div class="notification-actions"><button type="button" id="markNotificationsRead">Marcar todas como leídas</button></div><div class="notification-list"><button type="button" data-notification><span class="notification-icon match-notification">94%</span><div><small>MATCHES · AHORA</small><b>Nueva habitación · 94% Match</b><p>Chamberí · Disponible en septiembre</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">L</span><div><small>SOCIAL · HACE 8 MIN</small><b>Lucía quiere conectar contigo</b><p>Tenéis un 91% de compatibilidad</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">⌂</span><div><small>HOGAR · HACE 20 MIN</small><b>Lucía ha añadido un piso</b><p>Buscar piso con Marta</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">3/3</span><div><small>ACTIVIDAD · HACE 1 H</small><b>Todo el Hogar ha votado</b><p>El piso de Ponzano es vuestro favorito</p></div></button><button type="button" data-notification><span class="notification-icon">#</span><div><small>COMUNIDADES · HACE 2 H</small><b>Nueva publicación destacada</b><p>Vivir en Chamberí</p></div></button><button type="button" data-notification><span class="notification-icon">＋1</span><div><small>ANUNCIOS · AYER</small><b>Nuevo interesado en tu habitación</b><p>Consulta su match antes de responder</p></div></button><button type="button" data-notification><span class="notification-icon">✓</span><div><small>SISTEMA · HACE 2 DÍAS</small><b>¿Sigue disponible este anuncio?</b><p>Confírmalo para mantenerlo activo</p></div></button></div><div class="notification-preferences" id="notificationPreferences" hidden><h3>Qué quieres recibir</h3><label>Matches <input type="checkbox" checked></label><label>Social <input type="checkbox" checked></label><label>Hogar <input type="checkbox" checked></label><label>Comunidades <input type="checkbox" checked></label><label>Anuncios <input type="checkbox" checked></label><label>Sistema <input type="checkbox" checked></label><small>Rooms agrupa la actividad para no bombardearte.</small></div></article></div>
   <div class="modal" id="adminModerationModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail moderation-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">HERRAMIENTAS DE ADMIN</p><h2>Moderar comunidad</h2><div class="moderation-summary"><span><b>3</b> solicitudes</span><span><b>2</b> reportes</span><span><b>1</b> revisión prioritaria</span></div><div class="moderation-actions"><button type="button" data-admin-action="pin">Fijar publicación <span>⌂</span></button><button type="button" data-admin-action="remove">Eliminar contenido <span>×</span></button><button type="button" data-admin-action="expel">Expulsar usuario <span>→</span></button><button type="button" data-admin-action="requests">Revisar solicitudes <span>3</span></button><button type="button" data-admin-action="reports">Gestionar reportes <span>2</span></button></div><p class="safe">Estas acciones solo son visibles para administradores y quedan registradas.</p></article></div>
