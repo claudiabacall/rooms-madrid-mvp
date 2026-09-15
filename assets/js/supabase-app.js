@@ -186,11 +186,27 @@
     const name = profile.alias || profile.name || 'Mi perfil';
     const initials = name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
     const avatar = document.querySelector('#openOwnProfile');
-    if (avatar) avatar.textContent = initials || 'R';
+    if (avatar) {
+      if (profile.avatar_url) {
+        avatar.innerHTML = `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">`;
+        avatar.classList.add('has-photo');
+      } else {
+        avatar.textContent = initials || 'R';
+        avatar.classList.remove('has-photo');
+      }
+    }
     const ownTitle = document.querySelector('#ownProfileView .own-profile-heading h1');
     if (ownTitle) ownTitle.textContent = name;
     const ownAvatar = document.querySelector('#ownProfileView .own-avatar span');
-    if (ownAvatar) ownAvatar.textContent = initials || 'R';
+    if (ownAvatar) {
+      if (profile.avatar_url) {
+        ownAvatar.innerHTML = `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">`;
+        ownAvatar.classList.add('has-photo');
+      } else {
+        ownAvatar.textContent = initials || 'R';
+        ownAvatar.classList.remove('has-photo');
+      }
+    }
     const ownBio = document.querySelector('#ownProfileView .own-profile-heading p');
     if (ownBio) ownBio.textContent = profile.bio || 'Aún no has añadido una bio.';
 
@@ -265,8 +281,38 @@
     const completionTitle = document.querySelector('#ownProfileView .profile-completion h2');
     const completionCopy = document.querySelector('#ownProfileView .profile-completion p');
     const missing = !profile.move_in_date ? 'fecha de entrada' : !profile.bio ? 'bio' : !profile.interests?.length ? 'intereses' : null;
-    if (completionTitle) completionTitle.textContent = missing ? `Añade tu ${missing}` : 'Tu perfil está completo';
-    if (completionCopy) completionCopy.textContent = missing ? 'Completar este dato ayudará a mejorar tus recomendaciones.' : 'Ya tenemos los datos principales para personalizar tus matches.';
+    if (completionTitle) {
+      completionTitle.textContent = missing
+        ? `Añade tu ${missing}`
+        : 'Tu perfil está completo';
+    }
+
+    if (completionCopy) {
+      completionCopy.textContent = missing
+        ? 'Completar este dato ayudará a mejorar tus recomendaciones.'
+        : 'Ya tenemos los datos principales para personalizar tus matches.';
+    }
+
+    const completionAction = document.querySelector(
+      '#ownProfileView .profile-completion > button'
+    );
+
+    if (completionAction) {
+      if (!missing) {
+        completionAction.hidden = true;
+      } else {
+        completionAction.hidden = false;
+
+        const actionLabels = {
+          'fecha de entrada': 'Añadir fecha →',
+          'bio': 'Añadir bio →',
+          'intereses': 'Añadir intereses →'
+        };
+
+        completionAction.textContent =
+          actionLabels[missing] || 'Completar perfil →';
+      }
+    }
 
     const activity = document.querySelector('#ownActivityPreview');
     if (activity && !state.user) activity.innerHTML = '<small>TODAVÍA VACÍO</small><p>Aquí aparecerá tu actividad.</p>';
@@ -276,31 +322,159 @@
   }
 
   function updateTrustView() {
-    const verified = Boolean(state.user?.email_confirmed_at);
+    const profile = state.profile || {};
+
+    const emailVerified = Boolean(state.user?.email_confirmed_at);
+    const hasPhoto = Boolean(profile.avatar_url);
+
+    const completionFields = [
+      profile.name || profile.alias,
+      profile.bio,
+      profile.age,
+      profile.seeking?.length,
+      profile.zones?.length,
+      profile.budget_min || profile.budget_max,
+      profile.move_in_date,
+      profile.duration,
+      profile.interests?.length,
+      state.preferences?.answers?.living &&
+        Object.keys(state.preferences.answers.living).length
+    ];
+
+    const completion =
+      Math.round(
+        (completionFields.filter(Boolean).length / completionFields.length) * 100
+      ) || 0;
+
+    const verified = emailVerified;
+    const levelName = verified ? 'Verificado' : 'Nuevo';
+
     const title = document.querySelector('#trustView .subpage-header h1');
     const level = document.querySelector('#trustView .trust-level-card strong');
     const copy = document.querySelector('#trustView .trust-level-card p');
-    if (title) title.textContent = verified ? 'Verificado' : 'Nuevo';
-    if (level) level.textContent = verified ? 'Verificado' : 'Nuevo';
-    if (copy) copy.textContent = verified ? 'Tu email está confirmado. Podrás añadir más señales de confianza cuando uses Rooms.' : 'Confirma tu email para obtener tu primera señal de confianza.';
-    const signals = document.querySelectorAll('#trustView .trust-signals-grid article');
-    if (signals[0]) signals[0].innerHTML = `<span>${verified ? '✓' : '○'}</span><div><b>Email</b><small>${verified ? 'Verificado' : 'Pendiente'}</small></div>`;
-    if (signals[1]) signals[1].innerHTML = '<span>0</span><div><b>Reseñas</b><small>Todavía no tienes reseñas</small></div>';
-    if (signals[2]) signals[2].innerHTML = '<span>1</span><div><b>Actividad</b><small>Cuenta recién creada</small></div>';
+
+    if (title) title.textContent = levelName;
+    if (level) level.textContent = levelName;
+
+    if (copy) {
+      copy.textContent = emailVerified
+        ? 'Tu email está confirmado. Sigue completando tu perfil y creando relaciones reales para añadir más señales de confianza.'
+        : 'Confirma tu email para conseguir tu primera señal de confianza en Rooms.';
+    }
+
+    const levels = document.querySelectorAll(
+      '#trustView .trust-levels span'
+    );
+
+    if (levels[0]) {
+      levels[0].textContent = 'Nuevo ✓';
+      levels[0].className = 'done';
+    }
+
+    if (levels[1]) {
+      levels[1].textContent = emailVerified
+        ? 'Verificado ✓'
+        : 'Verificado';
+      levels[1].className = emailVerified ? 'current' : '';
+    }
+
+    if (levels[2]) {
+      levels[2].textContent = 'Fiable';
+      levels[2].className = '';
+    }
+
+    if (levels[3]) {
+      levels[3].textContent = 'Muy fiable';
+      levels[3].className = '';
+    }
+
+    const signals = document.querySelectorAll(
+      '#trustView .trust-signals-grid article'
+    );
+
+    if (signals[0]) {
+      signals[0].innerHTML = `
+        <span>${emailVerified ? '✓' : '○'}</span>
+        <div>
+          <b>Email</b>
+          <small>${emailVerified ? 'Verificado' : 'Pendiente de verificar'}</small>
+        </div>
+      `;
+    }
+
+    if (signals[1]) {
+      signals[1].innerHTML = `
+        <span>${hasPhoto ? '✓' : '○'}</span>
+        <div>
+          <b>Foto de perfil</b>
+          <small>${hasPhoto ? 'Añadida' : 'Pendiente'}</small>
+        </div>
+      `;
+    }
+
+    if (signals[2]) {
+      signals[2].innerHTML = `
+        <span>${completion}%</span>
+        <div>
+          <b>Perfil completo</b>
+          <small>${completion >= 80 ? 'Buen nivel de información' : 'Puedes añadir más información'}</small>
+        </div>
+      `;
+    }
+
+    const recommendationButton = document.querySelector(
+      '#trustView .trust-level-card button'
+    );
+
+    if (recommendationButton) {
+      recommendationButton.removeAttribute('data-toast');
+      recommendationButton.id = 'trustRecommendations';
+      recommendationButton.textContent = completion < 100
+        ? 'Completar perfil →'
+        : 'Perfil completo ✓';
+    }
+
     const reviews = document.querySelector('#trustView .reviews-grid');
-    if (reviews) reviews.innerHTML = '<article class="unverified-review"><header><span>SIN RESEÑAS</span></header><h3>Todavía no tienes reseñas</h3><p>Cuando exista una relación en Rooms, las reseñas verificadas aparecerán aquí.</p></article>';
-    document.querySelectorAll('#ownProfileView [data-open-trust] small').forEach(item => item.textContent = verified ? 'Email verificado' : 'Perfil nuevo');
+
+    if (reviews) {
+      reviews.innerHTML = `
+        <article class="unverified-review trust-empty-reviews">
+          <header>
+            <span>SIN RESEÑAS TODAVÍA</span>
+          </header>
+          <h3>Las reseñas llegarán después de relaciones reales</h3>
+          <p>
+            Cuando hayas conectado y convivido, alquilado o interactuado
+            mediante una relación verificable en Rooms, podrán aparecer aquí.
+          </p>
+        </article>
+      `;
+    }
+
+    const writeReview = document.querySelector(
+      '#trustView .reviews-heading button'
+    );
+
+    if (writeReview) {
+      writeReview.hidden = true;
+    }
+
+    document
+      .querySelectorAll('#ownProfileView [data-open-trust] small')
+      .forEach(item => {
+        item.textContent = emailVerified
+          ? 'Email verificado'
+          : 'Perfil nuevo';
+      });
   }
 
   function updateAccountView() {
     const email = state.user?.email || '';
-    const masked = email ? `${email.slice(0, 2)}•••••${email.slice(email.indexOf('@'))}` : 'Sin email';
-    const accountRows = document.querySelectorAll('#settingsView [data-settings-panel="account"] .setting-list button b');
-    if (accountRows[0]) accountRows[0].textContent = masked;
-    if (accountRows[1]) accountRows[1].textContent = 'Sin añadir';
-    if (accountRows[2]) accountRows[2].textContent = 'Contraseña configurada';
-    const sessions = document.querySelector('#settingsView [data-settings-panel="security"] .setting-list button:last-child b');
-    if (sessions) sessions.textContent = '1 sesión activa';
+
+    const emailNode = document.querySelector('#settingsAccountEmail');
+    if (emailNode) {
+      emailNode.textContent = email || 'Sin email';
+    }
   }
 
   function updateSavedCount(count) {
@@ -309,24 +483,145 @@
     if (title) title.textContent = `${count} ${count === 1 ? 'elemento' : 'elementos'}`;
   }
 
+  async function getProfileVisibility(userId) {
+    if (!userId) {
+      return {
+        viewer_scope: 'public',
+        living: true,
+        search: true,
+        budget: true,
+        activity: true
+      };
+    }
+
+    const { data, error } = await db.rpc(
+      'get_profile_visibility',
+      { target_user_id: userId }
+    );
+
+    if (error) {
+      console.error('Rooms: error cargando privacidad', error);
+
+      /*
+       * Ante un error preferimos ocultar información
+       * antes que mostrar algo que podría ser privado.
+       */
+      return {
+        viewer_scope: 'public',
+        living: false,
+        search: false,
+        budget: false,
+        activity: false
+      };
+    }
+
+    return data || {};
+  }
+
+  function applyTargetPrivacy(profile, visibility) {
+    const modal = document.querySelector('#userProfileModal');
+    if (!modal || !profile) return;
+
+    const canSeeLiving = visibility?.living !== false;
+    const canSeeSearch = visibility?.search !== false;
+    const canSeeBudget = visibility?.budget !== false;
+    const canSeeActivity = visibility?.activity !== false;
+
+    /*
+     * Cabecera: busca / zona / presupuesto
+     */
+    const topLooking = modal.querySelectorAll('.profile-looking > span');
+
+    if (topLooking[0]) topLooking[0].hidden = !canSeeSearch;
+    if (topLooking[1]) topLooking[1].hidden = !canSeeSearch;
+    if (topLooking[2]) topLooking[2].hidden = !canSeeBudget;
+
+    /*
+     * Secciones principales del perfil.
+     * 0 = Sobre mí
+     * 1 = Cómo vivo
+     * 2 = Qué busco
+     */
+    const userSections = modal.querySelectorAll(
+      '.user-profile-content > section.user-section'
+    );
+
+    const livingSection = userSections[1];
+    const searchSection = userSections[2];
+
+    if (livingSection) {
+      livingSection.hidden = !canSeeLiving;
+    }
+
+    if (searchSection) {
+      const rows = searchSection.querySelectorAll('.looking-grid > span');
+
+      if (rows[0]) rows[0].hidden = !canSeeSearch;
+      if (rows[1]) rows[1].hidden = !canSeeSearch;
+      if (rows[2]) rows[2].hidden = !canSeeBudget;
+      if (rows[3]) rows[3].hidden = !canSeeSearch;
+      if (rows[4]) rows[4].hidden = !canSeeSearch;
+
+      searchSection.hidden = !canSeeSearch && !canSeeBudget;
+    }
+
+    /*
+     * El match revela indirectamente hábitos de convivencia.
+     * Hasta que tengamos el matching real, no lo enseñamos
+     * cuando esos datos no son visibles.
+     */
+    const matchBlock = modal.querySelector('.user-match-block');
+
+    if (matchBlock) {
+      matchBlock.hidden = !canSeeLiving || !canSeeSearch;
+    }
+
+    /*
+     * Actividad
+     */
+    const activity = modal.querySelector('.activity-section');
+
+    if (activity) {
+      activity.hidden = !canSeeActivity;
+    }
+
+    modal.dataset.viewerScope =
+      visibility?.viewer_scope || 'public';
+  }
+
+
   async function loadOtherProfile() {
-    const { data } = await db.from('profiles')
-      .select('id,name,alias,avatar_url,bio,age,seeking,zones,budget_min,budget_max,move_in_date,traits')
-      .neq('id', state.user.id)
-      .eq('onboarding_completed', true)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    const { data, error } = await db.rpc(
+      'get_visible_profiles',
+      { _target_user_id: null }
+    );
+
+    if (error) {
+      console.error('Rooms: error cargando perfiles seguros', error);
+      return;
+    }
 
     state.targetProfile = data?.[0] || null;
+
     if (!state.targetProfile) return;
-    applyTargetProfile(state.targetProfile);
+
     await loadConnection();
+
+    state.targetVisibility =
+      await getProfileVisibility(state.targetProfile.id);
+
+    applyTargetProfile(state.targetProfile);
+
+    applyTargetPrivacy(
+      state.targetProfile,
+      state.targetVisibility
+    );
   }
 
   async function loadRealContent() {
     const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] = await Promise.all([
       db.from('listings').select('*').eq('status', 'published').order('created_at', { ascending: false }),
-      db.from('profiles').select('*').neq('id', state.user.id).eq('onboarding_completed', true).order('created_at', { ascending: false }),
+      db.rpc('get_visible_profiles', { _target_user_id: null }),
       db.from('posts').select('*').eq('status', 'published').order('created_at', { ascending: false }),
       db.from('communities').select('*').eq('status', 'active').order('created_at', { ascending: false })
     ]);
@@ -904,7 +1199,20 @@
 
   async function connectToUser(userId) {
     const profile = state.profiles.get(userId);
-    if (profile) state.targetProfile = profile;
+
+    if (profile) {
+      state.targetProfile = profile;
+
+      state.targetVisibility =
+        await getProfileVisibility(profile.id);
+
+      applyTargetProfile(profile);
+      applyTargetPrivacy(
+        profile,
+        state.targetVisibility
+      );
+    }
+
     await loadConnection();
     await handleConnect();
   }
@@ -917,7 +1225,16 @@
       .limit(1);
     if (!data?.length) return;
     const request = data[0];
-    const { data: requester } = await db.from('profiles').select('name,alias').eq('id', request.requester_id).maybeSingle();
+    const { data: requesterRows, error: requesterError } = await db.rpc(
+      'get_visible_profiles',
+      { _target_user_id: request.requester_id }
+    );
+
+    if (requesterError) {
+      console.error('Rooms: error cargando perfil de solicitud', requesterError);
+    }
+
+    const requester = requesterRows?.[0] || null;
     state.incomingRequests.set(request.id, { request, requester });
     showConnectionRequest(request, requester);
   }
@@ -1073,12 +1390,27 @@
   async function fetchProfiles(ids) {
     const unique = [...new Set(ids.filter(Boolean))];
     if (!unique.length) return new Map();
-    const { data } = await db.from('profiles').select('id,name,alias,avatar_url,bio').in('id', unique);
+
+    const { data, error } = await db.rpc(
+      'get_visible_profiles',
+      { _target_user_id: null }
+    );
+
+    if (error) {
+      console.error('Rooms: error cargando perfiles seguros', error);
+      return new Map();
+    }
+
+    const wanted = new Set(unique);
     const result = new Map();
-    (data || []).forEach(profile => {
-      result.set(profile.id, profile);
-      state.profiles.set(profile.id, profile);
-    });
+
+    (data || [])
+      .filter(profile => wanted.has(profile.id))
+      .forEach(profile => {
+        result.set(profile.id, profile);
+        state.profiles.set(profile.id, profile);
+      });
+
     return result;
   }
 
@@ -1227,13 +1559,53 @@
       counts[item.collection_id] = (counts[item.collection_id] || 0) + 1;
     });
 
+    const collectionItems = {};
+
+    await Promise.all(collections.map(async collection => {
+      const { data: links } = await db
+        .from('saved_collection_items')
+        .select('saved_item_id')
+        .eq('collection_id', collection.id)
+        .limit(4);
+
+      if (!links?.length) {
+        collectionItems[collection.id] = [];
+        return;
+      }
+
+      const savedIds = links.map(item => item.saved_item_id);
+
+      const { data: saved } = await db
+        .from('saved_items')
+        .select('id,item_type,item_id')
+        .in('id', savedIds);
+
+      collectionItems[collection.id] = (saved || []).map(item => {
+        const presentation = savedItemPresentation(item);
+        return presentation ? {
+          image: presentation.image || null,
+          mark: presentation.mark || '#'
+        } : null;
+      }).filter(Boolean);
+    }));
+
     grid.innerHTML = collections.map(collection => {
       const count = counts[collection.id] || 0;
       const initial = (collection.name || '#').trim().charAt(0).toUpperCase() || '#';
+      const previews = collectionItems[collection.id] || [];
+
+      const cover = previews.length
+        ? `<div class="collection-cover collection-cover-${Math.min(previews.length, 4)}">
+            ${previews.map(item => item.image
+              ? `<img src="${escapeHtml(item.image)}" alt="">`
+              : `<span>${escapeHtml(item.mark)}</span>`
+            ).join('')}
+          </div>`
+        : `<div class="collection-cover collection-cover-empty"><span>${escapeHtml(initial)}</span></div>`;
 
       return `<button type="button"
         data-real-collection="${collection.id}">
-        <span>${escapeHtml(initial)}</span>
+        ${cover}
         <b>${escapeHtml(collection.name)}</b>
         <small>${count} ${count === 1 ? 'elemento' : 'elementos'}</small>
       </button>`;
@@ -1309,7 +1681,8 @@
       return {
         title: `${Number(listing.price).toLocaleString('es-ES')} €/mes · ${listing.zone}`,
         subtitle: listing.kind === 'apartment' ? 'Piso entero' : 'Habitación',
-        mark: '⌂'
+        mark: '⌂',
+        image: Array.isArray(listing.photos) && listing.photos.length ? listing.photos[0] : null
       };
     }
 
@@ -1417,7 +1790,9 @@
 
       return `
         <article class="collection-detail-item">
-          <span>${escapeHtml(presentation.mark)}</span>
+          ${presentation.image
+            ? `<img src="${escapeHtml(presentation.image)}" alt="${escapeHtml(presentation.title)}">`
+            : `<span>${escapeHtml(presentation.mark)}</span>`}
           <div>
             <b>${escapeHtml(presentation.title)}</b>
             <small>${escapeHtml(presentation.subtitle)}</small>
@@ -1468,7 +1843,9 @@
           class="collection-picker-item ${added ? 'added' : ''}"
           data-add-to-collection="${item.id}"
           ${added ? 'disabled' : ''}>
-          <span>${escapeHtml(presentation.mark)}</span>
+          ${presentation.image
+            ? `<img src="${escapeHtml(presentation.image)}" alt="${escapeHtml(presentation.title)}">`
+            : `<span>${escapeHtml(presentation.mark)}</span>`}
           <div>
             <b>${escapeHtml(presentation.title)}</b>
             <small>${escapeHtml(presentation.subtitle)}</small>
@@ -1560,7 +1937,7 @@
       if (listing) {
         const type = listing.kind === 'apartment' ? 'flat' : 'room';
         counts[type]++;
-        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}"><div class="saved-text-cover">⌂</div><div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
       } else if (person && person.id !== state.user.id) {
         counts.person++;
         const name = person.alias || person.name || 'Usuario de Rooms';
@@ -1883,4 +2260,1591 @@
   db.auth.getSession().then(({ data }) => {
     if (data.session) startSession(data.session);
   });
+  function ensureProfileEditorModal() {
+    let modal = document.querySelector('#profileEditorModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'profileEditorModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-profile-editor></div>
+      <article class="detail profile-editor-shell">
+        <header>
+          <div>
+            <small>TU PERFIL</small>
+            <h2>Editar perfil</h2>
+            <p>Estos datos forman parte de tu perfil visible en Rooms.</p>
+          </div>
+          <button type="button" data-close-profile-editor aria-label="Cerrar">×</button>
+        </header>
+
+        <form id="profileEditorForm">
+          <div class="profile-editor-grid">
+            <label>
+              Nombre o alias
+              <input id="editProfileName" type="text" maxlength="40" required>
+            </label>
+
+            <label>
+              Edad
+              <input id="editProfileAge" type="number" min="18" max="99">
+            </label>
+          </div>
+
+          <label>
+            Sobre mí
+            <textarea id="editProfileBio" rows="5" maxlength="500"></textarea>
+          </label>
+
+          <fieldset class="profile-editor-interests">
+            <legend>Intereses</legend>
+            <div>
+              <button type="button" data-edit-interest="sport">Deporte</button>
+              <button type="button" data-edit-interest="music">Música</button>
+              <button type="button" data-edit-interest="cooking">Cocina</button>
+              <button type="button" data-edit-interest="travel">Viajes</button>
+              <button type="button" data-edit-interest="gym">Gym</button>
+              <button type="button" data-edit-interest="gaming">Gaming</button>
+              <button type="button" data-edit-interest="reading">Lectura</button>
+              <button type="button" data-edit-interest="going-out">Salir</button>
+              <button type="button" data-edit-interest="quiet-plans">Planes tranquilos</button>
+              <button type="button" data-edit-interest="pets">Mascotas</button>
+            </div>
+          </fieldset>
+
+          <button class="cta" type="submit">Guardar cambios</button>
+        </form>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll('[data-edit-interest]').forEach(button => {
+      button.addEventListener('click', () => {
+        button.classList.toggle('active');
+        button.setAttribute(
+          'aria-pressed',
+          button.classList.contains('active') ? 'true' : 'false'
+        );
+      });
+    });
+
+    modal.querySelector('#profileEditorForm').addEventListener('submit', async event => {
+      event.preventDefault();
+
+      const name = modal.querySelector('#editProfileName').value.trim();
+      const ageValue = modal.querySelector('#editProfileAge').value;
+      const bio = modal.querySelector('#editProfileBio').value.trim();
+
+      const interests = [...modal.querySelectorAll('[data-edit-interest].active')]
+        .map(button => button.dataset.editInterest);
+
+      const { data, error } = await db
+        .from('profiles')
+        .update({
+          name,
+          alias: name,
+          age: ageValue ? Number(ageValue) : null,
+          bio,
+          interests
+        })
+        .eq('id', state.user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Rooms: error actualizando perfil', error);
+        notify('No se pudo actualizar tu perfil');
+        return;
+      }
+
+      state.profile = data;
+      state.profiles.set(data.id, data);
+      updateOwnProfile(state.profile, state.preferences);
+
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      notify('Perfil actualizado');
+    });
+
+    return modal;
+  }
+
+  function openProfileEditor() {
+    if (!state.profile) return;
+
+    const modal = ensureProfileEditorModal();
+
+    modal.querySelector('#editProfileName').value =
+      state.profile.alias || state.profile.name || '';
+
+    modal.querySelector('#editProfileAge').value =
+      state.profile.age || '';
+
+    modal.querySelector('#editProfileBio').value =
+      state.profile.bio || '';
+
+    const interests = new Set(state.profile.interests || []);
+
+    modal.querySelectorAll('[data-edit-interest]').forEach(button => {
+      const active = interests.has(button.dataset.editInterest);
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#editOwnProfile')) {
+      openProfileEditor();
+      return;
+    }
+
+    if (event.target.closest('[data-close-profile-editor]')) {
+      const modal = document.querySelector('#profileEditorModal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+    }
+  });
+
+
+  async function uploadProfilePhoto(file) {
+    if (!file || !state.user) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      notify('Usa una imagen JPG, PNG o WEBP');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      notify('La foto debe pesar menos de 5 MB');
+      return;
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${state.user.id}/avatar.${extension}`;
+
+    const { error: uploadError } = await db.storage
+      .from('avatars')
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type
+      });
+
+    if (uploadError) {
+      console.error('Rooms: error subiendo avatar', uploadError);
+      notify('No se pudo subir la foto');
+      return;
+    }
+
+    const { data: publicData } = db.storage
+      .from('avatars')
+      .getPublicUrl(path);
+
+    const avatarUrl = `${publicData.publicUrl}?v=${Date.now()}`;
+
+    const { data, error } = await db
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', state.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Rooms: error guardando avatar', error);
+      notify('No se pudo actualizar tu perfil');
+      return;
+    }
+
+    state.profile = data;
+    state.profiles.set(data.id, data);
+    updateOwnProfile(state.profile, state.preferences);
+    notify('Foto de perfil actualizada');
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#changeProfilePhoto')) {
+      document.querySelector('#profilePhotoInput')?.click();
+    }
+  });
+
+  document.querySelector('#profilePhotoInput')?.addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (file) uploadProfilePhoto(file);
+    event.target.value = '';
+  });
+
+
+  function ensureLivingEditorModal() {
+    let modal = document.querySelector('#livingEditorModal');
+    if (modal) return modal;
+
+    const groups = [
+      ['Limpieza', ['Muy ordenado', 'Normal', 'Flexible']],
+      ['Horarios', ['Madrugador', 'Horario normal', 'Nocturno']],
+      ['Ruido', ['Muy tranquilo', 'Algo de ambiente', 'Me adapto']],
+      ['Visitas', ['Pocas', 'Con aviso', 'Sin problema']],
+      ['Fiestas en casa', ['Nunca', 'Alguna vez', 'Me da igual']],
+      ['Teletrabajo / estudio', ['Mucho', 'A veces', 'Casi nunca']],
+      ['Fumar', ['No', 'Solo fuera', 'Me da igual']],
+      ['Mascotas', ['Me encantan', 'Me da igual', 'Prefiero no']]
+    ];
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'livingEditorModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-living-editor></div>
+      <article class="detail living-editor-shell">
+        <header>
+          <div>
+            <small>CONVIVENCIA</small>
+            <h2>Cómo vivo</h2>
+            <p>Estas respuestas ayudan a calcular la compatibilidad con otras personas.</p>
+          </div>
+          <button type="button" data-close-living-editor aria-label="Cerrar">×</button>
+        </header>
+
+        <form id="livingEditorForm">
+          <div class="living-editor-groups">
+            ${groups.map((group, index) => `
+              <section class="living-editor-group" data-living-editor-group="${index}">
+                <small>${group[0]}</small>
+                <div>
+                  ${group[1].map((option, optionIndex) => `
+                    <button
+                      type="button"
+                      data-living-editor-choice="${index}:${optionIndex}"
+                      aria-pressed="false">
+                      ${option}
+                    </button>
+                  `).join('')}
+                </div>
+              </section>
+            `).join('')}
+          </div>
+
+          <button class="cta" type="submit">Guardar cambios</button>
+        </form>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll('[data-living-editor-choice]').forEach(button => {
+      button.addEventListener('click', () => {
+        const [category] = button.dataset.livingEditorChoice.split(':');
+
+        modal
+          .querySelectorAll(`[data-living-editor-choice^="${category}:"]`)
+          .forEach(item => {
+            item.classList.toggle('active', item === button);
+            item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
+          });
+      });
+    });
+
+    modal.querySelector('#livingEditorForm').addEventListener('submit', async event => {
+      event.preventDefault();
+
+      const living = {};
+
+      modal.querySelectorAll('[data-living-editor-choice].active').forEach(button => {
+        const [category, option] = button.dataset.livingEditorChoice.split(':');
+        living[category] = {
+          ...(state.preferences?.answers?.living?.[category] || {}),
+          option: Number(option)
+        };
+      });
+
+      const answers = {
+        ...(state.preferences?.answers || {}),
+        living
+      };
+
+      const { error } = await db
+        .from('onboarding_preferences')
+        .upsert({
+          user_id: state.user.id,
+          answers
+        });
+
+      if (error) {
+        console.error('Rooms: error actualizando convivencia', error);
+        notify('No se pudieron guardar tus hábitos');
+        return;
+      }
+
+      state.preferences = { answers };
+      updateOwnProfile(state.profile, state.preferences);
+
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      notify('Hábitos de convivencia actualizados');
+    });
+
+    return modal;
+  }
+
+  function openLivingEditor() {
+    if (!state.user) return;
+
+    const modal = ensureLivingEditorModal();
+    const living = state.preferences?.answers?.living || {};
+
+    modal.querySelectorAll('[data-living-editor-choice]').forEach(button => {
+      const [category, option] = button.dataset.livingEditorChoice.split(':');
+      const active = Number(living?.[category]?.option) === Number(option);
+
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.addEventListener('click', event => {
+    const livingEdit = event.target.closest('#ownProfileView .own-profile-content > section:nth-child(2) .manage-section-title button');
+
+    if (livingEdit) {
+      event.preventDefault();
+      openLivingEditor();
+      return;
+    }
+
+    if (event.target.closest('[data-close-living-editor]')) {
+      const modal = document.querySelector('#livingEditorModal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+    }
+  });
+
+
+  function ensureSearchPreferencesModal() {
+    let modal = document.querySelector('#searchPreferencesModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'searchPreferencesModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-search-preferences></div>
+
+      <article class="detail search-preferences-shell">
+        <header>
+          <div>
+            <small>TU BÚSQUEDA</small>
+            <h2>Qué busco</h2>
+            <p>Rooms utiliza estos datos para enseñarte viviendas y personas que realmente encajan contigo.</p>
+          </div>
+          <button type="button" data-close-search-preferences aria-label="Cerrar">×</button>
+        </header>
+
+        <form id="searchPreferencesForm">
+
+          <section class="search-editor-section">
+            <small>¿QUÉ BUSCAS?</small>
+            <div class="search-editor-options">
+              <button type="button" data-search-seeking="room">Habitación</button>
+              <button type="button" data-search-seeking="home">Piso entero</button>
+              <button type="button" data-search-seeking="mates">Compañeros</button>
+            </div>
+          </section>
+
+          <section class="search-editor-section">
+            <label>
+              Zonas
+              <input id="searchZones" type="text" placeholder="Chamberí, Moncloa, Retiro">
+              <small>Separa varias zonas con comas.</small>
+            </label>
+          </section>
+
+          <section class="search-editor-section">
+            <small>PRESUPUESTO MENSUAL</small>
+
+            <div class="search-budget-grid">
+              <label>
+                Mínimo
+                <input id="searchBudgetMin" type="number" min="0" step="50" placeholder="600">
+              </label>
+
+              <label>
+                Máximo
+                <input id="searchBudgetMax" type="number" min="0" step="50" placeholder="1000">
+              </label>
+            </div>
+
+            <label class="search-over-budget">
+              <input id="searchBudgetOpen" type="checkbox">
+              Estoy abierto/a a más de 4.000 €
+            </label>
+          </section>
+
+          <section class="search-editor-section">
+            <small>ENTRADA</small>
+
+            <div class="search-date-grid">
+              <label>
+                Fecha
+                <input id="searchMoveDate" type="date">
+              </label>
+
+              <label class="search-flexible">
+                <input id="searchMoveFlexible" type="checkbox">
+                Soy flexible
+              </label>
+            </div>
+          </section>
+
+          <section class="search-editor-section">
+            <small>DURACIÓN</small>
+
+            <div class="search-editor-options search-duration-options">
+              <button type="button" data-search-duration="1-3">1–3 meses</button>
+              <button type="button" data-search-duration="3-6">3–6 meses</button>
+              <button type="button" data-search-duration="6-12">6–12 meses</button>
+              <button type="button" data-search-duration="12+">Más de 1 año</button>
+              <button type="button" data-search-duration="unknown">No lo sé</button>
+            </div>
+          </section>
+
+          <button class="cta" type="submit">Guardar búsqueda</button>
+        </form>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll('[data-search-seeking]').forEach(button => {
+      button.addEventListener('click', () => {
+        button.classList.toggle('active');
+        button.setAttribute(
+          'aria-pressed',
+          button.classList.contains('active') ? 'true' : 'false'
+        );
+      });
+    });
+
+    modal.querySelectorAll('[data-search-duration]').forEach(button => {
+      button.addEventListener('click', () => {
+        modal.querySelectorAll('[data-search-duration]').forEach(item => {
+          item.classList.toggle('active', item === button);
+          item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
+        });
+      });
+    });
+
+    modal.querySelector('#searchPreferencesForm').addEventListener('submit', async event => {
+      event.preventDefault();
+
+      const seeking = [...modal.querySelectorAll('[data-search-seeking].active')]
+        .map(button => button.dataset.searchSeeking);
+
+      if (!seeking.length) {
+        notify('Selecciona al menos qué estás buscando');
+        return;
+      }
+
+      const zones = modal.querySelector('#searchZones').value
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean);
+
+      const budgetMinValue = modal.querySelector('#searchBudgetMin').value;
+      const budgetMaxValue = modal.querySelector('#searchBudgetMax').value;
+      const over4000 = modal.querySelector('#searchBudgetOpen').checked;
+
+      const budgetMin = budgetMinValue ? Number(budgetMinValue) : null;
+      const budgetMax = over4000
+        ? null
+        : budgetMaxValue
+          ? Number(budgetMaxValue)
+          : null;
+
+      if (budgetMin && budgetMax && budgetMin > budgetMax) {
+        notify('El presupuesto mínimo no puede superar el máximo');
+        return;
+      }
+
+      const moveDate = modal.querySelector('#searchMoveDate').value || null;
+      const flexible = modal.querySelector('#searchMoveFlexible').checked;
+
+      const duration =
+        modal.querySelector('[data-search-duration].active')?.dataset.searchDuration
+        || null;
+
+      const answers = {
+        ...(state.preferences?.answers || {}),
+        seeking,
+        zones,
+        budget: {
+          ...(state.preferences?.answers?.budget || {}),
+          min: budgetMin,
+          max: budgetMax,
+          over4000
+        },
+        move: {
+          ...(state.preferences?.answers?.move || {}),
+          date: moveDate,
+          flexible,
+          duration
+        }
+      };
+
+      const [profileResult, preferencesResult] = await Promise.all([
+        db.from('profiles')
+          .update({
+            seeking,
+            zones,
+            budget_min: budgetMin,
+            budget_max: budgetMax,
+            move_in_date: moveDate,
+            duration
+          })
+          .eq('id', state.user.id)
+          .select()
+          .single(),
+
+        db.from('onboarding_preferences')
+          .upsert({
+            user_id: state.user.id,
+            answers
+          })
+      ]);
+
+      if (profileResult.error || preferencesResult.error) {
+        console.error(
+          'Rooms: error actualizando búsqueda',
+          profileResult.error,
+          preferencesResult.error
+        );
+        notify('No se pudo actualizar tu búsqueda');
+        return;
+      }
+
+      state.profile = profileResult.data;
+      state.preferences = { answers };
+
+      state.profiles.set(state.profile.id, state.profile);
+      updateOwnProfile(state.profile, state.preferences);
+
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      notify('Tu búsqueda se ha actualizado');
+    });
+
+    return modal;
+  }
+
+  function openSearchPreferencesEditor() {
+    if (!state.profile) return;
+
+    const modal = ensureSearchPreferencesModal();
+
+    const seeking = new Set(state.profile.seeking || []);
+
+    modal.querySelectorAll('[data-search-seeking]').forEach(button => {
+      const active = seeking.has(button.dataset.searchSeeking);
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    modal.querySelector('#searchZones').value =
+      (state.profile.zones || []).join(', ');
+
+    modal.querySelector('#searchBudgetMin').value =
+      state.profile.budget_min ?? '';
+
+    modal.querySelector('#searchBudgetMax').value =
+      state.profile.budget_max ?? '';
+
+    modal.querySelector('#searchBudgetOpen').checked =
+      Boolean(state.preferences?.answers?.budget?.over4000);
+
+    modal.querySelector('#searchMoveDate').value =
+      state.profile.move_in_date || '';
+
+    modal.querySelector('#searchMoveFlexible').checked =
+      Boolean(state.preferences?.answers?.move?.flexible);
+
+    modal.querySelectorAll('[data-search-duration]').forEach(button => {
+      const active = button.dataset.searchDuration === state.profile.duration;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.addEventListener('click', event => {
+    const searchEdit = event.target.closest(
+      '#ownProfileView .own-profile-content > section:nth-child(3) .manage-section-title button'
+    );
+
+    if (searchEdit) {
+      event.preventDefault();
+      openSearchPreferencesEditor();
+      return;
+    }
+
+    if (event.target.closest('[data-close-search-preferences]')) {
+      const modal = document.querySelector('#searchPreferencesModal');
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      document.body.style.overflow = '';
+    }
+  });
+
+
+  function ensureOwnPublicProfileModal() {
+    let modal = document.querySelector('#ownPublicProfileModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'ownPublicProfileModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-own-public-profile></div>
+
+      <article class="detail user-profile-shell own-public-profile-shell">
+        <button
+          class="close profile-back"
+          type="button"
+          data-close-own-public-profile
+          aria-label="Volver">←</button>
+
+        <div class="profile-hero own-public-profile-hero">
+          <div id="ownPublicAvatar" class="own-public-avatar"></div>
+        </div>
+
+        <div class="user-profile-content">
+          <section class="user-profile-header">
+            <div class="profile-title">
+              <span id="ownPublicVerification">PERFIL</span>
+              <h2 id="ownPublicName">Mi perfil</h2>
+              <p id="ownPublicBio"></p>
+            </div>
+
+            <div class="profile-looking">
+              <span>
+                <small>BUSCA AHORA</small>
+                <b id="ownPublicSeeking">Sin definir</b>
+              </span>
+              <span>
+                <small>ZONA</small>
+                <b id="ownPublicZones">Sin definir</b>
+              </span>
+              <span>
+                <small>PRESUPUESTO</small>
+                <b id="ownPublicBudget">Sin definir</b>
+              </span>
+            </div>
+          </section>
+
+          <section class="user-section">
+            <h3>Sobre mí</h3>
+            <p id="ownPublicAbout"></p>
+            <div
+              class="profile-interest-chips"
+              id="ownPublicInterests">
+            </div>
+          </section>
+
+          <section class="user-section">
+            <h3>Cómo vivo</h3>
+            <div
+              class="lifestyle-grid"
+              id="ownPublicLiving">
+            </div>
+          </section>
+
+          <section class="user-section">
+            <h3>Qué busco</h3>
+
+            <div class="looking-grid">
+              <span>
+                <small>TIPO</small>
+                <b id="ownPublicLookingType"></b>
+              </span>
+
+              <span>
+                <small>ZONAS</small>
+                <b id="ownPublicLookingZones"></b>
+              </span>
+
+              <span>
+                <small>PRESUPUESTO</small>
+                <b id="ownPublicLookingBudget"></b>
+              </span>
+
+              <span>
+                <small>FECHA</small>
+                <b id="ownPublicMoveDate"></b>
+              </span>
+
+              <span>
+                <small>DURACIÓN</small>
+                <b id="ownPublicDuration"></b>
+              </span>
+            </div>
+          </section>
+
+          <aside class="own-public-preview-note">
+            <b>Así ven tu perfil otras personas.</b>
+            <p>
+              Esta vista solo muestra la información pública de tu perfil.
+            </p>
+          </aside>
+        </div>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function canShowOwnProfileSection(section, viewerType = 'public') {
+    const controls = state.preferences?.answers?.privacy?.controls || {};
+    const setting = controls[section] || 'public';
+
+    if (setting === 'public') return true;
+    if (setting === 'connections') return viewerType === 'connection';
+    return false;
+  }
+
+
+  function renderOwnPublicProfile() {
+    const profile = state.profile;
+    if (!profile) return;
+
+    const modal = ensureOwnPublicProfileModal();
+    const answers = state.preferences?.answers || {};
+
+    const name = profile.alias || profile.name || 'Mi perfil';
+
+    const seekingLabels = {
+      room: 'Habitación',
+      home: 'Piso entero',
+      mates: 'Compañeros'
+    };
+
+    const interestLabels = {
+      sport: 'Deporte',
+      music: 'Música',
+      cooking: 'Cocina',
+      travel: 'Viajes',
+      gym: 'Gym',
+      gaming: 'Gaming',
+      reading: 'Lectura',
+      'going-out': 'Salir',
+      'quiet-plans': 'Planes tranquilos',
+      pets: 'Mascotas'
+    };
+
+    const durationLabels = {
+      '1-3': '1–3 meses',
+      '3-6': '3–6 meses',
+      '6-12': '6–12 meses',
+      '12+': 'Más de 1 año',
+      unknown: 'No lo sé todavía'
+    };
+
+    const livingNames = [
+      'Limpieza',
+      'Horarios',
+      'Ruido',
+      'Visitas',
+      'Fiestas en casa',
+      'Teletrabajo / estudio',
+      'Fumar',
+      'Mascotas'
+    ];
+
+    const livingOptions = [
+      ['Muy ordenado', 'Normal', 'Flexible'],
+      ['Madrugador', 'Horario normal', 'Nocturno'],
+      ['Muy tranquilo', 'Algo de ambiente', 'Me adapto'],
+      ['Pocas', 'Con aviso', 'Sin problema'],
+      ['Nunca', 'Alguna vez', 'Me da igual'],
+      ['Mucho', 'A veces', 'Casi nunca'],
+      ['No', 'Solo fuera', 'Me da igual'],
+      ['Me encantan', 'Me da igual', 'Prefiero no']
+    ];
+
+    const initials = name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+
+    const avatar = modal.querySelector('#ownPublicAvatar');
+
+    avatar.innerHTML = profile.avatar_url
+      ? `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">`
+      : `<span>${escapeHtml(initials || 'R')}</span>`;
+
+    modal.querySelector('#ownPublicVerification').textContent =
+      state.user?.email_confirmed_at ? 'VERIFICADO ✓' : 'PERFIL';
+
+    modal.querySelector('#ownPublicName').textContent =
+      profile.age ? `${name}, ${profile.age}` : name;
+
+    modal.querySelector('#ownPublicBio').textContent =
+      profile.bio || 'Aún no has añadido una bio.';
+
+    modal.querySelector('#ownPublicAbout').textContent =
+      profile.bio || 'Aún no has añadido información sobre ti.';
+
+    const interests = (profile.interests || [])
+      .map(value => interestLabels[value])
+      .filter(Boolean);
+
+    modal.querySelector('#ownPublicInterests').innerHTML =
+      interests.length
+        ? interests.map(item => `<span>${escapeHtml(item)}</span>`).join('')
+        : '<span>Sin intereses añadidos</span>';
+
+    const seeking = (profile.seeking || [])
+      .map(value => seekingLabels[value])
+      .filter(Boolean);
+
+    const zones = profile.zones || [];
+
+    modal.querySelector('#ownPublicSeeking').textContent =
+      seeking.join(' · ') || 'Sin definir';
+
+    modal.querySelector('#ownPublicZones').textContent =
+      zones.join(' · ') || 'Sin definir';
+
+    modal.querySelector('#ownPublicBudget').textContent =
+      profile.budget_min || profile.budget_max
+        ? formatBudget(profile)
+        : 'Sin definir';
+
+    modal.querySelector('#ownPublicLookingType').textContent =
+      seeking.join(' · ') || 'Sin definir';
+
+    modal.querySelector('#ownPublicLookingZones').textContent =
+      zones.join(' · ') || 'Sin definir';
+
+    modal.querySelector('#ownPublicLookingBudget').textContent =
+      profile.budget_min || profile.budget_max
+        ? formatBudget(profile)
+        : 'Sin definir';
+
+    modal.querySelector('#ownPublicMoveDate').textContent =
+      profile.move_in_date
+        ? new Intl.DateTimeFormat('es-ES', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }).format(
+            new Date(`${profile.move_in_date}T00:00:00`)
+          )
+        : 'Sin definir';
+
+    modal.querySelector('#ownPublicDuration').textContent =
+      durationLabels[profile.duration] || 'Sin definir';
+
+    const viewerType = 'public';
+
+    const showLiving = canShowOwnProfileSection('living', viewerType);
+    const showSearch = canShowOwnProfileSection('search', viewerType);
+    const showBudget = canShowOwnProfileSection('budget', viewerType);
+
+    const livingSection =
+      modal.querySelector('#ownPublicLiving')?.closest('.user-section');
+
+    if (livingSection) {
+      livingSection.hidden = !showLiving;
+    }
+
+    const lookingSection =
+      modal.querySelector('#ownPublicLookingType')?.closest('.user-section');
+
+    if (lookingSection) {
+      lookingSection.hidden = !showSearch && !showBudget;
+    }
+
+    const topSeeking =
+      modal.querySelector('#ownPublicSeeking')?.closest('span');
+
+    const topZones =
+      modal.querySelector('#ownPublicZones')?.closest('span');
+
+    const topBudget =
+      modal.querySelector('#ownPublicBudget')?.closest('span');
+
+    if (topSeeking) topSeeking.hidden = !showSearch;
+    if (topZones) topZones.hidden = !showSearch;
+    if (topBudget) topBudget.hidden = !showBudget;
+
+    const lowerType =
+      modal.querySelector('#ownPublicLookingType')?.closest('span');
+
+    const lowerZones =
+      modal.querySelector('#ownPublicLookingZones')?.closest('span');
+
+    const lowerBudget =
+      modal.querySelector('#ownPublicLookingBudget')?.closest('span');
+
+    const lowerDate =
+      modal.querySelector('#ownPublicMoveDate')?.closest('span');
+
+    const lowerDuration =
+      modal.querySelector('#ownPublicDuration')?.closest('span');
+
+    if (lowerType) lowerType.hidden = !showSearch;
+    if (lowerZones) lowerZones.hidden = !showSearch;
+    if (lowerDate) lowerDate.hidden = !showSearch;
+    if (lowerDuration) lowerDuration.hidden = !showSearch;
+    if (lowerBudget) lowerBudget.hidden = !showBudget;
+
+    const living = answers.living || {};
+    const livingRows = Object.entries(living)
+      .map(([index, value]) => {
+        const category = Number(index);
+        const label = livingNames[category];
+        const option = livingOptions[category]?.[value.option];
+
+        if (!label || !option) return '';
+
+        return `
+          <span>
+            <small>${escapeHtml(label)}</small>
+            <b>${escapeHtml(option)}</b>
+          </span>
+        `;
+      })
+      .filter(Boolean);
+
+    modal.querySelector('#ownPublicLiving').innerHTML =
+      livingRows.length
+        ? livingRows.join('')
+        : '<span><small>CONVIVENCIA</small><b>Sin datos añadidos</b></span>';
+
+    return modal;
+  }
+
+  function openOwnPublicProfile() {
+    const modal = renderOwnPublicProfile();
+    if (!modal) return;
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#previewOwnPublicProfile')) {
+      openOwnPublicProfile();
+      return;
+    }
+
+    if (event.target.closest('[data-close-own-public-profile]')) {
+      const modal = document.querySelector('#ownPublicProfileModal');
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      document.body.style.overflow = '';
+    }
+  });
+
+
+  function ensureHomePreferencesModal() {
+    let modal = document.querySelector('#homePreferencesModal');
+    if (modal) return modal;
+
+    const features = [
+      'Amueblado',
+      'Exterior',
+      'Buena luz',
+      'Terraza',
+      'Ascensor',
+      'Mascotas',
+      'Cerca del metro',
+      'Zona tranquila',
+      'Teletrabajo',
+      'Baño privado',
+      'Aire acondicionado',
+      'Almacenamiento'
+    ];
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'homePreferencesModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-home-preferences></div>
+
+      <article class="detail home-preferences-shell">
+        <header>
+          <div>
+            <small>PREFERENCIAS</small>
+            <h2>Tu vivienda ideal</h2>
+            <p>Selecciona lo que valoras. Rooms lo usará para ordenar mejor tus recomendaciones.</p>
+          </div>
+          <button type="button" data-close-home-preferences aria-label="Cerrar">×</button>
+        </header>
+
+        <form id="homePreferencesForm">
+          <div class="home-preferences-grid">
+            ${features.map(feature => `
+              <button
+                type="button"
+                data-home-preference="${feature}"
+                aria-pressed="false">
+                <span>${feature}</span>
+                <i>＋</i>
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="home-preferences-footer">
+            <small>Puedes cambiar estas preferencias cuando quieras.</small>
+            <button class="cta" type="submit">Guardar preferencias</button>
+          </div>
+        </form>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll('[data-home-preference]').forEach(button => {
+      button.addEventListener('click', () => {
+        const active = !button.classList.contains('active');
+
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+        const icon = button.querySelector('i');
+        if (icon) icon.textContent = active ? '✓' : '＋';
+      });
+    });
+
+    modal.querySelector('#homePreferencesForm').addEventListener('submit', async event => {
+      event.preventDefault();
+
+      const homeFeatures = [...modal.querySelectorAll('[data-home-preference].active')]
+        .map(button => button.dataset.homePreference);
+
+      const answers = {
+        ...(state.preferences?.answers || {}),
+        homeFeatures
+      };
+
+      const { error } = await db
+        .from('onboarding_preferences')
+        .upsert({
+          user_id: state.user.id,
+          answers
+        });
+
+      if (error) {
+        console.error('Rooms: error actualizando preferencias', error);
+        notify('No se pudieron guardar tus preferencias');
+        return;
+      }
+
+      state.preferences = {
+        ...(state.preferences || {}),
+        answers
+      };
+
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+
+      notify('Preferencias actualizadas');
+    });
+
+    return modal;
+  }
+
+  function openHomePreferencesEditor() {
+    if (!state.user) return;
+
+    const modal = ensureHomePreferencesModal();
+    const selected = new Set(
+      state.preferences?.answers?.homeFeatures || []
+    );
+
+    modal.querySelectorAll('[data-home-preference]').forEach(button => {
+      const active = selected.has(button.dataset.homePreference);
+
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+      const icon = button.querySelector('i');
+      if (icon) icon.textContent = active ? '✓' : '＋';
+    });
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#editHomePreferences')) {
+      openHomePreferencesEditor();
+      return;
+    }
+
+    if (event.target.closest('[data-close-home-preferences]')) {
+      const modal = document.querySelector('#homePreferencesModal');
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      document.body.style.overflow = '';
+    }
+  });
+
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#trustRecommendations')) return;
+
+    const trustView = document.querySelector('#trustView');
+    const profileView = document.querySelector('#ownProfileView');
+
+    if (trustView) trustView.hidden = true;
+    if (profileView) profileView.hidden = false;
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  });
+
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#trustRecommendations')) return;
+
+    const trustView = document.querySelector('#trustView');
+    const profileView = document.querySelector('#ownProfileView');
+
+    if (trustView) trustView.hidden = true;
+    if (profileView) profileView.hidden = false;
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  });
+
+
+  function renderProfilePrivacySettings() {
+    const privacy = state.preferences?.answers?.privacy || {};
+    const level = privacy.level || 'balanced';
+    const controls = privacy.controls || {};
+
+    document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
+      const active = button.dataset.profilePrivacyLevel === level;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+      const key = row.dataset.profilePrivacyRow;
+      const value = controls[key] || 'public';
+
+      row.querySelectorAll('[data-privacy-value]').forEach(button => {
+        const active = button.dataset.privacyValue === value;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const levelButton = event.target.closest('[data-profile-privacy-level]');
+    if (levelButton) {
+      document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
+        button.classList.toggle('active', button === levelButton);
+        button.setAttribute(
+          'aria-pressed',
+          button === levelButton ? 'true' : 'false'
+        );
+      });
+      return;
+    }
+
+    const privacyButton = event.target.closest('[data-profile-privacy-row] [data-privacy-value]');
+    if (privacyButton) {
+      const row = privacyButton.closest('[data-profile-privacy-row]');
+
+      row.querySelectorAll('[data-privacy-value]').forEach(button => {
+        button.classList.toggle('active', button === privacyButton);
+        button.setAttribute(
+          'aria-pressed',
+          button === privacyButton ? 'true' : 'false'
+        );
+      });
+      return;
+    }
+
+    if (event.target.closest('#saveProfilePrivacy')) {
+      const level =
+        document.querySelector('[data-profile-privacy-level].active')
+          ?.dataset.profilePrivacyLevel || 'balanced';
+
+      const controls = {};
+
+      document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+        const key = row.dataset.profilePrivacyRow;
+        const value =
+          row.querySelector('[data-privacy-value].active')
+            ?.dataset.privacyValue || 'public';
+
+        controls[key] = value;
+      });
+
+      const answers = {
+        ...(state.preferences?.answers || {}),
+        privacy: {
+          ...(state.preferences?.answers?.privacy || {}),
+          level,
+          controls
+        }
+      };
+
+      db.from('onboarding_preferences')
+        .upsert({
+          user_id: state.user.id,
+          answers
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Rooms: error guardando privacidad', error);
+            notify('No se pudo guardar tu privacidad');
+            return;
+          }
+
+          state.preferences = {
+            ...(state.preferences || {}),
+            answers
+          };
+
+          notify('Privacidad actualizada');
+        });
+    }
+  });
+
+  const originalOpenSettings = window.openSettings;
+  if (typeof originalOpenSettings === 'function') {
+    window.openSettings = (...args) => {
+      const result = originalOpenSettings(...args);
+      setTimeout(renderProfilePrivacySettings, 0);
+      return result;
+    };
+  }
+
+  setTimeout(renderProfilePrivacySettings, 0);
+
+
+  function renderAccountSettings() {
+    const email = state.user?.email || 'Sin email';
+    const emailNode = document.querySelector('#settingsAccountEmail');
+
+    if (emailNode) {
+      emailNode.textContent = email;
+    }
+  }
+
+  async function requestPasswordChange() {
+    const email = state.user?.email;
+
+    if (!email) {
+      notify('No encontramos el email de tu cuenta');
+      return;
+    }
+
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
+
+    if (error) {
+      console.error('Rooms: error enviando cambio de contraseña', error);
+      notify('No se pudo enviar el email');
+      return;
+    }
+
+    notify('Te hemos enviado un email para cambiar tu contraseña');
+  }
+
+  async function logoutFromRooms() {
+    const { error } = await db.auth.signOut();
+
+    if (error) {
+      console.error('Rooms: error cerrando sesión', error);
+      notify('No se pudo cerrar la sesión');
+      return;
+    }
+
+    endSession();
+    notify('Sesión cerrada');
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#changePassword')) {
+      requestPasswordChange();
+      return;
+    }
+
+    if (event.target.closest('#realLogoutButton')) {
+      logoutFromRooms();
+    }
+  });
+
+  renderAccountSettings();
+
+
+  function ensureLanguageModal() {
+    let modal = document.querySelector('#languageModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'languageModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop" data-close-language></div>
+      <article class="detail language-modal-shell">
+        <header>
+          <div>
+            <small>IDIOMA</small>
+            <h2>Idioma de Rooms</h2>
+            <p>Selecciona el idioma que prefieres usar.</p>
+          </div>
+          <button type="button" data-close-language aria-label="Cerrar">×</button>
+        </header>
+
+        <div class="language-options">
+          <button type="button" data-language-option="es">
+            <span>Español</span>
+            <i></i>
+          </button>
+
+          <button type="button" data-language-option="en">
+            <span>English</span>
+            <i></i>
+          </button>
+        </div>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function renderLanguageSetting() {
+    const language = state.preferences?.answers?.language || 'es';
+    const label = language === 'en' ? 'English' : 'Español';
+
+    const node = document.querySelector('#settingsLanguage');
+    if (node) node.textContent = label;
+  }
+
+  async function saveLanguage(language) {
+    const answers = {
+      ...(state.preferences?.answers || {}),
+      language
+    };
+
+    const { error } = await db
+      .from('onboarding_preferences')
+      .upsert({
+        user_id: state.user.id,
+        answers
+      });
+
+    if (error) {
+      console.error('Rooms: error guardando idioma', error);
+      notify('No se pudo guardar el idioma');
+      return;
+    }
+
+    state.preferences = {
+      ...(state.preferences || {}),
+      answers
+    };
+
+    renderLanguageSetting();
+
+    const modal = document.querySelector('#languageModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.style.overflow = '';
+
+    notify(language === 'en' ? 'Language updated' : 'Idioma actualizado');
+  }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('#changeLanguage')) {
+      const modal = ensureLanguageModal();
+      const current = state.preferences?.answers?.language || 'es';
+
+      modal.querySelectorAll('[data-language-option]').forEach(button => {
+        const active = button.dataset.languageOption === current;
+        button.classList.toggle('active', active);
+
+        const icon = button.querySelector('i');
+        if (icon) icon.textContent = active ? '✓' : '';
+      });
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      return;
+    }
+
+    const languageButton = event.target.closest('[data-language-option]');
+    if (languageButton) {
+      saveLanguage(languageButton.dataset.languageOption);
+      return;
+    }
+
+    if (event.target.closest('[data-close-language]')) {
+      const modal = document.querySelector('#languageModal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      document.body.style.overflow = '';
+    }
+  });
+
+  renderLanguageSetting();
+
+
+  function renderContactSettings() {
+    const contact = state.preferences?.answers?.contact || {
+      connections: 'anyone',
+      listingContact: 'request'
+    };
+
+    document.querySelectorAll('[data-contact-group]').forEach(group => {
+      const key = group.dataset.contactGroup;
+      const selected = contact[key];
+
+      group.querySelectorAll('[data-contact-value]').forEach(button => {
+        const active = button.dataset.contactValue === selected;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const option = event.target.closest(
+      '[data-contact-group] [data-contact-value]'
+    );
+
+    if (option) {
+      const group = option.closest('[data-contact-group]');
+
+      group.querySelectorAll('[data-contact-value]').forEach(button => {
+        const active = button === option;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      return;
+    }
+
+    if (event.target.closest('#saveContactSettings')) {
+      const contact = {};
+
+      document.querySelectorAll('[data-contact-group]').forEach(group => {
+        const key = group.dataset.contactGroup;
+        const selected = group.querySelector('[data-contact-value].active');
+
+        contact[key] = selected?.dataset.contactValue || null;
+      });
+
+      const answers = {
+        ...(state.preferences?.answers || {}),
+        contact
+      };
+
+      db.from('onboarding_preferences')
+        .upsert({
+          user_id: state.user.id,
+          answers
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Rooms: error guardando contacto', error);
+            notify('No se pudo guardar la configuración de contacto');
+            return;
+          }
+
+          state.preferences = {
+            ...(state.preferences || {}),
+            answers
+          };
+
+          notify('Preferencias de contacto actualizadas');
+        });
+    }
+  });
+
+  setTimeout(renderContactSettings, 0);
+
+
+  document.addEventListener('click', event => {
+    const activityTab = event.target.closest('[data-own-activity]');
+    if (!activityTab) return;
+
+    event.preventDefault();
+
+    refreshOwnActivity(
+      activityTab.dataset.ownActivity
+    );
+  });
+
+
 })();
