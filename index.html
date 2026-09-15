@@ -266,6 +266,9 @@
       <button type="button" data-explore-mode="people">
         Personas
       </button>
+      <button type="button" data-explore-mode="communities">
+        Comunidades
+      </button>
     </nav>
 
     <section class="explore-search-header">
@@ -307,50 +310,94 @@
   </main>
 
   <main class="communities-main" id="communitiesView" hidden>
+
     <header class="communities-home-header">
       <div>
         <small>TUS ESPACIOS</small>
         <h1>Comunidades</h1>
-        <p>Organízate con otras personas, busca vivienda en grupo y forma parte de comunidades que te interesan.</p>
+        <p>
+          Vuelve a los grupos y comunidades de los que ya formas parte.
+        </p>
       </div>
     </header>
 
-    <section class="communities-home-section">
-      <div class="communities-home-title">
-        <div>
-          <small>BÚSQUEDA COMPARTIDA</small>
-          <h2>Grupos de búsqueda</h2>
-          <p>Espacios privados para buscar vivienda y tomar decisiones juntos.</p>
-        </div>
-      </div>
+    <div class="communities-home-layout">
 
-      <div id="searchGroupsGrid" class="search-groups-grid">
-        <div class="communities-empty-card">
-          <span>⌂</span>
-          <h3>Todavía no tienes ningún grupo</h3>
-          <p>Crea un grupo cuando quieras empezar a buscar vivienda con otras personas.</p>
-        </div>
-      </div>
-    </section>
+      <section class="communities-home-section communities-search-groups">
+        <div class="communities-home-title">
+          <div>
+            <small>BÚSQUEDA COMPARTIDA</small>
+            <h2>Grupos de búsqueda</h2>
+            <p>
+              Espacios privados para buscar vivienda y tomar decisiones juntos.
+            </p>
+          </div>
 
-    <section class="communities-home-section communities-home-community-section">
-      <div class="communities-home-title">
-        <div>
-          <small>COMUNIDADES</small>
-          <h2>Tus comunidades</h2>
-          <p>Barrios, universidades y grupos de personas con intereses o situaciones en común.</p>
+          <button
+            type="button"
+            class="communities-create-group"
+            data-open-search-group-empty
+          >
+            ＋ Crear grupo
+          </button>
         </div>
-      </div>
 
-      <div class="communities-empty-card community-coming-soon">
-        <span>#</span>
-        <div>
-          <h3>Todavía no perteneces a ninguna comunidad</h3>
-          <p>Muy pronto podrás descubrir y unirte a comunidades de Rooms.</p>
+        <div
+          id="searchGroupsGrid"
+          class="search-groups-grid"
+        >
+          <div class="communities-empty-card">
+            <span>⌂</span>
+
+            <h3>Todavía no tienes ningún grupo</h3>
+
+            <p>
+              Crea uno cuando quieras empezar a buscar vivienda
+              con otras personas.
+            </p>
+          </div>
         </div>
-        <small>PRÓXIMAMENTE</small>
-      </div>
-    </section>
+      </section>
+
+
+      <section class="communities-home-section communities-member-section">
+        <div class="communities-home-title">
+          <div>
+            <small>PERTENECES A</small>
+            <h2>Tus comunidades</h2>
+            <p>
+              Espacios compartidos con personas que tienen algo en común contigo.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="communities-create-group"
+            data-create-community
+          >
+            ＋ Crear comunidad
+          </button>
+        </div>
+
+        <div
+          id="memberCommunitiesGrid"
+          class="member-communities-grid"
+        >
+          <div class="communities-empty-card">
+            <span>#</span>
+
+            <h3>Todavía no perteneces a ninguna comunidad</h3>
+
+            <p>
+              Las comunidades a las que te unas desde Explore
+              aparecerán aquí.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
   </main>
 
   <main class="household-main" id="householdView" hidden>

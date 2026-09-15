@@ -618,6 +618,374 @@
     );
   }
 
+
+
+  function ensureCreateCommunityModal() {
+    let modal =
+      document.querySelector('#createCommunityModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'createCommunityModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-create-community
+      ></div>
+
+      <article class="create-community-sheet">
+
+        <header class="create-community-header">
+          <div>
+            <small>NUEVA COMUNIDAD</small>
+            <h2>Crea una comunidad</h2>
+            <p>
+              Crea un espacio para personas que comparten
+              zona, universidad, intereses o una misma etapa.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-close-create-community
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </header>
+
+        <form id="createCommunityForm">
+
+          <label class="create-community-field">
+            <span>Nombre de la comunidad</span>
+
+            <input
+              id="createCommunityName"
+              type="text"
+              maxlength="60"
+              placeholder="Ej. Vivir en Chamberí"
+              required
+            >
+          </label>
+
+          <label class="create-community-field">
+            <span>Descripción</span>
+
+            <textarea
+              id="createCommunityDescription"
+              maxlength="280"
+              placeholder="¿Qué une a las personas de esta comunidad?"
+              rows="4"
+            ></textarea>
+          </label>
+
+          <fieldset class="create-community-visibility">
+            <legend>Visibilidad</legend>
+
+            <label>
+              <input
+                type="radio"
+                name="communityVisibility"
+                value="public"
+                checked
+              >
+
+              <span>
+                <b>Pública</b>
+                <small>
+                  Cualquiera puede encontrarla y solicitar unirse.
+                </small>
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="communityVisibility"
+                value="private"
+              >
+
+              <span>
+                <b>Privada</b>
+                <small>
+                  Visible solo para personas con acceso.
+                </small>
+              </span>
+            </label>
+          </fieldset>
+
+          <button
+            type="submit"
+            class="create-community-submit"
+          >
+            Crear comunidad
+          </button>
+
+        </form>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal
+      .querySelector('#createCommunityForm')
+      ?.addEventListener('submit', createCommunity);
+
+    return modal;
+  }
+
+
+  function openCreateCommunityModal() {
+    const modal =
+      ensureCreateCommunityModal();
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      modal
+        .querySelector('#createCommunityName')
+        ?.focus();
+    }, 50);
+  }
+
+
+  function closeCreateCommunityModal() {
+    const modal =
+      document.querySelector('#createCommunityModal');
+
+    if (!modal) return;
+
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    document.body.style.overflow = '';
+  }
+
+
+  async function createCommunity(event) {
+    event.preventDefault();
+
+    if (!state.user) {
+      notify('Necesitas iniciar sesión');
+      return;
+    }
+
+    const modal =
+      ensureCreateCommunityModal();
+
+    const name =
+      modal
+        .querySelector('#createCommunityName')
+        ?.value
+        .trim();
+
+    const description =
+      modal
+        .querySelector('#createCommunityDescription')
+        ?.value
+        .trim();
+
+    const visibility =
+      modal
+        .querySelector(
+          'input[name="communityVisibility"]:checked'
+        )
+        ?.value || 'public';
+
+    if (!name) {
+      notify('Pon un nombre a la comunidad');
+      return;
+    }
+
+    const submit =
+      modal.querySelector('.create-community-submit');
+
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = 'Creando...';
+    }
+
+    const { data: community, error } = await db
+      .rpc('create_community', {
+        _name: name,
+        _description: description || null,
+        _visibility: visibility
+      });
+
+    if (error) {
+      console.error(
+        'Rooms: error creando comunidad',
+        error
+      );
+
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = 'Crear comunidad';
+      }
+
+      notify('No hemos podido crear la comunidad');
+      return;
+    }
+
+    state.communities.set(
+      community.id,
+      community
+    );
+
+    modal
+      .querySelector('#createCommunityForm')
+      ?.reset();
+
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = 'Crear comunidad';
+    }
+
+    closeCreateCommunityModal();
+
+    await loadMemberCommunities();
+
+    renderFilteredExplore();
+
+    notify('Comunidad creada');
+  }
+
+
+  async function loadMemberCommunities() {
+    const grid = document.querySelector('#memberCommunitiesGrid');
+
+    if (!grid || !state.user) return;
+
+    const { data: memberships, error } = await db
+      .from('community_members')
+      .select('community_id,role,status,joined_at')
+      .eq('user_id', state.user.id)
+      .order('joined_at', { ascending: false });
+
+    if (error) {
+      console.error('Rooms: error cargando comunidades del usuario', error);
+
+      grid.innerHTML = `
+        <div class="communities-empty-card">
+          <span>#</span>
+          <h3>No hemos podido cargar tus comunidades</h3>
+          <p>Vuelve a intentarlo en unos segundos.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    state.communityMemberships = memberships || [];
+
+    renderMemberCommunities();
+  }
+
+
+  function renderMemberCommunities() {
+    const grid = document.querySelector('#memberCommunitiesGrid');
+
+    if (!grid) return;
+
+    const memberships = state.communityMemberships || [];
+
+    const memberCommunities = memberships
+      .map(membership => {
+        const community =
+          state.communities?.get(membership.community_id);
+
+        if (!community) return null;
+
+        return {
+          ...community,
+          membershipRole: membership.role,
+          membershipStatus: membership.status,
+          joinedAt: membership.joined_at
+        };
+      })
+      .filter(Boolean);
+
+    if (!memberCommunities.length) {
+      grid.innerHTML = `
+        <div class="communities-empty-card">
+          <span>#</span>
+
+          <h3>Todavía no perteneces a ninguna comunidad</h3>
+
+          <p>
+            Las comunidades a las que te unas desde Explore
+            aparecerán aquí.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    grid.innerHTML = memberCommunities
+      .map(community => `
+        <button
+          type="button"
+          class="member-community-card"
+          data-member-community-open="${escapeHtml(community.id)}"
+        >
+          <div class="member-community-card-media">
+            ${
+              community.image_url
+                ? `
+                  <img
+                    src="${escapeHtml(community.image_url)}"
+                    alt="${escapeHtml(community.name)}"
+                  >
+                `
+                : `
+                  <div class="member-community-placeholder">
+                    #
+                  </div>
+                `
+            }
+
+            <span class="member-community-role">
+              ${
+                community.membershipRole === 'owner'
+                  ? 'ADMIN'
+                  : 'MIEMBRO'
+              }
+            </span>
+          </div>
+
+          <div class="member-community-card-body">
+            <small>COMUNIDAD</small>
+
+            <h3>${escapeHtml(community.name)}</h3>
+
+            <p>
+              ${escapeHtml(
+                community.description ||
+                'Comunidad de Rooms'
+              )}
+            </p>
+
+            <div class="member-community-card-footer">
+              <span>Entrar</span>
+              <b>→</b>
+            </div>
+          </div>
+        </button>
+      `)
+      .join('');
+  }
+
+
   async function loadRealContent() {
     const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] = await Promise.all([
       db.from('listings').select('*').eq('status', 'published').order('created_at', { ascending: false }),
@@ -630,11 +998,39 @@
     state.communities = new Map((communities || []).map(item => [item.id, item]));
     (profiles || []).forEach(profile => state.profiles.set(profile.id, profile));
     if (!state.targetProfile && profiles?.length) state.targetProfile = profiles[0];
+    const {
+      data: communityMemberRows,
+      error: communityMemberCountError
+    } = await db
+      .from('community_members')
+      .select('community_id')
+      .eq('status', 'active');
+
+    if (communityMemberCountError) {
+      console.error(
+        'Rooms: error cargando número de miembros',
+        communityMemberCountError
+      );
+    }
+
+    state.communityMemberCounts = new Map();
+
+    (communityMemberRows || []).forEach(member => {
+      const current =
+        state.communityMemberCounts.get(member.community_id) || 0;
+
+      state.communityMemberCounts.set(
+        member.community_id,
+        current + 1
+      );
+    });
+
     renderRealFeed(listings || [], profiles || [], posts || [], communities || []);
     renderFilteredExplore();
     clearDemoOnlyViews();
     refreshOwnActivity();
     await loadHousehold();
+    await loadMemberCommunities();
     await handleIncomingHouseholdInvite();
   }
 
@@ -890,11 +1286,1565 @@
     </article>`;
   }
 
-  function renderCommunityCard(community) {
-    return `<article class="feed-card community-feed-card" data-feed-type="community" data-real-community="${community.id}">
-      <div class="community-card-mark">#</div><div><h2>${escapeHtml(community.name)}</h2><p>${escapeHtml(community.description || 'Comunidad de Rooms')}</p><button type="button" data-real-community-open="${community.id}">Ver comunidad</button></div>
-    </article>`;
+
+  async function openRealCommunity(communityId) {
+    const community =
+      state.communities?.get(communityId);
+
+    if (!community) {
+      notify('No encuentro esta comunidad');
+      return;
+    }
+
+    state.activeCommunity = community;
+
+    const { data: members, error } = await db
+      .from('community_members')
+      .select('community_id,user_id,role,status,joined_at')
+      .eq('community_id', communityId)
+      .eq('status', 'active')
+      .order('joined_at', { ascending: true });
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando miembros de comunidad',
+        error
+      );
+    }
+
+    state.activeCommunityMembers =
+      members || [];
+
+    const membership =
+      state.activeCommunityMembers.find(
+        item => item.user_id === state.user?.id
+      ) || null;
+
+    state.activeCommunityMembership =
+      membership;
+
+    renderRealCommunityDetail();
+
+    const feedMain =
+      document.querySelector('.feed-main');
+
+    const exploreView =
+      document.querySelector('#exploreView');
+
+    const communitiesView =
+      document.querySelector('#communitiesView');
+
+    const householdView =
+      document.querySelector('#householdView');
+
+    const ownProfileView =
+      document.querySelector('#ownProfileView');
+
+    const savedView =
+      document.querySelector('#savedView');
+
+    const settingsView =
+      document.querySelector('#settingsView');
+
+    const trustView =
+      document.querySelector('#trustView');
+
+    [
+      feedMain,
+      exploreView,
+      communitiesView,
+      householdView,
+      ownProfileView,
+      savedView,
+      settingsView,
+      trustView
+    ]
+      .filter(Boolean)
+      .forEach(view => {
+        view.hidden = true;
+      });
+
+    const communityView =
+      document.querySelector('#communityView');
+
+    if (communityView) {
+      communityView.hidden = false;
+    }
+
+    document
+      .querySelectorAll('[data-bottom-nav]')
+      .forEach(button => {
+        button.classList.toggle(
+          'active',
+          button.dataset.bottomNav === 'communities'
+        );
+      });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
+
+
+  function renderRealCommunityDetail() {
+    const view =
+      document.querySelector('#communityView');
+
+    const community =
+      state.activeCommunity;
+
+    if (!view || !community) return;
+
+    const members =
+      state.activeCommunityMembers || [];
+
+    const membership =
+      state.activeCommunityMembership;
+
+    const isOwner =
+      community.owner_id === state.user?.id ||
+      membership?.role === 'owner';
+
+    const isMember =
+      Boolean(membership);
+
+    const memberLabel =
+      members.length === 1
+        ? '1 miembro'
+        : `${members.length} miembros`;
+
+    const visibility =
+      community.visibility === 'private'
+        ? 'PRIVADA'
+        : 'PÚBLICA';
+
+    view.innerHTML = `
+      <button
+        class="community-back"
+        type="button"
+        data-back-real-community
+      >
+        ← Volver
+      </button>
+
+      <header class="community-hero real-community-hero">
+
+        <div class="community-hero-image">
+          ${
+            community.image_url
+              ? `
+                <img
+                  src="${escapeHtml(community.image_url)}"
+                  alt="${escapeHtml(community.name)}"
+                >
+              `
+              : `
+                <div class="real-community-image-placeholder">
+                  #
+                </div>
+              `
+          }
+
+          <span>${visibility}</span>
+        </div>
+
+        <div class="community-hero-copy">
+
+          <small>
+            COMUNIDAD · ROOMS
+          </small>
+
+          <div class="real-community-title-row">
+
+            <h1>
+              ${escapeHtml(community.name)}
+            </h1>
+
+            ${
+              isOwner
+                ? `
+                  <span class="real-community-owner-badge">
+                    ADMIN
+                  </span>
+                `
+                : `
+                  <button
+                    type="button"
+                    class="${isMember ? 'joined' : ''}"
+                    data-toggle-community-membership="${escapeHtml(community.id)}"
+                  >
+                    ${isMember ? 'Miembro ✓' : 'Unirme'}
+                  </button>
+                `
+            }
+
+          </div>
+
+          <p>
+            ${escapeHtml(
+              community.description ||
+              'Comunidad de Rooms'
+            )}
+          </p>
+
+          <div class="community-meta">
+
+            <span>
+              <b>${memberLabel}</b>
+            </span>
+
+            <span>
+              <b>
+                ${
+                  community.visibility === 'private'
+                    ? 'Acceso privado'
+                    : 'Comunidad abierta'
+                }
+              </b>
+            </span>
+
+            ${
+              isOwner
+                ? `
+                  <span>
+                    <b>Administras esta comunidad</b>
+                  </span>
+                `
+                : ''
+            }
+
+          </div>
+
+        </div>
+      </header>
+
+
+      <nav
+        class="community-tabs"
+        role="tablist"
+      >
+
+        <button
+          class="active"
+          type="button"
+          data-real-community-tab="feed"
+        >
+          Feed
+        </button>
+
+        <button
+          type="button"
+          data-real-community-tab="members"
+        >
+          Miembros
+        </button>
+
+        ${
+          isMember
+            ? `
+              <button
+                class="community-publish"
+                type="button"
+                data-community-publish-placeholder
+              >
+                ＋ Publicar
+              </button>
+            `
+            : ''
+        }
+
+      </nav>
+
+
+      <section
+        class="community-panel"
+        data-real-community-panel="feed"
+      >
+
+        <div class="community-feed-layout">
+
+          <div class="community-stream">
+
+            <article class="real-community-empty-feed">
+              <span>✦</span>
+
+              <h2>
+                ${
+                  isMember
+                    ? 'Todavía no hay publicaciones'
+                    : 'Únete para participar'
+                }
+              </h2>
+
+              <p>
+                ${
+                  isMember
+                    ? 'Las publicaciones de esta comunidad aparecerán aquí.'
+                    : 'Forma parte de la comunidad para publicar, comentar y participar.'
+                }
+              </p>
+            </article>
+
+          </div>
+
+          <aside class="community-about">
+
+            <small>
+              SOBRE ESTA COMUNIDAD
+            </small>
+
+            <p>
+              ${escapeHtml(
+                community.description ||
+                'Espacio compartido dentro de Rooms.'
+              )}
+            </p>
+
+            <hr>
+
+            <b>Visibilidad</b>
+
+            <span>
+              ${
+                community.visibility === 'private'
+                  ? 'Privada'
+                  : 'Pública'
+              }
+            </span>
+
+            <hr>
+
+            <b>Miembros</b>
+            <span>${members.length}</span>
+
+            ${
+              isOwner
+                ? `
+                  <button
+                    type="button"
+                    data-manage-community-placeholder
+                  >
+                    Gestionar comunidad
+                  </button>
+                `
+                : ''
+            }
+
+          </aside>
+
+        </div>
+
+      </section>
+
+
+      <section
+        class="community-panel"
+        data-real-community-panel="members"
+        hidden
+      >
+
+        <div class="members-header">
+
+          <div>
+            <small>
+              ${memberLabel.toUpperCase()}
+            </small>
+
+            <h2>Miembros</h2>
+          </div>
+
+        </div>
+
+        <div class="community-members real-community-members">
+
+          ${
+            members.length
+              ? members.map(member => {
+                  const profile =
+                    state.profiles.get(member.user_id);
+
+                  const name =
+                    profile?.alias ||
+                    profile?.name ||
+                    (
+                      member.user_id === state.user?.id
+                        ? 'Tú'
+                        : 'Usuario de Rooms'
+                    );
+
+                  const avatar =
+                    profile?.avatar_url;
+
+                  const role =
+                    member.role === 'owner'
+                      ? 'ADMIN'
+                      : member.role === 'admin'
+                        ? 'ADMIN'
+                        : 'MIEMBRO';
+
+                  return `
+                    <article>
+
+                      ${
+                        avatar
+                          ? `
+                            <img
+                              src="${escapeHtml(avatar)}"
+                              alt="${escapeHtml(name)}"
+                            >
+                          `
+                          : `
+                            <span class="member-photo">
+                              ${escapeHtml(initials(name))}
+                            </span>
+                          `
+                      }
+
+                      <div>
+
+                        <small>
+                          ${role}
+                        </small>
+
+                        <b>
+                          ${escapeHtml(name)}
+                        </b>
+
+                        <p>
+                          ${
+                            member.user_id === state.user?.id
+                              ? 'Tu perfil'
+                              : 'Miembro de Rooms'
+                          }
+                        </p>
+
+                      </div>
+
+                    </article>
+                  `;
+                }).join('')
+              : `
+                <div class="communities-empty-card">
+                  <span>◯</span>
+                  <h3>No hay miembros todavía</h3>
+                </div>
+              `
+          }
+
+        </div>
+
+      </section>
+    `;
+  }
+
+
+
+  function ensureManageCommunityModal() {
+    let modal =
+      document.querySelector('#manageCommunityModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'manageCommunityModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-manage-community
+      ></div>
+
+      <article class="manage-community-shell">
+
+        <header class="manage-community-header">
+          <div>
+            <small>ADMINISTRACIÓN</small>
+            <h2>Gestionar comunidad</h2>
+          </div>
+
+          <button
+            type="button"
+            data-close-manage-community
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </header>
+
+
+        <div class="manage-community-layout">
+
+          <nav class="manage-community-nav">
+            <button
+              type="button"
+              class="active"
+              data-manage-community-tab="edit"
+            >
+              <span>01</span>
+              Editar comunidad
+            </button>
+
+            <button
+              type="button"
+              data-manage-community-tab="members"
+            >
+              <span>02</span>
+              Miembros
+            </button>
+          </nav>
+
+
+          <div class="manage-community-content">
+
+            <section
+              data-manage-community-panel="edit"
+            >
+
+              <form id="manageCommunityForm">
+
+                <section class="manage-community-cover-section">
+
+                  <div class="manage-community-section-heading">
+                    <div>
+                      <small>IDENTIDAD</small>
+                      <h3>Foto de portada</h3>
+                    </div>
+
+                    <span>
+                      JPG, PNG o WebP · máx. 5 MB
+                    </span>
+                  </div>
+
+
+                  <div
+                    class="manage-community-cover-preview"
+                    id="manageCommunityCoverPreview"
+                  >
+                    <div class="manage-community-cover-empty">
+                      <b>#</b>
+                      <span>Sin portada</span>
+                    </div>
+                  </div>
+
+
+                  <div class="manage-community-cover-actions">
+
+                    <label>
+                      Cambiar portada
+
+                      <input
+                        type="file"
+                        id="manageCommunityCoverInput"
+                        accept="image/jpeg,image/png,image/webp"
+                        hidden
+                      >
+                    </label>
+
+                    <button
+                      type="button"
+                      id="removeCommunityCover"
+                    >
+                      Eliminar portada
+                    </button>
+
+                  </div>
+
+                </section>
+
+
+                <div class="manage-community-divider"></div>
+
+
+                <label class="manage-community-field">
+                  <span>Nombre de la comunidad</span>
+
+                  <input
+                    type="text"
+                    id="manageCommunityName"
+                    maxlength="60"
+                    required
+                  >
+                </label>
+
+
+                <label class="manage-community-field">
+                  <span>Descripción</span>
+
+                  <textarea
+                    id="manageCommunityDescription"
+                    maxlength="280"
+                    rows="5"
+                  ></textarea>
+                </label>
+
+
+                <fieldset class="manage-community-visibility">
+                  <legend>Visibilidad</legend>
+
+                  <label>
+                    <input
+                      type="radio"
+                      name="manageCommunityVisibility"
+                      value="public"
+                    >
+
+                    <span>
+                      <b>Pública</b>
+                      <small>
+                        Puede descubrirse desde Explore.
+                      </small>
+                    </span>
+                  </label>
+
+                  <label>
+                    <input
+                      type="radio"
+                      name="manageCommunityVisibility"
+                      value="private"
+                    >
+
+                    <span>
+                      <b>Privada</b>
+                      <small>
+                        Solo accesible para personas autorizadas.
+                      </small>
+                    </span>
+                  </label>
+                </fieldset>
+
+
+                <div class="manage-community-save-bar">
+                  <button
+                    type="submit"
+                    class="manage-community-save"
+                  >
+                    Guardar cambios
+                  </button>
+                </div>
+
+              </form>
+
+            </section>
+
+
+            <section
+              data-manage-community-panel="members"
+              hidden
+            >
+
+              <div class="manage-community-members-heading">
+                <div>
+                  <small>COMUNIDAD</small>
+                  <h3>Miembros</h3>
+                </div>
+
+                <span id="manageCommunityMemberCount"></span>
+              </div>
+
+              <div
+                class="manage-community-members-list"
+                id="manageCommunityMembersList"
+              ></div>
+
+            </section>
+
+          </div>
+
+        </div>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+
+    modal
+      .querySelector('#manageCommunityForm')
+      ?.addEventListener(
+        'submit',
+        saveCommunityManagement
+      );
+
+
+    modal
+      .querySelector('#manageCommunityCoverInput')
+      ?.addEventListener('change', event => {
+        const file =
+          event.target.files?.[0];
+
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+          notify('La imagen no puede superar 5 MB');
+          event.target.value = '';
+          return;
+        }
+
+        const preview =
+          modal.querySelector(
+            '#manageCommunityCoverPreview'
+          );
+
+        if (!preview) return;
+
+        const url =
+          URL.createObjectURL(file);
+
+        preview.innerHTML = `
+          <img
+            src="${url}"
+            alt="Nueva portada"
+          >
+        `;
+
+        modal.dataset.removeCover = 'false';
+      });
+
+
+    modal
+      .querySelector('#removeCommunityCover')
+      ?.addEventListener('click', () => {
+        const preview =
+          modal.querySelector(
+            '#manageCommunityCoverPreview'
+          );
+
+        const input =
+          modal.querySelector(
+            '#manageCommunityCoverInput'
+          );
+
+        if (input) input.value = '';
+
+        modal.dataset.removeCover = 'true';
+
+        if (preview) {
+          preview.innerHTML = `
+            <div class="manage-community-cover-empty">
+              <b>#</b>
+              <span>Sin portada</span>
+            </div>
+          `;
+        }
+      });
+
+
+    modal.addEventListener('click', event => {
+      const tab =
+        event.target.closest(
+          '[data-manage-community-tab]'
+        );
+
+      if (!tab) return;
+
+      const name =
+        tab.dataset.manageCommunityTab;
+
+      modal
+        .querySelectorAll(
+          '[data-manage-community-tab]'
+        )
+        .forEach(button => {
+          button.classList.toggle(
+            'active',
+            button === tab
+          );
+        });
+
+      modal
+        .querySelectorAll(
+          '[data-manage-community-panel]'
+        )
+        .forEach(panel => {
+          panel.hidden =
+            panel.dataset.manageCommunityPanel !== name;
+        });
+    });
+
+    return modal;
+  }
+
+
+  function renderManageCommunityMembers() {
+    const modal =
+      ensureManageCommunityModal();
+
+    const list =
+      modal.querySelector(
+        '#manageCommunityMembersList'
+      );
+
+    const count =
+      modal.querySelector(
+        '#manageCommunityMemberCount'
+      );
+
+    const members =
+      state.activeCommunityMembers || [];
+
+    if (count) {
+      count.textContent =
+        members.length === 1
+          ? '1 miembro'
+          : `${members.length} miembros`;
+    }
+
+    if (!list) return;
+
+    list.innerHTML = members
+      .map(member => {
+        const profile =
+          state.profiles.get(member.user_id);
+
+        const isMe =
+          member.user_id === state.user?.id;
+
+        const name =
+          profile?.alias ||
+          profile?.name ||
+          (isMe ? 'Tú' : 'Usuario de Rooms');
+
+        const avatar =
+          profile?.avatar_url;
+
+        const role =
+          member.role === 'owner'
+            ? 'PROPIETARIO'
+            : member.role === 'admin'
+              ? 'ADMIN'
+              : 'MIEMBRO';
+
+        const joined =
+          member.joined_at
+            ? new Date(
+                member.joined_at
+              ).toLocaleDateString(
+                'es-ES',
+                {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                }
+              )
+            : '';
+
+        return `
+          <article class="manage-community-member">
+
+            ${
+              avatar
+                ? `
+                  <img
+                    src="${escapeHtml(avatar)}"
+                    alt="${escapeHtml(name)}"
+                  >
+                `
+                : `
+                  <span>
+                    ${escapeHtml(initials(name))}
+                  </span>
+                `
+            }
+
+            <div>
+              <small>${role}</small>
+
+              <b>
+                ${escapeHtml(name)}
+              </b>
+
+              <p>
+                ${
+                  joined
+                    ? `Desde ${escapeHtml(joined)}`
+                    : 'Miembro de la comunidad'
+                }
+              </p>
+            </div>
+
+          </article>
+        `;
+      })
+      .join('');
+  }
+
+
+  function openManageCommunityModal() {
+    const community =
+      state.activeCommunity;
+
+    if (
+      !community ||
+      community.owner_id !== state.user?.id
+    ) {
+      notify(
+        'Solo el propietario puede gestionar esta comunidad'
+      );
+      return;
+    }
+
+    const modal =
+      ensureManageCommunityModal();
+
+    modal.dataset.removeCover = 'false';
+
+    const name =
+      modal.querySelector(
+        '#manageCommunityName'
+      );
+
+    const description =
+      modal.querySelector(
+        '#manageCommunityDescription'
+      );
+
+    const publicRadio =
+      modal.querySelector(
+        'input[name="manageCommunityVisibility"][value="public"]'
+      );
+
+    const privateRadio =
+      modal.querySelector(
+        'input[name="manageCommunityVisibility"][value="private"]'
+      );
+
+    const cover =
+      modal.querySelector(
+        '#manageCommunityCoverPreview'
+      );
+
+    const input =
+      modal.querySelector(
+        '#manageCommunityCoverInput'
+      );
+
+    if (name) {
+      name.value =
+        community.name || '';
+    }
+
+    if (description) {
+      description.value =
+        community.description || '';
+    }
+
+    if (publicRadio) {
+      publicRadio.checked =
+        community.visibility !== 'private';
+    }
+
+    if (privateRadio) {
+      privateRadio.checked =
+        community.visibility === 'private';
+    }
+
+    if (input) {
+      input.value = '';
+    }
+
+    if (cover) {
+      cover.innerHTML =
+        community.image_url
+          ? `
+            <img
+              src="${escapeHtml(community.image_url)}"
+              alt="${escapeHtml(community.name)}"
+            >
+          `
+          : `
+            <div class="manage-community-cover-empty">
+              <b>#</b>
+              <span>Sin portada</span>
+            </div>
+          `;
+    }
+
+    renderManageCommunityMembers();
+
+    modal
+      .querySelectorAll(
+        '[data-manage-community-tab]'
+      )
+      .forEach(button => {
+        button.classList.toggle(
+          'active',
+          button.dataset.manageCommunityTab === 'edit'
+        );
+      });
+
+    modal
+      .querySelectorAll(
+        '[data-manage-community-panel]'
+      )
+      .forEach(panel => {
+        panel.hidden =
+          panel.dataset.manageCommunityPanel !== 'edit';
+      });
+
+    modal.classList.add('open');
+    modal.setAttribute(
+      'aria-hidden',
+      'false'
+    );
+
+    document.body.style.overflow =
+      'hidden';
+  }
+
+
+  function closeManageCommunityModal() {
+    const modal =
+      document.querySelector(
+        '#manageCommunityModal'
+      );
+
+    if (!modal) return;
+
+    modal.classList.remove('open');
+
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    document.body.style.overflow = '';
+  }
+
+
+  async function saveCommunityManagement(event) {
+    event.preventDefault();
+
+    const community =
+      state.activeCommunity;
+
+    if (
+      !community ||
+      community.owner_id !== state.user?.id
+    ) {
+      return;
+    }
+
+    const modal =
+      ensureManageCommunityModal();
+
+    const submit =
+      modal.querySelector(
+        '.manage-community-save'
+      );
+
+    const name =
+      modal
+        .querySelector(
+          '#manageCommunityName'
+        )
+        ?.value
+        .trim();
+
+    const description =
+      modal
+        .querySelector(
+          '#manageCommunityDescription'
+        )
+        ?.value
+        .trim();
+
+    const visibility =
+      modal
+        .querySelector(
+          'input[name="manageCommunityVisibility"]:checked'
+        )
+        ?.value || 'public';
+
+    const coverFile =
+      modal
+        .querySelector(
+          '#manageCommunityCoverInput'
+        )
+        ?.files?.[0];
+
+    if (!name) {
+      notify(
+        'La comunidad necesita un nombre'
+      );
+      return;
+    }
+
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent =
+        'Guardando...';
+    }
+
+    const changes = {
+      name,
+      description:
+        description || null,
+      visibility
+    };
+
+
+    if (
+      modal.dataset.removeCover === 'true'
+    ) {
+      changes.image_url = null;
+    }
+
+
+    if (coverFile) {
+      const extension =
+        (
+          coverFile.name
+            .split('.')
+            .pop() || 'jpg'
+        )
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+
+      const storagePath =
+        `${state.user.id}/${community.id}/${Date.now()}.${extension}`;
+
+      const {
+        error: uploadError
+      } = await db.storage
+        .from('community-images')
+        .upload(
+          storagePath,
+          coverFile,
+          {
+            cacheControl: '3600',
+            upsert: false,
+            contentType:
+              coverFile.type
+          }
+        );
+
+      if (uploadError) {
+        console.error(
+          'Rooms: error subiendo portada de comunidad',
+          uploadError
+        );
+
+        if (submit) {
+          submit.disabled = false;
+          submit.textContent =
+            'Guardar cambios';
+        }
+
+        notify(
+          'No hemos podido subir la portada'
+        );
+
+        return;
+      }
+
+      const {
+        data: publicUrlData
+      } = db.storage
+        .from('community-images')
+        .getPublicUrl(storagePath);
+
+      changes.image_url =
+        publicUrlData.publicUrl;
+    }
+
+
+    const {
+      data: updatedCommunity,
+      error
+    } = await db
+      .from('communities')
+      .update(changes)
+      .eq(
+        'id',
+        community.id
+      )
+      .eq(
+        'owner_id',
+        state.user.id
+      )
+      .select()
+      .single();
+
+
+    if (error) {
+      console.error(
+        'Rooms: error editando comunidad',
+        error
+      );
+
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent =
+          'Guardar cambios';
+      }
+
+      notify(
+        'No hemos podido guardar los cambios'
+      );
+
+      return;
+    }
+
+
+    state.communities.set(
+      updatedCommunity.id,
+      updatedCommunity
+    );
+
+    state.activeCommunity =
+      updatedCommunity;
+
+
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent =
+        'Guardar cambios';
+    }
+
+    closeManageCommunityModal();
+
+    renderRealCommunityDetail();
+
+    await loadMemberCommunities();
+
+    renderFilteredExplore();
+
+    renderRealFeed(
+      [...state.listings.values()],
+      [...state.profiles.values()],
+      [...state.posts.values()],
+      [...state.communities.values()]
+    );
+
+    notify(
+      'Comunidad actualizada'
+    );
+  }
+
+
+  async function toggleRealCommunityMembership(
+    communityId
+  ) {
+    if (!state.user) {
+      notify('Necesitas iniciar sesión');
+      return;
+    }
+
+    const community =
+      state.communities?.get(communityId);
+
+    if (!community) return;
+
+    const current =
+      state.activeCommunityMembership;
+
+    if (current) {
+
+      if (
+        current.role === 'owner' ||
+        community.owner_id === state.user.id
+      ) {
+        notify(
+          'El propietario no puede salir de su propia comunidad'
+        );
+        return;
+      }
+
+      const { error } = await db
+        .from('community_members')
+        .delete()
+        .eq('community_id', communityId)
+        .eq('user_id', state.user.id);
+
+      if (error) {
+        console.error(
+          'Rooms: error saliendo de comunidad',
+          error
+        );
+
+        notify('No hemos podido salir de la comunidad');
+        return;
+      }
+
+      notify('Has salido de la comunidad');
+
+    } else {
+
+      const { error } = await db
+        .from('community_members')
+        .insert({
+          community_id: communityId,
+          user_id: state.user.id,
+          role: 'member',
+          status: 'active'
+        });
+
+      if (error) {
+        console.error(
+          'Rooms: error uniéndose a comunidad',
+          error
+        );
+
+        notify('No hemos podido unirte a la comunidad');
+        return;
+      }
+
+      notify('Te has unido a la comunidad');
+    }
+
+    await loadMemberCommunities();
+    await openRealCommunity(communityId);
+  }
+
+
+  function renderCommunityCard(community) {
+    const memberCount =
+      state.communityMemberCounts?.get(community.id) || 0;
+
+    const memberText =
+      memberCount === 1
+        ? '1 miembro'
+        : `${memberCount.toLocaleString('es-ES')} miembros`;
+
+    const visibility =
+      community.visibility === 'private'
+        ? 'PRIVADA'
+        : 'PÚBLICA';
+
+    const description =
+      community.description ||
+      'Personas que comparten un lugar, una etapa o algo en común.';
+
+    return `
+      <article
+        class="feed-card home-community-social-card"
+        data-feed-type="community"
+        data-real-community="${escapeHtml(community.id)}"
+      >
+
+        <div class="home-community-graphic">
+
+          <div class="home-community-graphic-top">
+            <span>COMUNIDAD</span>
+            <small>${visibility}</small>
+          </div>
+
+          <div class="home-community-hash">
+            #
+          </div>
+
+          <div class="home-community-member-stat">
+            <strong>${memberCount.toLocaleString('es-ES')}</strong>
+            <span>
+              ${memberCount === 1 ? 'MIEMBRO' : 'MIEMBROS'}
+            </span>
+          </div>
+
+        </div>
+
+
+        <div class="home-community-info">
+
+          <div class="home-community-eyebrow">
+            <span>ROOMS COMMUNITY</span>
+            <i></i>
+          </div>
+
+          <div class="home-community-main-copy">
+
+            <h2>
+              ${escapeHtml(community.name)}
+            </h2>
+
+            <p>
+              ${escapeHtml(description)}
+            </p>
+
+          </div>
+
+
+          <div class="home-community-social-proof">
+
+            <div class="home-community-avatars">
+              <span>#</span>
+              <span>R</span>
+              <span>+</span>
+            </div>
+
+            <div>
+              <b>${memberText}</b>
+              <small>forman parte de esta comunidad</small>
+            </div>
+
+          </div>
+
+
+          <div class="home-community-action">
+
+            <div>
+              <small>ESPACIO COMPARTIDO</small>
+              <span>Conecta, comparte y participa.</span>
+            </div>
+
+            <button
+              type="button"
+              data-real-community-open="${escapeHtml(community.id)}"
+            >
+              Entrar
+              <b>↗</b>
+            </button>
+
+          </div>
+
+        </div>
+
+      </article>
+    `;
+  }
+
+  function getExploreCommunities() {
+    const search =
+      document.querySelector('#exploreSearch');
+
+    const query =
+      (search?.value || '')
+        .trim()
+        .toLowerCase();
+
+    const communities =
+      [...state.communities.values()];
+
+    if (!query) {
+      return communities;
+    }
+
+    return communities.filter(community => {
+      const haystack = [
+        community.name,
+        community.description,
+        community.visibility
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }
+
+
+  function renderExploreCommunities(communities) {
+    const list =
+      document.querySelector('#exploreList');
+
+    const map =
+      document.querySelector('#exploreMap');
+
+    if (!list) return;
+
+    if (map) map.hidden = true;
+
+    if (!communities.length) {
+      list.innerHTML = `
+        <section class="real-feed-empty explore-real-empty">
+          <span>#</span>
+          <h2>No encontramos comunidades</h2>
+          <p>
+            Prueba con otro nombre, barrio,
+            universidad o tipo de comunidad.
+          </p>
+        </section>
+      `;
+      return;
+    }
+
+    list.innerHTML = `
+      <div class="explore-community-results">
+
+        <div class="explore-results-heading">
+          <p>
+            <strong>${communities.length}</strong>
+            ${
+              communities.length === 1
+                ? 'comunidad'
+                : 'comunidades'
+            }
+          </p>
+        </div>
+
+        <div class="explore-community-grid">
+
+          ${communities.map(community => `
+            <article
+              class="explore-community-card"
+              data-real-community="${escapeHtml(community.id)}"
+            >
+
+              <div class="explore-community-media">
+                ${
+                  community.image_url
+                    ? `
+                      <img
+                        src="${escapeHtml(community.image_url)}"
+                        alt="${escapeHtml(community.name)}"
+                      >
+                    `
+                    : `
+                      <div class="explore-community-placeholder">
+                        #
+                      </div>
+                    `
+                }
+
+                <span class="explore-community-type">
+                  COMUNIDAD
+                </span>
+              </div>
+
+              <div class="explore-community-body">
+
+                <small>
+                  ${
+                    community.visibility === 'private'
+                      ? 'PRIVADA'
+                      : 'ABIERTA'
+                  }
+                </small>
+
+                <h2>
+                  ${escapeHtml(community.name)}
+                </h2>
+
+                <p>
+                  ${escapeHtml(
+                    community.description ||
+                    'Comunidad de Rooms'
+                  )}
+                </p>
+
+                <button
+                  type="button"
+                  data-real-community-open="${escapeHtml(community.id)}"
+                >
+                  Ver comunidad
+                  <span>→</span>
+                </button>
+
+              </div>
+
+            </article>
+          `).join('')}
+
+        </div>
+
+      </div>
+    `;
+  }
+
 
   function renderExplorePeople(profiles) {
     const list = document.querySelector('#exploreList');
@@ -3197,6 +5147,207 @@
     }
 
 
+    const openRealCommunityButton =
+      event.target.closest(
+        '[data-real-community-open], [data-member-community-open]'
+      );
+
+    if (openRealCommunityButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const communityId =
+        openRealCommunityButton.dataset.realCommunityOpen ||
+        openRealCommunityButton.dataset.memberCommunityOpen;
+
+      openRealCommunity(communityId);
+      return;
+    }
+
+
+    const backRealCommunityButton =
+      event.target.closest('[data-back-real-community]');
+
+    if (backRealCommunityButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const communityView =
+        document.querySelector('#communityView');
+
+      const communitiesView =
+        document.querySelector('#communitiesView');
+
+      if (communityView) {
+        communityView.hidden = true;
+      }
+
+      if (communitiesView) {
+        communitiesView.hidden = false;
+      }
+
+      document
+        .querySelectorAll('[data-bottom-nav]')
+        .forEach(button => {
+          button.classList.toggle(
+            'active',
+            button.dataset.bottomNav === 'communities'
+          );
+        });
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+
+      return;
+    }
+
+
+    const communityMembershipButton =
+      event.target.closest(
+        '[data-toggle-community-membership]'
+      );
+
+    if (communityMembershipButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      toggleRealCommunityMembership(
+        communityMembershipButton.dataset
+          .toggleCommunityMembership
+      );
+
+      return;
+    }
+
+
+    const realCommunityTab =
+      event.target.closest(
+        '[data-real-community-tab]'
+      );
+
+    if (realCommunityTab) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const tab =
+        realCommunityTab.dataset.realCommunityTab;
+
+      document
+        .querySelectorAll('[data-real-community-tab]')
+        .forEach(button => {
+          button.classList.toggle(
+            'active',
+            button === realCommunityTab
+          );
+        });
+
+      document
+        .querySelectorAll(
+          '[data-real-community-panel]'
+        )
+        .forEach(panel => {
+          panel.hidden =
+            panel.dataset.realCommunityPanel !== tab;
+        });
+
+      return;
+    }
+
+
+    if (
+      event.target.closest(
+        '[data-community-publish-placeholder]'
+      )
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      notify(
+        'Publicaciones de comunidades: próximo paso'
+      );
+
+      return;
+    }
+
+
+    if (
+      event.target.closest(
+        '[data-manage-community-placeholder]'
+      )
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openManageCommunityModal();
+
+      return;
+    }
+
+
+    if (
+      event.target.closest(
+        '[data-close-manage-community]'
+      )
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      closeManageCommunityModal();
+
+      return;
+    }
+
+
+    const createCommunityButton =
+      event.target.closest('[data-create-community]');
+
+    if (createCommunityButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openCreateCommunityModal();
+      return;
+    }
+
+    const closeCreateCommunityButton =
+      event.target.closest('[data-close-create-community]');
+
+    if (closeCreateCommunityButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      closeCreateCommunityModal();
+      return;
+    }
+
+
+    const openEmptySearchGroup =
+      event.target.closest('[data-open-search-group-empty]');
+
+    if (openEmptySearchGroup) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const createModal =
+        ensureCreateHouseholdModal();
+
+      createModal.classList.add('open');
+      createModal.setAttribute('aria-hidden', 'false');
+
+      document.body.style.overflow = 'hidden';
+
+      setTimeout(() => {
+        createModal
+          .querySelector('#createHouseholdName')
+          ?.focus();
+      }, 50);
+
+      return;
+    }
+
+
     const groupPickerCreate =
       event.target.closest('[data-create-group-from-picker]');
 
@@ -5317,6 +7468,18 @@
       return;
     }
 
+    if (mode === 'communities') {
+      const communities =
+        getExploreCommunities();
+
+      if (list) list.hidden = false;
+      if (map) map.hidden = true;
+      if (empty) empty.hidden = true;
+
+      renderExploreCommunities(communities);
+      return;
+    }
+
     const listings = getExploreResults();
 
     renderRealExplore(listings);
@@ -5528,6 +7691,17 @@
 
         if (filters) filters.hidden = true;
         if (controls) controls.hidden = true;
+
+      } else if (mode === 'communities') {
+        if (search) {
+          search.value = '';
+          search.placeholder =
+            'Busca comunidades';
+        }
+
+        if (filters) filters.hidden = true;
+        if (controls) controls.hidden = true;
+
       } else {
         if (search) {
           search.value = '';
@@ -5599,8 +7773,8 @@
       <article class="detail create-household-shell">
         <header>
           <div>
-            <small>NUEVO HOGAR</small>
-            <h2>Crea vuestro espacio</h2>
+            <small>NUEVO GRUPO DE BÚSQUEDA</small>
+            <h2>Crea vuestro grupo de búsqueda</h2>
             <p>
               Organiza personas, viviendas y decisiones en un mismo lugar.
             </p>
@@ -5615,12 +7789,12 @@
 
         <form id="createHouseholdForm">
           <label>
-            Nombre del Hogar
+            Nombre del grupo
             <input
               id="createHouseholdName"
               type="text"
               maxlength="80"
-              placeholder="Ej. Buscar piso con Marta"
+              placeholder="Ej. Piso con Marta"
               required
             >
           </label>
@@ -5630,7 +7804,7 @@
           </p>
 
           <button type="submit" class="cta">
-            Crear Hogar
+            Crear grupo
           </button>
         </form>
       </article>
@@ -5663,7 +7837,7 @@
         </p>
 
         <button type="button" id="createHouseholdButton">
-          Crear Hogar
+          Crear grupo
         </button>
 
         <span>
@@ -7197,7 +9371,7 @@
     if (error) {
       console.error('Rooms: error creando Hogar', error);
       submit.disabled = false;
-      submit.textContent = 'Crear Hogar';
+      submit.textContent = 'Crear grupo';
       notify('No se pudo crear el Hogar');
       return;
     }
