@@ -656,24 +656,210 @@
   }
 
   function renderListingCard(listing) {
-    const photos = listing.photos || [];
-    const kind = listing.kind === 'apartment' ? 'Piso entero' : listing.kind === 'external' ? 'Fuente externa' : 'Habitación';
-    const date = listing.available_from ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(new Date(`${listing.available_from}T00:00:00`)) : 'Por confirmar';
-    const features = (listing.features || []).slice(0, 4);
-    return `<article class="feed-card property-feed-card" data-feed-type="${listing.kind === 'apartment' ? 'flat' : 'home'}" data-real-listing="${listing.id}" tabindex="0">
-      <div class="property-feed-gallery real-gallery" ${photos.length ? 'data-carousel data-index="0"' : ''}>
-        ${photos.length ? `<div class="property-gallery-track">${photos.map((photo, index) => `<img ${index === 0 ? 'class="active"' : ''} data-carousel-slide src="${escapeHtml(photo)}" alt="${escapeHtml(listing.title)} · foto ${index + 1}">`).join('')}</div>${photos.length > 1 ? '<button class="carousel-arrow previous" type="button" data-carousel-prev aria-label="Foto anterior">‹</button><button class="carousel-arrow next" type="button" data-carousel-next aria-label="Foto siguiente">›</button>' : ''}<div class="carousel-dots" aria-label="Imagen 1 de ${photos.length}">${photos.map((_, index) => `<i class="${index === 0 ? 'active' : ''}"></i>`).join('')}</div>` : '<div class="real-listing-placeholder"><span>rooms.</span><small>FOTOS PENDIENTES</small></div>'}
-        ${listing.kind === 'external' ? '<div class="property-badges"><span class="reliability-badge">FUENTE EXTERNA</span></div>' : ''}
-        <div class="property-top-actions"><button class="feed-save" type="button" data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}" data-save-id="${listing.id}" aria-label="Guardar">♡</button></div>
-      </div>
-      <div class="property-feed-body">
-        <div class="property-main"><p><b>${Number(listing.price).toLocaleString('es-ES')} €</b> / mes</p><h2>${escapeHtml(listing.zone)} · ${kind}</h2><span>Disponible ${escapeHtml(date)}</span></div>
-        <div class="property-quick-facts"><span>${listing.rooms || '—'} hab</span><span>${listing.baths || '—'} baños</span><span>${listing.area || '—'} m²</span></div>
-        <div class="property-tags">${features.length ? features.map(tag => `<span>${escapeHtml(tag)}</span>`).join('') : '<span>Sin características añadidas</span>'}</div>
-        <p class="property-fit-copy">${escapeHtml(listing.description || 'El anunciante todavía no ha añadido una descripción.')}</p>
-        <div class="feed-actions"><button type="button" data-action="save" data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}" data-save-id="${listing.id}">♡ <span>Guardar</span></button><button type="button" data-toast="Enlace copiado">↗ <span>Compartir</span></button></div>
-      </div>
-    </article>`;
+    const photos =
+      Array.isArray(listing.photos)
+        ? listing.photos
+        : [];
+
+    const photoCount = photos.length;
+
+    const kind =
+      listing.kind === 'apartment'
+        ? 'Piso entero'
+        : listing.kind === 'external'
+          ? 'Fuente externa'
+          : 'Habitación';
+
+    const zone =
+      listing.zone || 'Madrid';
+
+    const title =
+      listing.title ||
+      `${kind} en ${zone}`;
+
+    const price =
+      Number(listing.price || 0)
+        .toLocaleString('es-ES');
+
+    const available =
+      listing.available_from
+        ? new Intl.DateTimeFormat('es-ES', {
+            day: 'numeric',
+            month: 'short'
+          }).format(
+            new Date(`${listing.available_from}T00:00:00`)
+          )
+        : 'Flexible';
+
+    const facts = [
+      listing.rooms
+        ? `${listing.rooms} ${listing.rooms === 1 ? 'hab' : 'hab'}`
+        : null,
+      listing.baths
+        ? `${listing.baths} ${listing.baths === 1 ? 'baño' : 'baños'}`
+        : null,
+      listing.area
+        ? `${listing.area} m²`
+        : null
+    ].filter(Boolean);
+
+    const features =
+      Array.isArray(listing.features)
+        ? listing.features.slice(0, 4)
+        : [];
+
+    return `
+      <article
+        class="feed-card rooms-home-property-card"
+        data-feed-type="${listing.kind === 'apartment' ? 'flat' : 'home'}"
+        data-real-listing="${listing.id}"
+        tabindex="0"
+      >
+
+        <div
+          class="rooms-home-property-media"
+          ${photoCount ? 'data-carousel data-index="0"' : ''}
+        >
+
+          ${
+            photoCount
+              ? `
+                <div class="rooms-home-gallery-track">
+                  ${photos.map((photo, index) => `
+                    <img
+                      ${index === 0 ? 'class="active"' : ''}
+                      data-carousel-slide
+                      src="${escapeHtml(photo)}"
+                      alt="${escapeHtml(title)} · foto ${index + 1}"
+                    >
+                  `).join('')}
+                </div>
+
+                ${
+                  photoCount > 1
+                    ? `
+                      <button
+                        type="button"
+                        class="rooms-home-gallery-arrow previous"
+                        data-carousel-prev
+                        aria-label="Foto anterior"
+                      >←</button>
+
+                      <button
+                        type="button"
+                        class="rooms-home-gallery-arrow next"
+                        data-carousel-next
+                        aria-label="Foto siguiente"
+                      >→</button>
+                    `
+                    : ''
+                }
+
+                <div class="carousel-dots rooms-home-gallery-dots">
+                  ${photos.map((_, index) => `
+                    <i class="${index === 0 ? 'active' : ''}"></i>
+                  `).join('')}
+                </div>
+
+                <span class="rooms-home-photo-count">
+                  1 / ${photoCount}
+                </span>
+              `
+              : `
+                <div class="rooms-home-property-placeholder">
+                  <b>rooms.</b>
+                  <span>Fotos pendientes</span>
+                </div>
+              `
+          }
+
+          <div class="rooms-home-property-overlay">
+            <span class="rooms-home-property-type">
+              ${escapeHtml(kind)}
+            </span>
+
+            <button
+              type="button"
+              class="rooms-home-property-save"
+              data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}"
+              data-save-id="${listing.id}"
+              aria-label="Guardar vivienda"
+            >
+              ♡
+            </button>
+          </div>
+
+        </div>
+
+
+        <div class="rooms-home-property-body">
+
+          <div class="rooms-home-property-heading">
+            <div>
+              <small>${escapeHtml(zone)}</small>
+              <h2>${escapeHtml(title)}</h2>
+            </div>
+
+            <div class="rooms-home-property-price">
+              <b>${price} €</b>
+              <span>/ mes</span>
+            </div>
+          </div>
+
+          <div class="rooms-home-property-availability">
+            Disponible ${escapeHtml(available)}
+          </div>
+
+          ${
+            facts.length
+              ? `
+                <div class="rooms-home-property-facts">
+                  ${facts.map(fact => `
+                    <span>${escapeHtml(fact)}</span>
+                  `).join('')}
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            features.length
+              ? `
+                <div class="rooms-home-property-features">
+                  ${features.map(feature => `
+                    <span>${escapeHtml(feature)}</span>
+                  `).join('')}
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            listing.description
+              ? `
+                <p class="rooms-home-property-description">
+                  ${escapeHtml(listing.description)}
+                </p>
+              `
+              : ''
+          }
+
+          <div class="rooms-home-property-footer">
+            <span>Publicado en Rooms</span>
+
+            <button
+              type="button"
+              class="rooms-home-property-open"
+              data-real-listing="${listing.id}"
+            >
+              Ver vivienda →
+            </button>
+          </div>
+
+        </div>
+
+      </article>
+    `;
   }
 
   function renderPersonCard(profile) {
@@ -1377,7 +1563,39 @@
           </div>
           <label>Características<input id="editListingFeatures" type="text" placeholder="Amueblado, Terraza, Mascotas"></label>
           <label>Descripción<textarea id="editListingDescription" rows="5" maxlength="1500"></textarea></label>
-          <label>Añadir fotografías<input id="editListingPhotos" type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple><small>Las nuevas fotos se añadirán a las actuales.</small></label>
+
+          <section class="edit-listing-photo-manager">
+            <div class="edit-listing-photo-heading">
+              <div>
+                <small>FOTOGRAFÍAS</small>
+                <h3>Gestiona las fotos del anuncio</h3>
+              </div>
+              <span>La primera será la portada</span>
+            </div>
+
+            <div
+              class="edit-listing-photo-grid"
+              id="editListingPhotoGrid"
+            ></div>
+
+            <label class="edit-listing-add-photos">
+              <span>＋ Añadir fotografías</span>
+              <small>JPG, PNG, WEBP o HEIC</small>
+              <input
+                id="editListingPhotos"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                multiple
+                hidden
+              >
+            </label>
+
+            <p
+              class="edit-listing-new-photo-count"
+              id="editListingNewPhotoCount"
+            ></p>
+          </section>
+
           <p class="edit-listing-message" id="editListingMessage" role="status"></p>
           <div class="edit-listing-actions"><button class="delete-listing-button" type="button" data-delete-listing>Eliminar anuncio</button><button class="edit-listing-save" type="submit">Guardar cambios</button></div>
         </form>
@@ -1385,6 +1603,144 @@
     document.body.appendChild(modal);
     modal.querySelector('#editListingForm').addEventListener('submit', saveListingEdits);
     return modal;
+  }
+
+
+  function renderEditListingPhotos() {
+    const grid =
+      document.querySelector('#editListingPhotoGrid');
+
+    if (!grid) return;
+
+    const photos =
+      state.editListingPhotos || [];
+
+    if (!photos.length) {
+      grid.innerHTML = `
+        <div class="edit-listing-no-photos">
+          <span>⌂</span>
+          <b>Este anuncio no tiene fotografías</b>
+          <small>Añade una para mejorar el anuncio.</small>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:4px;">
+        <div>
+          <small style="display:block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7a7a72;margin-bottom:4px;">Fotografías</small>
+          <h3 style="margin:0;font-size:22px;line-height:1.05;letter-spacing:-.03em;color:#111;">Reordena, elige portada o elimina</h3>
+        </div>
+        <p style="margin:0;font-size:13px;font-weight:600;color:#7a7a72;text-align:right;">La primera imagen será la portada del anuncio</p>
+      </div>
+    ` + photos.map((photo, index) => `
+      <article
+        class="edit-listing-photo-card"
+        draggable="true"
+        data-edit-photo-index="${index}"
+      >
+        <div class="edit-listing-photo-image">
+          <img
+            src="${escapeHtml(photo)}"
+            alt="Foto ${index + 1} del anuncio"
+          >
+
+          ${
+            index === 0
+              ? `<span class="edit-listing-cover-label">
+                  PORTADA
+                </span>`
+              : `<span class="edit-listing-photo-number">
+                  ${index + 1}
+                </span>`
+          }
+        </div>
+
+        <div class="edit-listing-photo-actions">
+          <button
+            type="button"
+            data-edit-photo-left="${index}"
+            aria-label="Mover foto a la izquierda"
+            ${index === 0 ? 'disabled' : ''}
+          >
+            ←
+          </button>
+
+          <button
+            type="button"
+            data-edit-photo-right="${index}"
+            aria-label="Mover foto a la derecha"
+            ${index === photos.length - 1 ? 'disabled' : ''}
+          >
+            →
+          </button>
+
+          ${
+            index !== 0
+              ? `<button
+                  type="button"
+                  data-edit-photo-cover="${index}"
+                >
+                  Hacer portada
+                </button>`
+              : ''
+          }
+
+          <button
+            type="button"
+            class="edit-listing-photo-delete"
+            data-edit-photo-delete="${index}"
+          >
+            Eliminar
+          </button>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function moveEditListingPhoto(from, to) {
+    const photos =
+      [...(state.editListingPhotos || [])];
+
+    if (
+      from < 0 ||
+      to < 0 ||
+      from >= photos.length ||
+      to >= photos.length ||
+      from === to
+    ) return;
+
+    const [photo] = photos.splice(from, 1);
+    photos.splice(to, 0, photo);
+
+    state.editListingPhotos = photos;
+    renderEditListingPhotos();
+  }
+
+  function deleteEditListingPhoto(index) {
+    const photos =
+      [...(state.editListingPhotos || [])];
+
+    if (index < 0 || index >= photos.length) return;
+
+    photos.splice(index, 1);
+
+    state.editListingPhotos = photos;
+    renderEditListingPhotos();
+  }
+
+  function makeEditListingPhotoCover(index) {
+    const photos =
+      [...(state.editListingPhotos || [])];
+
+    if (index <= 0 || index >= photos.length) return;
+
+    const [photo] = photos.splice(index, 1);
+    photos.unshift(photo);
+
+    state.editListingPhotos = photos;
+    renderEditListingPhotos();
   }
 
   function openEditListing(listingId) {
@@ -1402,8 +1758,23 @@
     modal.querySelector('#editListingArea').value = listing.area ?? '';
     modal.querySelector('#editListingFeatures').value = (listing.features || []).join(', ');
     modal.querySelector('#editListingDescription').value = listing.description || '';
+    state.editListingOriginalPhotos =
+      [...(listing.photos || [])];
+
+    state.editListingPhotos =
+      [...(listing.photos || [])];
+
     modal.querySelector('#editListingPhotos').value = '';
     modal.querySelector('#editListingMessage').textContent = '';
+
+    const newPhotoCount =
+      modal.querySelector('#editListingNewPhotoCount');
+
+    if (newPhotoCount) {
+      newPhotoCount.textContent = '';
+    }
+
+    renderEditListingPhotos();
     showModal(modal);
   }
 
@@ -1424,11 +1795,19 @@
     submit.disabled = true;
     submit.textContent = 'Guardando…';
     message.textContent = '';
-    let photos = listing.photos || [];
+    let photos =
+      [...(state.editListingPhotos || listing.photos || [])];
+
     if (files.length) {
-      const uploaded = await uploadListingPhotos(listingId, files);
+      const uploaded =
+        await uploadListingPhotos(listingId, files);
+
       photos = [...photos, ...uploaded];
-      if (!uploaded.length) message.textContent = 'No se pudieron añadir las fotos, pero guardaremos el resto.';
+
+      if (!uploaded.length) {
+        message.textContent =
+          'No se pudieron añadir las fotos, pero guardaremos el resto.';
+      }
     }
     const numberOrNull = selector => {
       const value = form.querySelector(selector).value;
@@ -1457,9 +1836,59 @@
       message.textContent = 'No se pudieron guardar los cambios. Inténtalo de nuevo.';
       return;
     }
-    hideAllModals();
+
+    const originalPhotos =
+      state.editListingOriginalPhotos || [];
+
+    const removedPhotos =
+      originalPhotos.filter(photo => !photos.includes(photo));
+
+    if (removedPhotos.length) {
+      const marker =
+        '/storage/v1/object/public/listing-images/';
+
+      const storagePaths =
+        removedPhotos
+          .map(url => {
+            const index = url.indexOf(marker);
+            if (index === -1) return null;
+
+            return decodeURIComponent(
+              url.slice(index + marker.length)
+            );
+          })
+          .filter(Boolean);
+
+      if (storagePaths.length) {
+        const { error: storageError } =
+          await db.storage
+            .from('listing-images')
+            .remove(storagePaths);
+
+        if (storageError) {
+          console.warn(
+            'Rooms: no se pudieron limpiar algunas fotos eliminadas',
+            storageError
+          );
+        }
+      }
+    }
+
+    const editModal =
+      document.querySelector('#editListingModal');
+
+    if (editModal) {
+      editModal.classList.remove('open');
+      editModal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.style.overflow = '';
+
     await loadRealContent();
     await loadSavedItems();
+
+    refreshOwnActivity('listings');
+
     notify('Anuncio actualizado');
   }
 
@@ -2357,15 +2786,262 @@
 
   function openRealListingDetail(listing) {
     state.currentListingId = listing.id;
+
     const detail = document.querySelector('#detailContent');
-    const kind = listing.kind === 'apartment' ? 'Piso entero' : listing.kind === 'external' ? 'Fuente externa' : 'Habitación';
-    const date = listing.available_from ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${listing.available_from}T00:00:00`)) : 'Por confirmar';
-    const photos = listing.photos || [];
-    detail.innerHTML = `<div class="detail-gallery real-detail-gallery" ${photos.length ? 'data-carousel data-index="0"' : ''}>${photos.length ? `<div class="detail-gallery-track">${photos.map((photo, index) => `<img ${index === 0 ? 'class="active"' : ''} data-carousel-slide src="${escapeHtml(photo)}" alt="${escapeHtml(listing.title)} · foto ${index + 1}">`).join('')}</div>${photos.length > 1 ? '<button class="carousel-arrow previous" type="button" data-carousel-prev aria-label="Foto anterior">‹</button><button class="carousel-arrow next" type="button" data-carousel-next aria-label="Foto siguiente">›</button>' : ''}<div class="carousel-dots" aria-label="Imagen 1 de ${photos.length}">${photos.map((_, index) => `<i class="${index === 0 ? 'active' : ''}"></i>`).join('')}</div>` : '<div class="real-listing-placeholder"><span>rooms.</span><small>FOTOS PENDIENTES</small></div>'}<div class="detail-gallery-actions"><button type="button" data-detail-save data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}" data-save-id="${listing.id}" aria-label="Guardar">♡</button></div></div>
-      <div class="housing-detail-content"><section class="detail-main-block"><div><p><b>${Number(listing.price).toLocaleString('es-ES')} €</b> / mes</p><h2>${escapeHtml(listing.zone)} · ${kind}</h2></div>${listing.owner_id === state.user.id ? `<button class="edit-own-listing" type="button" data-edit-listing="${listing.id}">Editar anuncio</button>` : ''}</section>
-      <div class="detail-key-facts"><span><small>Disponible</small><b>${escapeHtml(date)}</b></span><span><small>Habitaciones</small><b>${listing.rooms || 'Sin añadir'}</b></span><span><small>Baños</small><b>${listing.baths || 'Sin añadir'}</b></span><span><small>Superficie</small><b>${listing.area ? `${listing.area} m²` : 'Sin añadir'}</b></span></div>
-      <section class="detail-section"><h3>Sobre la vivienda</h3><p>${escapeHtml(listing.description || 'El anunciante todavía no ha añadido una descripción.')}</p></section>
-      <section class="detail-section"><h3>Características</h3><div class="profile-interest-chips">${listing.features?.length ? listing.features.map(item => `<span>${escapeHtml(item)}</span>`).join('') : '<span>Sin características añadidas</span>'}</div></section></div>`;
+    if (!detail) return;
+
+    const kind =
+      listing.kind === 'apartment'
+        ? 'Piso entero'
+        : listing.kind === 'external'
+          ? 'Fuente externa'
+          : 'Habitación';
+
+    const zone = listing.zone || 'Madrid';
+
+    const title =
+      listing.title ||
+      `${kind} en ${zone}`;
+
+    const price =
+      Number(listing.price || 0).toLocaleString('es-ES');
+
+    const date =
+      listing.available_from
+        ? new Intl.DateTimeFormat('es-ES', {
+            day: 'numeric',
+            month: 'short'
+          }).format(
+            new Date(`${listing.available_from}T00:00:00`)
+          )
+        : 'Flexible';
+
+    const photos =
+      Array.isArray(listing.photos)
+        ? listing.photos
+        : [];
+
+    const features =
+      Array.isArray(listing.features)
+        ? listing.features
+        : [];
+
+    const facts = [
+      listing.rooms
+        ? { value: listing.rooms, label: listing.rooms === 1 ? 'habitación' : 'habitaciones' }
+        : null,
+
+      listing.baths
+        ? { value: listing.baths, label: listing.baths === 1 ? 'baño' : 'baños' }
+        : null,
+
+      listing.area
+        ? { value: `${listing.area}`, label: 'm²' }
+        : null
+    ].filter(Boolean);
+
+    detail.innerHTML = `
+      <article class="rooms-property-sheet">
+
+        <section
+          class="rooms-property-gallery"
+          ${photos.length ? 'data-carousel data-index="0"' : ''}
+        >
+
+          ${
+            photos.length
+              ? `
+                <div class="rooms-property-gallery-track">
+                  ${photos.map((photo, index) => `
+                    <img
+                      ${index === 0 ? 'class="active"' : ''}
+                      data-carousel-slide
+                      src="${escapeHtml(photo)}"
+                      alt="${escapeHtml(title)} · foto ${index + 1}"
+                    >
+                  `).join('')}
+                </div>
+
+                ${
+                  photos.length > 1
+                    ? `
+                      <button
+                        type="button"
+                        class="rooms-gallery-arrow rooms-gallery-prev"
+                        data-carousel-prev
+                        aria-label="Foto anterior"
+                      >←</button>
+
+                      <button
+                        type="button"
+                        class="rooms-gallery-arrow rooms-gallery-next"
+                        data-carousel-next
+                        aria-label="Foto siguiente"
+                      >→</button>
+                    `
+                    : ''
+                }
+
+                <div class="carousel-dots rooms-gallery-dots">
+                  ${photos.map((_, index) => `
+                    <i class="${index === 0 ? 'active' : ''}"></i>
+                  `).join('')}
+                </div>
+
+                <span class="rooms-gallery-count">
+                  1 / ${photos.length}
+                </span>
+              `
+              : `
+                <div class="rooms-property-no-photo">
+                  <b>rooms.</b>
+                  <span>Fotos pendientes</span>
+                </div>
+              `
+          }
+
+          <div class="rooms-gallery-top">
+            <span class="rooms-property-type">
+              ${escapeHtml(kind)}
+            </span>
+
+            <button
+              type="button"
+              class="rooms-property-heart"
+              data-detail-save
+              data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}"
+              data-save-id="${listing.id}"
+              aria-label="Guardar vivienda"
+            >
+              ♡
+            </button>
+          </div>
+
+        </section>
+
+
+        <section class="rooms-property-info">
+
+          <div class="rooms-property-heading">
+
+            <div class="rooms-property-location">
+              <span>${escapeHtml(zone)}</span>
+              <i></i>
+              <span>${escapeHtml(kind)}</span>
+            </div>
+
+            <h1>${escapeHtml(title)}</h1>
+
+            <div class="rooms-property-price">
+              <b>${price} €</b>
+              <span>/ mes</span>
+            </div>
+
+          </div>
+
+
+          <div class="rooms-property-availability">
+            <span>Disponible</span>
+            <b>${escapeHtml(date)}</b>
+          </div>
+
+
+          ${
+            facts.length
+              ? `
+                <div class="rooms-property-facts">
+                  ${facts.map(fact => `
+                    <div>
+                      <b>${escapeHtml(String(fact.value))}</b>
+                      <span>${escapeHtml(fact.label)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              `
+              : ''
+          }
+
+
+          ${
+            features.length
+              ? `
+                <div class="rooms-property-features">
+                  ${features.map(feature => `
+                    <span>${escapeHtml(feature)}</span>
+                  `).join('')}
+                </div>
+              `
+              : ''
+          }
+
+
+          <div class="rooms-property-copy">
+            <small>SOBRE ESTA VIVIENDA</small>
+
+            <p>
+              ${escapeHtml(
+                listing.description ||
+                'El anunciante todavía no ha añadido una descripción.'
+              )}
+            </p>
+          </div>
+
+
+          <div class="rooms-property-actions">
+
+            <button
+              type="button"
+              class="rooms-property-action-primary"
+              data-detail-save
+              data-save-kind="${listing.kind === 'apartment' ? 'apartment' : 'room'}"
+              data-save-id="${listing.id}"
+            >
+              ♡ Guardar
+            </button>
+
+            ${
+              state.household
+                ? `
+                  <button
+                    type="button"
+                    class="rooms-property-action-group"
+                    data-send-home-id="${listing.id}"
+                  >
+                    ＋ Añadir al grupo
+                  </button>
+                `
+                : ''
+            }
+
+            <button
+              type="button"
+              class="rooms-property-action-light"
+              data-share-real-listing="${listing.id}"
+            >
+              Compartir ↗
+            </button>
+
+          </div>
+
+          ${
+            listing.owner_id === state.user.id
+              ? `
+                <button
+                  type="button"
+                  class="rooms-property-edit"
+                  data-edit-listing="${listing.id}"
+                >
+                  Editar mi anuncio
+                </button>
+              `
+              : ''
+          }
+
+        </section>
+
+      </article>
+    `;
+
     showModal(document.querySelector('#detailModal'));
   }
 
@@ -2433,6 +3109,129 @@
   }
 
   document.addEventListener('click', event => {
+    const shareRealListing =
+      event.target.closest('[data-share-real-listing]');
+
+    if (shareRealListing) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const listingId =
+        shareRealListing.dataset.shareRealListing;
+
+      const shareUrl =
+        `${window.location.origin}${window.location.pathname}?listing=${listingId}`;
+
+      if (navigator.share) {
+        navigator.share({
+          title: 'Vivienda en Rooms',
+          url: shareUrl
+        }).catch(() => {});
+      } else {
+        navigator.clipboard
+          ?.writeText(shareUrl)
+          .then(() => notify('Enlace copiado'))
+          .catch(() => notify('No se pudo copiar el enlace'));
+      }
+
+      return;
+    }
+
+    if (event.target.closest('[data-open-current-home]')) {
+      event.preventDefault();
+      notify('Mi hogar estará disponible próximamente');
+      return;
+    }
+
+    /* GROUP PICKER — acciones en el listener principal de captura */
+
+    const groupPickerChoice =
+      event.target.closest('[data-pick-group]');
+
+    if (groupPickerChoice) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const householdId =
+        groupPickerChoice.dataset.pickGroup;
+
+      const candidate =
+        state.pendingGroupCandidate;
+
+      if (!candidate) {
+        notify('No encuentro el elemento que quieres añadir');
+        closeGroupPicker();
+        return;
+      }
+
+      closeGroupPicker();
+
+      if (candidate.type === 'listing') {
+        addListingToGroup(
+          candidate.id,
+          householdId
+        );
+      } else if (candidate.type === 'person') {
+        addPersonToGroup(
+          candidate.id,
+          householdId
+        );
+      }
+
+      state.pendingGroupCandidate = null;
+      return;
+    }
+
+
+    const groupPickerClose =
+      event.target.closest('[data-close-group-picker]');
+
+    if (groupPickerClose) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      closeGroupPicker();
+      state.pendingGroupCandidate = null;
+
+      return;
+    }
+
+
+    const groupPickerCreate =
+      event.target.closest('[data-create-group-from-picker]');
+
+    if (groupPickerCreate) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      closeGroupPicker();
+
+      const detailModal =
+        document.querySelector('#detailModal');
+
+      if (detailModal) {
+        detailModal.classList.remove('open');
+        detailModal.setAttribute('aria-hidden', 'true');
+      }
+
+      const createModal =
+        ensureCreateHouseholdModal();
+
+      createModal.classList.add('open');
+      createModal.setAttribute('aria-hidden', 'false');
+
+      document.body.style.overflow = 'hidden';
+
+      setTimeout(() => {
+        createModal
+          .querySelector('#createHouseholdName')
+          ?.focus();
+      }, 50);
+
+      return;
+    }
+
+
     const livingChoice = event.target.closest('[data-living-choice]');
     const livingWeight = event.target.closest('[data-living-weight]');
     if (livingChoice) {
@@ -2513,6 +3312,60 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       connectToUser(connect.dataset.userId || state.targetProfile?.id);
+      return;
+    }
+
+    const photoLeft =
+      event.target.closest('[data-edit-photo-left]');
+
+    if (photoLeft) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const index =
+        Number(photoLeft.dataset.editPhotoLeft);
+
+      moveEditListingPhoto(index, index - 1);
+      return;
+    }
+
+    const photoRight =
+      event.target.closest('[data-edit-photo-right]');
+
+    if (photoRight) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const index =
+        Number(photoRight.dataset.editPhotoRight);
+
+      moveEditListingPhoto(index, index + 1);
+      return;
+    }
+
+    const photoCover =
+      event.target.closest('[data-edit-photo-cover]');
+
+    if (photoCover) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      makeEditListingPhotoCover(
+        Number(photoCover.dataset.editPhotoCover)
+      );
+      return;
+    }
+
+    const photoDelete =
+      event.target.closest('[data-edit-photo-delete]');
+
+    if (photoDelete) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      deleteEditListingPhoto(
+        Number(photoDelete.dataset.editPhotoDelete)
+      );
       return;
     }
 
@@ -4820,6 +5673,83 @@
     `;
   }
 
+
+  function renderSearchGroupsHome() {
+    const grid =
+      document.querySelector('#searchGroupsGrid');
+
+    if (!grid) return;
+
+    const households =
+      state.households || [];
+
+    if (!households.length) {
+      grid.innerHTML = `
+        <div class="communities-empty-card">
+          <span>⌂</span>
+
+          <h3>Todavía no tienes ningún grupo</h3>
+
+          <p>
+            Crea un grupo cuando quieras empezar a buscar
+            vivienda con otras personas.
+          </p>
+
+          <button
+            type="button"
+            data-open-search-group-empty
+          >
+            Crear grupo
+          </button>
+        </div>
+      `;
+
+      return;
+    }
+
+    grid.innerHTML = households
+      .map(household => {
+        const active =
+          household.id === state.household?.id;
+
+        return `
+          <button
+            type="button"
+            class="search-group-card ${active ? 'featured' : ''}"
+            data-open-search-group="${escapeHtml(household.id)}"
+          >
+            <div class="search-group-card-top">
+              <span class="search-group-icon">⌂</span>
+
+              <small>
+                GRUPO DE BÚSQUEDA
+              </small>
+            </div>
+
+            <div class="search-group-card-copy">
+              <h3>
+                ${escapeHtml(household.name)}
+              </h3>
+
+              <p>
+                Espacio privado para buscar y decidir juntos.
+              </p>
+            </div>
+
+            <div class="search-group-card-footer">
+              <span>
+                ${active ? 'Grupo activo' : 'Búsqueda compartida'}
+              </span>
+
+              <b>Entrar →</b>
+            </div>
+          </button>
+        `;
+      })
+      .join('');
+  }
+
+
   function renderRealHousehold(household, members = []) {
     const view = document.querySelector('#householdView');
     if (!view || !household) return;
@@ -4831,7 +5761,7 @@
 
     view.innerHTML = `
       <header class="real-household-hero">
-        <div class="real-household-kicker">TU HOGAR</div>
+        <div class="real-household-kicker">GRUPO DE BÚSQUEDA</div>
 
         <div class="real-household-title">
           <div>
@@ -4931,65 +5861,102 @@
     `;
   }
 
-  async function loadHousehold() {
+  async function loadHousehold(preferredHouseholdId = null) {
     if (!state.user) return;
 
-    let household = null;
-
-    const { data: membership, error: membershipError } = await db
+    const { data: memberships, error: membershipError } = await db
       .from('household_members')
-      .select('household_id, role, status')
+      .select('household_id, role, status, joined_at')
       .eq('user_id', state.user.id)
       .eq('status', 'accepted')
-      .order('joined_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .order('joined_at', { ascending: true });
 
     if (membershipError) {
       console.error(
-        'Rooms: error cargando membresía de Hogar',
+        'Rooms: error cargando grupos del usuario',
         membershipError
       );
     }
 
-    if (membership?.household_id) {
+    const memberIds =
+      [...new Set(
+        (memberships || [])
+          .map(item => item.household_id)
+          .filter(Boolean)
+      )];
+
+    let memberHouseholds = [];
+
+    if (memberIds.length) {
       const { data, error } = await db
         .from('households')
         .select('*')
-        .eq('id', membership.household_id)
-        .maybeSingle();
+        .in('id', memberIds)
+        .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Rooms: error cargando Hogar', error);
+        console.error(
+          'Rooms: error cargando grupos compartidos',
+          error
+        );
       } else {
-        household = data;
+        memberHouseholds = data || [];
       }
     }
 
-    if (!household) {
-      const { data, error } = await db
-        .from('households')
-        .select('*')
-        .eq('owner_id', state.user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+    const { data: ownedHouseholds, error: ownedError } = await db
+      .from('households')
+      .select('*')
+      .eq('owner_id', state.user.id)
+      .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Rooms: error cargando Hogar', error);
-        renderEmptyHousehold();
-        return;
-      }
-
-      household = data;
+    if (ownedError) {
+      console.error(
+        'Rooms: error cargando grupos propios',
+        ownedError
+      );
     }
 
-    if (!household) {
+    const householdMap = new Map();
+
+    [
+      ...(memberHouseholds || []),
+      ...(ownedHouseholds || [])
+    ].forEach(household => {
+      if (household?.id) {
+        householdMap.set(household.id, household);
+      }
+    });
+
+    state.households =
+      [...householdMap.values()]
+        .sort((a, b) =>
+          new Date(a.created_at || 0) -
+          new Date(b.created_at || 0)
+        );
+
+    renderSearchGroupsHome();
+
+    if (!state.households.length) {
       state.household = null;
       state.householdMembers = [];
+      state.householdCandidates = [];
+      state.householdPersonCandidates = [];
+      state.householdCandidateVotes = [];
+
       renderEmptyHousehold();
       return;
     }
+
+    const currentId =
+      preferredHouseholdId ||
+      state.household?.id;
+
+    const household =
+      state.households.find(
+        item => item.id === currentId
+      ) ||
+      state.households[0];
 
     state.household = household;
 
@@ -5002,7 +5969,7 @@
 
     if (membersError) {
       console.error(
-        'Rooms: error cargando miembros del Hogar',
+        'Rooms: error cargando miembros del grupo',
         membersError
       );
     }
@@ -5015,6 +5982,8 @@
     );
 
     await loadHouseholdCandidates();
+
+    renderSearchGroupsHome();
   }
 
 
@@ -5384,6 +6353,206 @@
     notify('Persona añadida a vuestro Hogar');
   }
 
+
+  function ensureGroupPickerModal() {
+    let modal =
+      document.querySelector('#groupPickerModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'groupPickerModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-group-picker
+      ></div>
+
+      <article class="group-picker-sheet">
+
+        <div class="group-picker-handle"></div>
+
+        <header class="group-picker-header">
+          <div>
+            <small>GRUPOS DE BÚSQUEDA</small>
+            <h2>¿A qué grupo quieres añadirlo?</h2>
+            <p>
+              El grupo podrá valorar esta opción y votar juntos.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-close-group-picker
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </header>
+
+        <div
+          class="group-picker-list"
+          id="groupPickerList"
+        ></div>
+
+        <button
+          type="button"
+          class="group-picker-create"
+          data-create-group-from-picker
+        >
+          ＋ Crear nuevo grupo
+        </button>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+
+  function openGroupPicker(candidateType, candidateId) {
+    const households =
+      state.households || [];
+
+    if (!households.length) {
+      notify('Crea primero un grupo de búsqueda');
+      return;
+    }
+
+    state.pendingGroupCandidate = {
+      type: candidateType,
+      id: candidateId
+    };
+
+    const modal =
+      ensureGroupPickerModal();
+
+    const list =
+      modal.querySelector('#groupPickerList');
+
+    list.innerHTML = households
+      .map(household => `
+        <button
+          type="button"
+          class="group-picker-option"
+          data-pick-group="${escapeHtml(household.id)}"
+        >
+          <span class="group-picker-option-icon">
+            ⌂
+          </span>
+
+          <span class="group-picker-option-copy">
+            <b>${escapeHtml(household.name)}</b>
+            <small>Grupo de búsqueda</small>
+          </span>
+
+          <span class="group-picker-option-arrow">
+            →
+          </span>
+        </button>
+      `)
+      .join('');
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    document.body.style.overflow = 'hidden';
+  }
+
+
+  function closeGroupPicker() {
+    const modal =
+      document.querySelector('#groupPickerModal');
+
+    if (!modal) return;
+
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    document.body.style.overflow = '';
+  }
+
+
+  async function addListingToGroup(
+    listingId,
+    householdId
+  ) {
+    if (!state.user || !householdId) return;
+
+    const { error } = await db
+      .from('household_candidates')
+      .insert({
+        household_id: householdId,
+        listing_id: listingId,
+        added_by: state.user.id
+      });
+
+    if (error) {
+      if (error.code === '23505') {
+        notify('Esta vivienda ya está en ese grupo');
+        return;
+      }
+
+      console.error(
+        'Rooms: error añadiendo vivienda al grupo',
+        error
+      );
+
+      notify('No se pudo añadir la vivienda');
+      return;
+    }
+
+    if (state.household?.id === householdId) {
+      await loadHouseholdCandidates();
+    }
+
+    notify('Vivienda añadida al grupo');
+  }
+
+
+  async function addPersonToGroup(
+    userId,
+    householdId
+  ) {
+    if (!state.user || !householdId) return;
+
+    const { error } = await db
+      .from('household_person_candidates')
+      .insert({
+        household_id: householdId,
+        user_id: userId,
+        added_by: state.user.id
+      });
+
+    if (error) {
+      if (error.code === '23505') {
+        notify('Esta persona ya está en ese grupo');
+        return;
+      }
+
+      console.error(
+        'Rooms: error añadiendo persona al grupo',
+        error
+      );
+
+      notify('No se pudo añadir la persona');
+      return;
+    }
+
+    if (state.household?.id === householdId) {
+      await loadHouseholdCandidates();
+    }
+
+    notify('Persona añadida al grupo');
+  }
+
+
   async function addListingToHousehold(listingId) {
     if (!state.user) return;
 
@@ -5486,6 +6655,7 @@
     state.householdCandidateVotes = votes || [];
 
     renderHouseholdCandidates();
+    renderSearchGroupsHome();
   }
 
   function renderHouseholdCandidates() {
@@ -6081,6 +7251,43 @@
   }
 
   document.addEventListener('click', event => {
+    const openSearchGroupButton =
+      event.target.closest('[data-open-search-group]');
+
+    if (openSearchGroupButton) {
+      const householdId =
+        openSearchGroupButton.dataset.openSearchGroup;
+
+      if (householdId) {
+        loadHousehold(householdId);
+      }
+
+      const communities =
+        document.querySelector('#communitiesView');
+
+      const household =
+        document.querySelector('#householdView');
+
+      if (communities) communities.hidden = true;
+      if (household) household.hidden = false;
+
+      document
+        .querySelectorAll('[data-bottom-nav]')
+        .forEach(item => {
+          item.classList.toggle(
+            'active',
+            item.dataset.bottomNav === 'communities'
+          );
+        });
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+
+      return;
+    }
+
     const voteButton =
       event.target.closest('[data-household-vote]');
 
@@ -6102,9 +7309,10 @@
 
     if (sendPersonHomeButton) {
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
 
-      addPersonToHousehold(
+      openGroupPicker(
+        'person',
         sendPersonHomeButton.dataset.sendPersonHome
       );
 
@@ -6142,7 +7350,10 @@
         return;
       }
 
-      addListingToHousehold(listing.id);
+      openGroupPicker(
+        'listing',
+        listing.id
+      );
 
       if (sendHomeButton.closest('#compareModal')) {
         document
@@ -6294,6 +7505,86 @@
 
       return;
     }
+  });
+
+
+  let editListingDraggedPhoto = null;
+
+  document.addEventListener('dragstart', event => {
+    const card =
+      event.target.closest('[data-edit-photo-index]');
+
+    if (!card) return;
+
+    editListingDraggedPhoto =
+      Number(card.dataset.editPhotoIndex);
+
+    card.classList.add('dragging');
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  });
+
+  document.addEventListener('dragend', event => {
+    const card =
+      event.target.closest('[data-edit-photo-index]');
+
+    if (card) {
+      card.classList.remove('dragging');
+    }
+
+    editListingDraggedPhoto = null;
+  });
+
+  document.addEventListener('dragover', event => {
+    const card =
+      event.target.closest('[data-edit-photo-index]');
+
+    if (!card) return;
+
+    event.preventDefault();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  });
+
+  document.addEventListener('drop', event => {
+    const card =
+      event.target.closest('[data-edit-photo-index]');
+
+    if (
+      !card ||
+      editListingDraggedPhoto === null
+    ) return;
+
+    event.preventDefault();
+
+    moveEditListingPhoto(
+      editListingDraggedPhoto,
+      Number(card.dataset.editPhotoIndex)
+    );
+
+    editListingDraggedPhoto = null;
+  });
+
+  document.addEventListener('change', event => {
+    if (event.target.id !== 'editListingPhotos') return;
+
+    const count =
+      event.target.files?.length || 0;
+
+    const label =
+      document.querySelector('#editListingNewPhotoCount');
+
+    if (!label) return;
+
+    label.textContent = count
+      ? `${count} ${count === 1
+          ? 'foto nueva seleccionada'
+          : 'fotos nuevas seleccionadas'}`
+      : '';
   });
 
 

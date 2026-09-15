@@ -306,6 +306,53 @@
     </section>
   </main>
 
+  <main class="communities-main" id="communitiesView" hidden>
+    <header class="communities-home-header">
+      <div>
+        <small>TUS ESPACIOS</small>
+        <h1>Comunidades</h1>
+        <p>Organízate con otras personas, busca vivienda en grupo y forma parte de comunidades que te interesan.</p>
+      </div>
+    </header>
+
+    <section class="communities-home-section">
+      <div class="communities-home-title">
+        <div>
+          <small>BÚSQUEDA COMPARTIDA</small>
+          <h2>Grupos de búsqueda</h2>
+          <p>Espacios privados para buscar vivienda y tomar decisiones juntos.</p>
+        </div>
+      </div>
+
+      <div id="searchGroupsGrid" class="search-groups-grid">
+        <div class="communities-empty-card">
+          <span>⌂</span>
+          <h3>Todavía no tienes ningún grupo</h3>
+          <p>Crea un grupo cuando quieras empezar a buscar vivienda con otras personas.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="communities-home-section communities-home-community-section">
+      <div class="communities-home-title">
+        <div>
+          <small>COMUNIDADES</small>
+          <h2>Tus comunidades</h2>
+          <p>Barrios, universidades y grupos de personas con intereses o situaciones en común.</p>
+        </div>
+      </div>
+
+      <div class="communities-empty-card community-coming-soon">
+        <span>#</span>
+        <div>
+          <h3>Todavía no perteneces a ninguna comunidad</h3>
+          <p>Muy pronto podrás descubrir y unirte a comunidades de Rooms.</p>
+        </div>
+        <small>PRÓXIMAMENTE</small>
+      </div>
+    </section>
+  </main>
+
   <main class="household-main" id="householdView" hidden>
     <header class="household-hero">
       <div class="household-kicker">TU HOGAR</div>
@@ -354,8 +401,36 @@
   <main class="own-profile-main" id="ownProfileView" hidden>
     <section class="own-profile-hero"><div class="own-avatar"><span>CV</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>VERIFICADA ✓</small><h1>Claudia</h1><p>Me encanta descubrir sitios nuevos, cocinar y tener una casa tranquila y cuidada.</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Busco habitación</span><span>Busco compañeros</span><button type="button" data-toast="Añade o cambia tu estado actual">＋</button></div></section>
     <section class="profile-completion"><div class="completion-ring"><b>78%</b><span>COMPLETO</span></div><div><small>MEJORA TUS MATCHES</small><h2>Añade tu fecha de entrada</h2><p>Es un dato imprescindible para recomendarte viviendas realmente disponibles.</p></div><button type="button" data-toast="Abriendo fecha de entrada">Añadir fecha →</button></section>
+
+    <section class="current-home-feature" data-open-current-home>
+  <div class="current-home-accent"></div>
+
+  <div class="current-home-inner">
+    <div class="current-home-heading">
+      <div class="current-home-label">
+        <span class="current-home-symbol">⌂</span>
+        <small>MI HOGAR</small>
+      </div>
+
+      <span class="current-home-pill">Próximamente</span>
+    </div>
+
+    <div class="current-home-content">
+      <div>
+        <h2>Tu hogar, más allá de la búsqueda.</h2>
+        <p>
+          Gestiona dónde vives, con quién compartes casa y todo lo relacionado
+          con vuestra convivencia desde un único espacio.
+        </p>
+      </div>
+
+      <span class="current-home-arrow" aria-hidden="true">→</span>
+    </div>
+  </div>
+</section>
+
     <aside class="rooms-plus-preview"><div><small>PRÓXIMAMENTE</small><h2>Rooms+</h2><p>Más herramientas para buscar, comparar y organizarte. Las funciones esenciales seguirán abiertas para todos.</p></div><span class="rooms-plus-status">EN DESARROLLO</span><span>Pagar compra alcance, no confianza.</span></aside>
-    <nav class="own-profile-actions"><button type="button" data-open-saved><span>♡</span><b>Guardados</b><small>12 elementos</small></button><button type="button" id="editHomePreferences"><span>⌁</span><b>Preferencias</b><small>Vivienda ideal</small></button><button type="button" data-open-trust><span>✓</span><b>Confianza</b><small>Nivel fiable</small></button><button type="button" data-open-settings><span>⚙</span><b>Ajustes</b><small>Privacidad y cuenta</small></button></nav>
+    <nav class="own-profile-actions"><button type="button" data-open-saved><span>♡</span><b>Guardados</b><small>Tu selección</small></button><button type="button" id="editHomePreferences"><span>⌁</span><b>Preferencias</b><small>Vivienda ideal</small></button><button type="button" data-open-trust><span>✓</span><b>Confianza</b><small>Tu perfil fiable</small></button><button type="button" data-open-settings><span>⚙</span><b>Ajustes</b><small>Privacidad y cuenta</small></button></nav>
     <div class="own-profile-layout"><div class="own-profile-content"><section><div class="manage-section-title"><h2>Sobre mí</h2><button type="button" data-toast="Editando Sobre mí">Editar</button></div><p>Trabajo en marketing, disfruto mucho cocinando y busco una casa tranquila por Chamberí o Moncloa.</p><div class="profile-interest-chips"><span>Cocina</span><span>Viajes</span><span>Planes tranquilos</span><span>Música</span></div></section><section><div class="manage-section-title"><h2>Cómo vivo</h2><button type="button" data-toast="Editando hábitos de convivencia">Editar</button></div><div class="lifestyle-grid"><span><small>Limpieza</small><b>Muy ordenada</b></span><span><small>Horarios</small><b>Horario normal</b></span><span><small>Ruido</small><b>Muy tranquila</b></span><span><small>Visitas</small><b>Con aviso</b></span><span><small>Teletrabajo</small><b>A veces</b></span><span><small>Fumar</small><b>No</b></span></div></section><section><div class="manage-section-title"><h2>Qué busco</h2><button type="button" data-toast="Editando qué buscas">Editar</button></div><div class="looking-grid"><span><small>TIPO</small><b>Habitación · Compañeros</b></span><span><small>ZONAS</small><b>Chamberí · Moncloa</b></span><span><small>PRESUPUESTO</small><b>600–1.000 €</b></span><span><small>FECHA</small><b>Pendiente</b></span><span><small>DURACIÓN</small><b>Más de 1 año</b></span></div></section><section><div class="manage-section-title"><h2>Actividad</h2></div><div class="own-activity-tabs"><button class="active" type="button" data-own-activity="posts">Publicaciones</button><button type="button" data-own-activity="listings">Anuncios</button><button type="button" data-own-activity="shared">Compartidos</button><button type="button" data-own-activity="reviews">Reseñas</button></div><article class="own-activity-preview" id="ownActivityPreview"><small>HACE 2 DÍAS</small><p>“¿Alguien sabe qué tal se vive por Guzmán el Bueno?”</p><span>18 votos · 7 comentarios</span></article></section></div><aside class="profile-management profile-public-preview">
   <small>VISTA PÚBLICA</small>
 
@@ -537,7 +612,7 @@
     <button class="active" type="button" data-bottom-nav="home"><span>⌂</span>Home</button>
     <button type="button" data-bottom-nav="explore"><span>⌕</span>Explore</button>
     <button class="create-button" id="mobilePublish" type="button" aria-label="Crear"><span>＋</span></button>
-    <button type="button" data-bottom-nav="household"><span>♙</span>Hogar</button>
+    <button type="button" data-bottom-nav="communities"><span>♙</span>Comunidades</button>
     <button type="button" data-bottom-nav="profile"><span>○</span>Perfil</button>
   </nav>
 
