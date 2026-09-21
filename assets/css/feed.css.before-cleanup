@@ -2197,7 +2197,6 @@
 
   display:-webkit-box;
   -webkit-line-clamp:2;
-  line-clamp:2;
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -2819,7 +2818,6 @@
 
   display:-webkit-box;
   -webkit-line-clamp:3;
-  line-clamp:3;
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -2908,7 +2906,6 @@
   .explore-person-bio{
     margin:10px 0;
     -webkit-line-clamp:2;
-    line-clamp:2;
   }
 
   .explore-person-actions{
@@ -6752,7 +6749,6 @@
   font-size:11px;
   line-height:1.55;
   -webkit-line-clamp:2;
-  line-clamp:2;
   -webkit-box-orient:vertical;
 }
 
@@ -9740,7 +9736,9 @@
 
 /* WARNING */
 
-
+.real-community-post:has(
+  [data-community-post]
+){}
 
 .community-warning-expiry{
   margin-top:18px;
@@ -10387,7 +10385,6 @@
   line-height:1.55;
   display:-webkit-box;
   -webkit-line-clamp:3;
-  line-clamp:3;
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
@@ -10505,7 +10502,6 @@
     margin-bottom:16px;
     font-size:13px;
     -webkit-line-clamp:2;
-    line-clamp:2;
   }
 
   .explore-person-actions{
@@ -10679,7 +10675,6 @@
   display:-webkit-box !important;
   -webkit-box-orient:vertical !important;
   -webkit-line-clamp:3 !important;
-  line-clamp:3 !important;
   overflow:hidden !important;
 }
 
@@ -10839,7 +10834,6 @@
 
   .explore-person-bio{
     -webkit-line-clamp:2 !important;
-    line-clamp:2 !important;
   }
 
   .explore-person-actions{
@@ -11861,306 +11855,6 @@
   .group-picker-option-icon{
     width:42px;
     height:42px;
-  }
-
-}
-
-/* =========================================================
-   SEARCH GROUP — PERSON CANDIDATES
-   Desktop + tablet + mobile
-   ========================================================= */
-
-.real-household-people-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:18px;
-}
-
-.real-household-person-candidate{
-  min-width:0;
-  display:grid;
-  grid-template-columns:180px minmax(0,1fr);
-  overflow:hidden;
-  border:1px solid var(--line);
-  background:#fff;
-}
-
-.real-household-person-candidate-avatar{
-  position:relative;
-  width:100%;
-  min-height:300px;
-  overflow:hidden;
-  display:grid;
-  place-items:center;
-  background:#111;
-  color:var(--acid);
-  font:800 36px/1 'Syne',sans-serif;
-}
-
-.real-household-person-candidate-avatar img{
-  position:absolute;
-  inset:0;
-  width:100% !important;
-  height:100% !important;
-  display:block;
-  object-fit:cover;
-}
-
-.real-household-person-candidate-avatar .household-candidate-kind{
-  position:absolute;
-  left:12px;
-  bottom:12px;
-  z-index:2;
-  padding:6px 8px;
-  background:var(--acid);
-  color:#111;
-  font-size:8px;
-  font-weight:900;
-  letter-spacing:.08em;
-}
-
-.real-household-person-candidate-copy{
-  min-width:0;
-  padding:22px;
-  display:flex;
-  flex-direction:column;
-}
-
-.real-household-person-candidate-copy>small{
-  margin-bottom:7px;
-  color:#829600;
-  font-size:8px;
-  font-weight:900;
-  letter-spacing:.1em;
-}
-
-.real-household-person-candidate-copy h3{
-  margin:0 0 8px;
-  font:800 25px/1 'Syne',sans-serif;
-  letter-spacing:-1px;
-}
-
-.real-household-person-candidate-copy>p{
-  margin:0 0 15px;
-  color:#676660;
-  font-size:12px;
-  line-height:1.45;
-}
-
-.real-household-person-candidate-copy>span{
-  margin:0 0 18px;
-  color:#4f4e49;
-  font-size:12px;
-  line-height:1.5;
-
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:3;
-  line-clamp:3;
-  overflow:hidden;
-}
-
-
-/* =========================================================
-   VOTES
-   ========================================================= */
-
-.household-vote-controls{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:6px;
-  margin-top:auto;
-  padding-top:16px;
-  border-top:1px solid var(--line);
-}
-
-.household-vote-controls button{
-  position:relative;
-  min-width:0;
-  min-height:58px;
-  padding:8px 5px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:3px;
-  border:1px solid var(--line);
-  background:#fff;
-  color:#111;
-  cursor:pointer;
-}
-
-.household-vote-controls button:hover{
-  border-color:#111;
-}
-
-.household-vote-controls button.active{
-  border-color:#111;
-  background:var(--acid);
-}
-
-.household-vote-controls button>span{
-  font-size:17px;
-  line-height:1;
-}
-
-.household-vote-controls button>b{
-  overflow:hidden;
-  max-width:100%;
-  font-size:8px;
-  line-height:1.1;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-}
-
-.household-vote-controls button>i{
-  position:absolute;
-  top:5px;
-  right:6px;
-  min-width:16px;
-  height:16px;
-  padding:0 4px;
-  display:grid;
-  place-items:center;
-  border-radius:20px;
-  background:#111;
-  color:#fff;
-  font-size:7px;
-  font-style:normal;
-  font-weight:800;
-}
-
-
-/* =========================================================
-   ACTIONS
-   ========================================================= */
-
-.real-household-person-candidate
-.real-household-candidate-actions{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:7px;
-  margin-top:12px;
-}
-
-.real-household-person-candidate
-.real-household-candidate-actions button{
-  min-width:0;
-  min-height:42px;
-  padding:0 12px;
-  border:1px solid #111;
-  background:#fff;
-  color:#111;
-  font-size:9px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-.real-household-person-candidate
-.real-household-candidate-actions
-[data-open-explore-person]{
-  background:#111;
-  color:#fff;
-}
-
-.real-household-person-candidate
-.real-household-candidate-actions
-[data-remove-household-person]{
-  color:#7f3932;
-}
-
-
-/* =========================================================
-   TABLET
-   ========================================================= */
-
-@media(max-width:1050px){
-
-  .real-household-people-grid{
-    grid-template-columns:1fr;
-  }
-
-  .real-household-person-candidate{
-    grid-template-columns:190px minmax(0,1fr);
-  }
-
-}
-
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
-
-@media(max-width:700px){
-
-  .real-household-people-grid{
-    grid-template-columns:1fr;
-    gap:14px;
-  }
-
-  .real-household-person-candidate{
-    display:block;
-  }
-
-  .real-household-person-candidate-avatar{
-    width:100%;
-    min-height:0;
-    aspect-ratio:16 / 10;
-  }
-
-  .real-household-person-candidate-copy{
-    padding:18px 16px 16px;
-  }
-
-  .real-household-person-candidate-copy h3{
-    font-size:24px;
-  }
-
-  .real-household-person-candidate-copy>span{
-    -webkit-line-clamp:2;
-    line-clamp:2;
-  }
-
-  .household-vote-controls{
-    margin-top:16px;
-  }
-
-  .household-vote-controls button{
-    min-height:60px;
-  }
-
-  .real-household-person-candidate
-  .real-household-candidate-actions{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .real-household-person-candidate
-  .real-household-candidate-actions button{
-    min-height:48px;
-  }
-
-}
-
-
-/* SMALL MOBILE */
-
-@media(max-width:390px){
-
-  .real-household-person-candidate-avatar{
-    aspect-ratio:4 / 3;
-  }
-
-  .household-vote-controls{
-    gap:4px;
-  }
-
-  .household-vote-controls button>b{
-    font-size:7px;
-  }
-
-  .real-household-person-candidate
-  .real-household-candidate-actions{
-    grid-template-columns:1fr;
   }
 
 }

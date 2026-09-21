@@ -17,6 +17,7 @@
     preferences: null,
     targetProfile: null,
     connection: null,
+    connectionsByUser: new Map(),
     chatTarget: null,
     channel: null,
     currentListingId: null,
@@ -987,6 +988,7 @@
 
 
   async function loadRealContent() {
+    await loadAllConnections();
     const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] = await Promise.all([
       db.from('listings').select('*').eq('status', 'published').order('created_at', { ascending: false }),
       db.rpc('get_visible_profiles', { _target_user_id: null }),
@@ -1027,10 +1029,17 @@
 
     renderRealFeed(listings || [], profiles || [], posts || [], communities || []);
     renderFilteredExplore();
+
+    // Las cards acaban de recrearse: aplicar ahora
+    // el estado real de conexión de cada usuario.
+    updateConnectButtons();
+
     clearDemoOnlyViews();
     refreshOwnActivity();
     await loadHousehold();
     await loadMemberCommunities();
+    await loadIncomingConnections();
+    await loadCommunityPostInteractions();
     await handleIncomingHouseholdInvite();
   }
 
@@ -1267,23 +1276,327 @@
     return `<article class="feed-card person-feed-card" data-feed-type="person" data-real-user="${profile.id}" tabindex="0">
       <div class="person-card-photo real-person-photo">
         ${profile.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">` : `<div class="real-person-placeholder">${escapeHtml(initials(name))}</div>`}
-        <div class="person-card-tools"><button type="button" data-person-save data-save-kind="person" data-save-id="${profile.id}" aria-label="Guardar perfil">♡</button></div>
+        <div class="person-card-tools"><button type="button" class="${state.savedItems?.has(`person:${profile.id}`) ? 'saved' : ''}" data-person-save data-save-kind="person" data-save-id="${profile.id}" aria-label="${state.savedItems?.has(`person:${profile.id}`) ? 'Eliminar perfil de Guardados' : 'Guardar perfil'}">${state.savedItems?.has(`person:${profile.id}`) ? '♥' : '♡'}</button></div>
       </div>
       <div class="person-card-body"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p class="person-searching">${escapeHtml(seeking)} · ${escapeHtml(zone)}</p>
         <div class="person-traits">${traits.length ? traits.map(value => `<span>${escapeHtml(traitLabels[value] || value)}</span>`).join('') : '<span>Perfil recién creado</span>'}</div>
         <p>${escapeHtml(profile.bio || 'Todavía no ha añadido una bio.')}</p>
-        <div class="person-actions"><button type="button" data-connect data-user-id="${profile.id}">Conectar</button></div>
+        <div class="person-actions"><button type="button" data-connect data-user-id="${profile.id}">${escapeHtml(connectionButtonLabel(profile.id))}</button></div>
       </div>
     </article>`;
   }
 
   function renderPostCard(post) {
-    const author = state.profiles.get(post.author_id);
-    const name = author?.alias || author?.name || 'Usuario de Rooms';
-    return `<article class="feed-card social-post-card" data-feed-type="post" data-real-post="${post.id}">
-      <header><span>${escapeHtml(initials(name))}</span><div><b>${escapeHtml(name)}</b><small>${relativeTime(post.created_at)}</small></div></header>
-      <p>${escapeHtml(post.body)}</p><div class="post-actions"><button type="button" data-save-kind="post" data-save-id="${post.id}">♡ Guardar</button></div>
-    </article>`;
+    const author =
+      state.profiles.get(post.author_id);
+
+    const name =
+      author?.alias ||
+      author?.name ||
+      'Usuario de Rooms';
+
+    const avatar =
+      author?.avatar_url;
+
+    const community =
+      post.community_id
+        ? state.communities?.get(post.community_id)
+        : null;
+
+    const linkedListing =
+      post.listing_id
+        ? state.listings.get(post.listing_id)
+        : null;
+
+    const media =
+      Array.isArray(post.media_urls)
+        ? post.media_urls
+        : [];
+
+    const saved =
+      state.savedItems?.has(`post:${post.id}`);
+
+    const liked =
+      state.userPostLikes?.has(post.id);
+
+    const likeCount =
+      state.postLikes?.get(post.id) || 0;
+
+    const commentCount =
+      state.postComments?.get(post.id)?.length || 0;
+
+    const typeConfig = {
+      question: {
+        label: 'PREGUNTA',
+        symbol: '?',
+        className: 'question',
+        action: 'Responder'
+      },
+      recommendation: {
+        label: 'RECOMENDACIÓN',
+        symbol: '✦',
+        className: 'recommendation',
+        action: 'Comentar'
+      },
+      neighborhood: {
+        label: 'BARRIO',
+        symbol: '◎',
+        className: 'neighborhood',
+        action: 'Comentar'
+      },
+      warning: {
+        label: 'AVISO',
+        symbol: '!',
+        className: 'warning',
+        action: 'Comentar'
+      },
+      experience: {
+        label: 'EXPERIENCIA',
+        symbol: '↗',
+        className: 'experience',
+        action: 'Comentar'
+      },
+      housing: {
+        label: 'VIVIENDA',
+        symbol: '⌂',
+        className: 'housing',
+        action: 'Comentar'
+      }
+    };
+
+    const config =
+      typeConfig[post.post_type] ||
+      typeConfig.question;
+
+    if (
+      post.post_type === 'warning' &&
+      post.expires_at &&
+      post.expires_at <
+        new Date().toISOString().slice(0, 10)
+    ) {
+      return '';
+    }
+
+    return `
+      <article
+        class="feed-card home-editorial-post home-editorial-post--${config.className}"
+        data-feed-type="post"
+        data-real-post="${escapeHtml(post.id)}"
+      >
+
+        <div class="home-post-accent">
+          <span>${config.symbol}</span>
+          <small>${config.label}</small>
+        </div>
+
+
+        <div class="home-post-content">
+
+          <header class="home-post-header">
+
+            <div class="home-post-author">
+
+              ${
+                avatar
+                  ? `
+                    <img
+                      src="${escapeHtml(avatar)}"
+                      alt="${escapeHtml(name)}"
+                    >
+                  `
+                  : `
+                    <span>
+                      ${escapeHtml(initials(name))}
+                    </span>
+                  `
+              }
+
+              <div>
+                <b>${escapeHtml(name)}</b>
+
+                <small>
+                  ${escapeHtml(relativeTime(post.created_at))}
+                  ${
+                    community
+                      ? ` · ${escapeHtml(community.name)}`
+                      : ''
+                  }
+                </small>
+              </div>
+
+            </div>
+
+            ${
+              community
+                ? `
+                  <button
+                    type="button"
+                    class="home-post-community-link"
+                    data-real-community-open="${escapeHtml(community.id)}"
+                  >
+                    Ver comunidad ↗
+                  </button>
+                `
+                : ''
+            }
+
+          </header>
+
+
+          <div class="home-post-main">
+
+            ${
+              post.zone
+                ? `
+                  <div class="home-post-zone">
+                    ◎ ${escapeHtml(post.zone)}
+                  </div>
+                `
+                : ''
+            }
+
+            <p class="home-post-body">
+              ${escapeHtml(post.body)}
+            </p>
+
+
+            ${
+              media.length
+                ? `
+                  <div class="home-post-media">
+                    <img
+                      src="${escapeHtml(media[0])}"
+                      alt=""
+                    >
+                  </div>
+                `
+                : ''
+            }
+
+
+            ${
+              linkedListing
+                ? `
+                  <button
+                    type="button"
+                    class="home-post-listing"
+                    data-real-listing="${escapeHtml(linkedListing.id)}"
+                  >
+
+                    ${
+                      Array.isArray(linkedListing.photos) &&
+                      linkedListing.photos[0]
+                        ? `
+                          <img
+                            src="${escapeHtml(linkedListing.photos[0])}"
+                            alt=""
+                          >
+                        `
+                        : `
+                          <span class="home-post-listing-placeholder">
+                            ⌂
+                          </span>
+                        `
+                    }
+
+                    <div>
+                      <small>VIVIENDA EN ROOMS</small>
+
+                      <b>
+                        ${escapeHtml(
+                          linkedListing.title ||
+                          linkedListing.zone ||
+                          'Vivienda'
+                        )}
+                      </b>
+
+                      <p>
+                        ${Number(
+                          linkedListing.price || 0
+                        ).toLocaleString('es-ES')}
+                        € / mes
+                      </p>
+                    </div>
+
+                    <strong>→</strong>
+
+                  </button>
+                `
+                : ''
+            }
+
+
+            ${
+              post.post_type === 'warning' &&
+              post.expires_at
+                ? `
+                  <div class="home-post-warning-date">
+                    <span>VIGENTE HASTA</span>
+                    <b>
+                      ${escapeHtml(
+                        new Intl.DateTimeFormat(
+                          'es-ES',
+                          {
+                            day: 'numeric',
+                            month: 'short'
+                          }
+                        ).format(
+                          new Date(
+                            `${post.expires_at}T00:00:00`
+                          )
+                        )
+                      )}
+                    </b>
+                  </div>
+                `
+                : ''
+            }
+
+          </div>
+
+
+          <footer class="home-post-actions">
+
+            <button
+              type="button"
+              class="${liked ? 'active' : ''}"
+              data-community-post-like="${escapeHtml(post.id)}"
+            >
+              ${liked ? '♥' : '♡'}
+              Me gusta
+              <span>${likeCount}</span>
+            </button>
+
+            <button
+              type="button"
+              data-community-post-comments="${escapeHtml(post.id)}"
+            >
+              ○ ${config.action}
+              <span>${commentCount}</span>
+            </button>
+
+            <button
+              type="button"
+              class="${saved ? 'saved' : ''}"
+              data-save-kind="post"
+              data-save-id="${escapeHtml(post.id)}"
+            >
+              ${saved ? '♥ Guardado' : '♡ Guardar'}
+            </button>
+
+          </footer>
+
+
+          <div
+            class="community-post-comments-panel"
+            data-community-comments-panel="${escapeHtml(post.id)}"
+            hidden
+          ></div>
+
+        </div>
+
+      </article>
+    `;
   }
 
 
@@ -1384,6 +1697,556 @@
       top: 0,
       behavior: 'smooth'
     });
+  }
+
+
+
+
+  async function loadCommunityPostInteractions() {
+    const postIds =
+      [...state.posts.values()]
+        .filter(post => post.community_id)
+        .map(post => post.id);
+
+    state.postLikes = new Map();
+    state.postComments = new Map();
+    state.userPostLikes = new Set();
+
+    if (!postIds.length) return;
+
+    const [
+      { data: likes, error: likesError },
+      { data: comments, error: commentsError }
+    ] = await Promise.all([
+      db
+        .from('post_likes')
+        .select('post_id,user_id,created_at')
+        .in('post_id', postIds),
+
+      db
+        .from('post_comments')
+        .select('id,post_id,author_id,body,status,created_at,updated_at')
+        .in('post_id', postIds)
+        .eq('status', 'published')
+        .order('created_at', { ascending: true })
+    ]);
+
+    if (likesError) {
+      console.error(
+        'Rooms: error cargando likes de posts',
+        likesError
+      );
+    }
+
+    if (commentsError) {
+      console.error(
+        'Rooms: error cargando comentarios de posts',
+        commentsError
+      );
+    }
+
+    (likes || []).forEach(like => {
+      const current =
+        state.postLikes.get(like.post_id) || 0;
+
+      state.postLikes.set(
+        like.post_id,
+        current + 1
+      );
+
+      if (like.user_id === state.user?.id) {
+        state.userPostLikes.add(like.post_id);
+      }
+    });
+
+    (comments || []).forEach(comment => {
+      const current =
+        state.postComments.get(comment.post_id) || [];
+
+      current.push(comment);
+
+      state.postComments.set(
+        comment.post_id,
+        current
+      );
+    });
+  }
+
+
+  function renderCommunityPost(post) {
+    const profile =
+      state.profiles.get(post.author_id);
+
+    const name =
+      profile?.alias ||
+      profile?.name ||
+      (
+        post.author_id === state.user?.id
+          ? 'Tú'
+          : 'Usuario de Rooms'
+      );
+
+    const avatar =
+      profile?.avatar_url;
+
+    const linkedListing =
+      post.listing_id
+        ? state.listings.get(post.listing_id)
+        : null;
+
+    const media =
+      Array.isArray(post.media_urls)
+        ? post.media_urls
+        : [];
+
+    const typeLabels = {
+      question: 'Pregunta',
+      recommendation: 'Recomendación',
+      neighborhood: 'Barrio',
+      warning: 'Aviso',
+      experience: 'Experiencia',
+      housing: 'Vivienda'
+    };
+
+    return `
+      <article
+        class="community-post real-community-post"
+        data-community-post="${escapeHtml(post.id)}"
+      >
+
+        <header>
+
+          ${
+            avatar
+              ? `
+                <img
+                  class="real-community-post-avatar"
+                  src="${escapeHtml(avatar)}"
+                  alt="${escapeHtml(name)}"
+                >
+              `
+              : `
+                <div class="social-avatar">
+                  ${escapeHtml(initials(name))}
+                </div>
+              `
+          }
+
+          <div>
+            <b>${escapeHtml(name)}</b>
+
+            <span>
+              ${escapeHtml(relativeTime(post.created_at))}
+              ·
+              ${escapeHtml(
+                typeLabels[post.post_type] ||
+                'Publicación'
+              )}
+            </span>
+          </div>
+
+          ${
+            post.author_id === state.user?.id
+              ? `
+                <button
+                  type="button"
+                  data-own-community-post="${escapeHtml(post.id)}"
+                  aria-label="Opciones"
+                >
+                  •••
+                </button>
+              `
+              : ''
+          }
+
+        </header>
+
+        ${
+          post.zone
+            ? `
+              <div class="community-post-zone">
+                ◎ ${escapeHtml(post.zone)}
+              </div>
+            `
+            : ''
+        }
+
+        <p>
+          ${escapeHtml(post.body)}
+        </p>
+
+        ${
+          media.length
+            ? `
+              <div class="community-post-media">
+                <img
+                  src="${escapeHtml(media[0])}"
+                  alt=""
+                >
+              </div>
+            `
+            : ''
+        }
+
+        ${
+          linkedListing
+            ? `
+              <button
+                type="button"
+                class="community-post-linked-listing"
+                data-real-listing="${escapeHtml(linkedListing.id)}"
+              >
+
+                ${
+                  Array.isArray(linkedListing.photos) &&
+                  linkedListing.photos[0]
+                    ? `
+                      <img
+                        src="${escapeHtml(linkedListing.photos[0])}"
+                        alt=""
+                      >
+                    `
+                    : `
+                      <span>⌂</span>
+                    `
+                }
+
+                <div>
+                  <small>VIVIENDA EN ROOMS</small>
+
+                  <b>
+                    ${escapeHtml(
+                      linkedListing.title ||
+                      linkedListing.zone
+                    )}
+                  </b>
+
+                  <p>
+                    ${Number(
+                      linkedListing.price || 0
+                    ).toLocaleString('es-ES')}
+                    € / mes
+                  </p>
+                </div>
+
+                <strong>→</strong>
+
+              </button>
+            `
+            : ''
+        }
+
+        ${
+          post.post_type === 'warning' &&
+          post.expires_at
+            ? `
+              <div class="community-warning-expiry">
+                AVISO VIGENTE HASTA
+                <b>
+                  ${escapeHtml(
+                    new Intl.DateTimeFormat(
+                      'es-ES',
+                      {
+                        day: 'numeric',
+                        month: 'short'
+                      }
+                    ).format(
+                      new Date(
+                        `${post.expires_at}T00:00:00`
+                      )
+                    )
+                  )}
+                </b>
+              </div>
+            `
+            : ''
+        }
+
+        <div class="community-post-actions">
+
+          <button
+            type="button"
+            class="${
+              state.userPostLikes?.has(post.id)
+                ? 'active'
+                : ''
+            }"
+            data-community-post-like="${escapeHtml(post.id)}"
+          >
+            ${
+              state.userPostLikes?.has(post.id)
+                ? '♥'
+                : '♡'
+            }
+            Me gusta
+            <span>
+              ${state.postLikes?.get(post.id) || 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            data-community-post-comments="${escapeHtml(post.id)}"
+          >
+            ${
+              post.post_type === 'question'
+                ? '○ Responder'
+                : '○ Comentar'
+            }
+            <span>
+              ${
+                state.postComments?.get(post.id)?.length || 0
+              }
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="${
+              state.savedItems?.has(`post:${post.id}`)
+                ? 'saved'
+                : ''
+            }"
+            data-save-kind="post"
+            data-save-id="${escapeHtml(post.id)}"
+          >
+            ${
+              state.savedItems?.has(`post:${post.id}`)
+                ? '♥ Guardado'
+                : '♡ Guardar'
+            }
+          </button>
+
+        </div>
+
+        <div
+          class="community-post-comments-panel"
+          data-community-comments-panel="${escapeHtml(post.id)}"
+          hidden
+        ></div>
+
+      </article>
+    `;
+  }
+
+
+
+  async function toggleCommunityPostLike(postId) {
+    if (!state.user) return;
+
+    const liked =
+      state.userPostLikes?.has(postId);
+
+    if (liked) {
+      const { error } = await db
+        .from('post_likes')
+        .delete()
+        .match({
+          post_id: postId,
+          user_id: state.user.id
+        });
+
+      if (error) {
+        console.error(
+          'Rooms: error quitando like',
+          error
+        );
+        notify('No hemos podido actualizar el Me gusta');
+        return;
+      }
+    } else {
+      const { error } = await db
+        .from('post_likes')
+        .insert({
+          post_id: postId,
+          user_id: state.user.id
+        });
+
+      if (error) {
+        console.error(
+          'Rooms: error añadiendo like',
+          error
+        );
+        notify('No hemos podido actualizar el Me gusta');
+        return;
+      }
+    }
+
+    await loadCommunityPostInteractions();
+    renderRealCommunityDetail();
+  }
+
+
+  function renderCommunityCommentsPanel(postId) {
+    const panel =
+      document.querySelector(
+        `[data-community-comments-panel="${postId}"]`
+      );
+
+    if (!panel) return;
+
+    const comments =
+      state.postComments?.get(postId) || [];
+
+    panel.innerHTML = `
+      <div class="community-comments-list">
+
+        ${
+          comments.length
+            ? comments.map(comment => {
+                const profile =
+                  state.profiles.get(comment.author_id);
+
+                const name =
+                  profile?.alias ||
+                  profile?.name ||
+                  (
+                    comment.author_id === state.user?.id
+                      ? 'Tú'
+                      : 'Usuario de Rooms'
+                  );
+
+                const avatar =
+                  profile?.avatar_url;
+
+                return `
+                  <article class="community-comment">
+
+                    ${
+                      avatar
+                        ? `
+                          <img
+                            class="community-comment-avatar"
+                            src="${escapeHtml(avatar)}"
+                            alt="${escapeHtml(name)}"
+                          >
+                        `
+                        : `
+                          <span class="community-comment-avatar">
+                            ${escapeHtml(initials(name))}
+                          </span>
+                        `
+                    }
+
+                    <div>
+                      <header>
+                        <b>${escapeHtml(name)}</b>
+                        <small>
+                          ${escapeHtml(relativeTime(comment.created_at))}
+                        </small>
+                      </header>
+
+                      <p>
+                        ${escapeHtml(comment.body)}
+                      </p>
+                    </div>
+
+                  </article>
+                `;
+              }).join('')
+            : `
+              <div class="community-comments-empty">
+                Sé la primera persona en comentar.
+              </div>
+            `
+        }
+
+      </div>
+
+      <form
+        class="community-comment-form"
+        data-community-comment-form="${escapeHtml(postId)}"
+      >
+        <input
+          type="text"
+          maxlength="500"
+          placeholder="Escribe un comentario..."
+          required
+        >
+
+        <button type="submit">
+          Enviar
+        </button>
+      </form>
+    `;
+  }
+
+
+  async function createCommunityPostComment(
+    postId,
+    body
+  ) {
+    const cleanBody =
+      body.trim();
+
+    if (!cleanBody || !state.user) return;
+
+    const { error } = await db
+      .from('post_comments')
+      .insert({
+        post_id: postId,
+        author_id: state.user.id,
+        body: cleanBody,
+        status: 'published'
+      });
+
+    if (error) {
+      console.error(
+        'Rooms: error creando comentario',
+        error
+      );
+
+      notify(
+        'No hemos podido publicar el comentario'
+      );
+
+      return;
+    }
+
+    await loadCommunityPostInteractions();
+
+    renderRealCommunityDetail();
+
+    setTimeout(() => {
+      const panel =
+        document.querySelector(
+          `[data-community-comments-panel="${postId}"]`
+        );
+
+      if (panel) {
+        panel.hidden = false;
+        renderCommunityCommentsPanel(postId);
+      }
+    }, 0);
+  }
+
+
+  function getActiveCommunityPosts() {
+    const communityId =
+      state.activeCommunity?.id;
+
+    if (!communityId) return [];
+
+    const today =
+      new Date()
+        .toISOString()
+        .slice(0, 10);
+
+    return [...state.posts.values()]
+      .filter(post =>
+        post.community_id === communityId &&
+        post.status === 'published' &&
+        !(
+          post.post_type === 'warning' &&
+          post.expires_at &&
+          post.expires_at < today
+        )
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.created_at) -
+          new Date(a.created_at)
+      );
   }
 
 
@@ -1566,25 +2429,33 @@
 
           <div class="community-stream">
 
-            <article class="real-community-empty-feed">
-              <span>✦</span>
+            ${
+              getActiveCommunityPosts().length
+                ? getActiveCommunityPosts()
+                    .map(renderCommunityPost)
+                    .join('')
+                : `
+                  <article class="real-community-empty-feed">
+                    <span>✦</span>
 
-              <h2>
-                ${
-                  isMember
-                    ? 'Todavía no hay publicaciones'
-                    : 'Únete para participar'
-                }
-              </h2>
+                    <h2>
+                      ${
+                        isMember
+                          ? 'Todavía no hay publicaciones'
+                          : 'Únete para participar'
+                      }
+                    </h2>
 
-              <p>
-                ${
-                  isMember
-                    ? 'Las publicaciones de esta comunidad aparecerán aquí.'
-                    : 'Forma parte de la comunidad para publicar, comentar y participar.'
-                }
-              </p>
-            </article>
+                    <p>
+                      ${
+                        isMember
+                          ? 'Sé la primera persona en publicar algo en esta comunidad.'
+                          : 'Forma parte de la comunidad para publicar, comentar y participar.'
+                      }
+                    </p>
+                  </article>
+                `
+            }
 
           </div>
 
@@ -2974,7 +3845,7 @@
                     class="explore-person-send-home"
                     data-send-person-home="${profile.id}"
                   >
-                    ＋ Hogar
+                    ＋ Grupo
                   </button>
 
                   <button
@@ -2982,7 +3853,7 @@
                     data-connect
                     data-user-id="${profile.id}"
                   >
-                    Conectar
+                    ${escapeHtml(connectionButtonLabel(profile.id))}
                   </button>
 
                   <button
@@ -3166,7 +4037,7 @@
                           class="explore-send-home"
                           data-send-home-id="${item.id}"
                         >
-                          ＋ Hogar
+                          ＋ Grupo
                         </button>
 
                         <button
@@ -3319,9 +4190,266 @@
     const content = document.querySelector('#publishFlowContent');
     const values = [...content.querySelectorAll('input:not([type="file"]),textarea,select')].map(field => field.value.trim());
     const selected = [...content.querySelectorAll('[data-selectable][aria-pressed="true"]')].map(button => button.textContent.trim());
-    state.publishDraft.steps[step] = { values, selected };
-    return { type, step, values, selected };
+    const meta =
+      type === 'post'
+        ? {
+            zone:
+              content
+                .querySelector('[data-post-zone]')
+                ?.value
+                .trim() || null,
+
+            expiresAt:
+              content
+                .querySelector('[data-post-expires]')
+                ?.value || null,
+
+            listingId:
+              content
+                .querySelector('[data-post-listing]')
+                ?.value || null,
+
+            communityPostType:
+              selectedCommunityPostType(content)
+          }
+        : {};
+
+    state.publishDraft.steps[step] = {
+      values,
+      selected,
+      meta
+    };
+
+    return {
+      type,
+      step,
+      values,
+      selected,
+      meta
+    };
   }
+
+
+  function selectedCommunityPostType(content) {
+    const selected =
+      [...content.querySelectorAll(
+        '[data-selectable][aria-pressed="true"]'
+      )]
+        .map(button => button.textContent.trim())
+        .find(Boolean);
+
+    return selected || 'Pregunta';
+  }
+
+
+  function renderCommunityPostFields(content) {
+    if (!content) return;
+
+    const existing =
+      content.querySelector('#communityPostExtraFields');
+
+    if (existing) existing.remove();
+
+    const textarea =
+      content.querySelector('textarea');
+
+    if (!textarea) return;
+
+    const type =
+      selectedCommunityPostType(content);
+
+    const ownListings =
+      [...state.listings.values()]
+        .filter(
+          listing =>
+            listing.owner_id === state.user?.id &&
+            listing.status === 'published'
+        );
+
+    let fields = '';
+
+
+    if (type === 'Pregunta') {
+      fields = `
+        <label class="community-post-extra-field">
+          <span>Zona <small>Opcional</small></span>
+          <input
+            type="text"
+            data-post-zone
+            placeholder="Ej. Chamberí"
+          >
+        </label>
+      `;
+    }
+
+
+    if (type === 'Recomendación') {
+      fields = `
+        <label class="community-post-extra-field">
+          <span>¿Dónde?</span>
+          <input
+            type="text"
+            data-post-zone
+            placeholder="Barrio, zona o lugar"
+          >
+        </label>
+
+        <p class="community-post-extra-help">
+          Puedes añadir una foto para dar contexto a tu recomendación.
+        </p>
+      `;
+    }
+
+
+    if (type === 'Barrio') {
+      fields = `
+        <label class="community-post-extra-field">
+          <span>Barrio o zona <b>Obligatorio</b></span>
+          <input
+            type="text"
+            data-post-zone
+            placeholder="Ej. Barrio de Salamanca"
+            required
+          >
+        </label>
+      `;
+    }
+
+
+    if (type === 'Aviso') {
+      fields = `
+        <div class="community-post-extra-grid">
+
+          <label class="community-post-extra-field">
+            <span>Zona</span>
+            <input
+              type="text"
+              data-post-zone
+              placeholder="¿Dónde ocurre?"
+            >
+          </label>
+
+          <label class="community-post-extra-field">
+            <span>Vigente hasta</span>
+            <input
+              type="date"
+              data-post-expires
+            >
+          </label>
+
+        </div>
+
+        <p class="community-post-extra-help">
+          Cuando finalice la fecha, el aviso dejará de mostrarse
+          en el feed de la comunidad.
+        </p>
+      `;
+    }
+
+
+    if (type === 'Experiencia') {
+      fields = `
+        <label class="community-post-extra-field">
+          <span>¿Dónde ocurrió? <small>Opcional</small></span>
+          <input
+            type="text"
+            data-post-zone
+            placeholder="Zona o barrio"
+          >
+        </label>
+
+        <p class="community-post-extra-help">
+          Las experiencias funcionan mejor con una imagen.
+        </p>
+      `;
+    }
+
+
+    if (type === 'Vivienda') {
+      fields = `
+        <div class="community-housing-post-fields">
+
+          <div class="community-post-extra-heading">
+            <small>VIVIENDA</small>
+            <h3>Comparte una vivienda real</h3>
+            <p>
+              Puedes vincular uno de tus anuncios publicados
+              para que los miembros puedan abrirlo directamente.
+            </p>
+          </div>
+
+          ${
+            ownListings.length
+              ? `
+                <label class="community-post-extra-field">
+                  <span>Vivienda de ROOMS</span>
+
+                  <select data-post-listing>
+                    <option value="">
+                      No vincular vivienda
+                    </option>
+
+                    ${ownListings.map(listing => `
+                      <option value="${escapeHtml(listing.id)}">
+                        ${escapeHtml(listing.title || listing.zone)}
+                        · ${Number(listing.price || 0).toLocaleString('es-ES')} €
+                      </option>
+                    `).join('')}
+                  </select>
+                </label>
+              `
+              : `
+                <div class="community-post-no-listings">
+                  No tienes viviendas publicadas todavía.
+                  Puedes compartir el post con una foto.
+                </div>
+              `
+          }
+
+        </div>
+      `;
+    }
+
+
+    textarea.insertAdjacentHTML(
+      'afterend',
+      `
+        <div
+          id="communityPostExtraFields"
+          class="community-post-extra-fields"
+          data-community-post-type="${escapeHtml(type)}"
+        >
+          ${fields}
+        </div>
+      `
+    );
+  }
+
+
+  function enhanceCommunityPostComposer(content) {
+    if (!content) return;
+
+    renderCommunityPostFields(content);
+
+    content
+      .querySelectorAll('[data-selectable]')
+      .forEach(button => {
+        if (
+          button.dataset.communityTypeListener === 'true'
+        ) {
+          return;
+        }
+
+        button.dataset.communityTypeListener = 'true';
+
+        button.addEventListener('click', () => {
+          setTimeout(() => {
+            renderCommunityPostFields(content);
+          }, 0);
+        });
+      });
+  }
+
 
   function preparePublishStep() {
     const type = currentPublishType();
@@ -3349,6 +4477,10 @@
       if (inputs[1]) inputs[1].value = formatBudget(state.profile || {});
       if (inputs[2]) inputs[2].value = state.profile?.move_in_date || '';
     }
+    if (type === 'post' && step === 0) {
+      enhanceCommunityPostComposer(content);
+    }
+
     preparePhotoUploader(content);
     renderPublishPreview(type, step, content);
   }
@@ -3415,11 +4547,108 @@
       return;
     }
     if (type === 'post') {
-      const body = first.values[0] || '';
-      if (!body) return notify('Escribe el contenido de la publicación');
-      const typeLabels = { Pregunta: 'question', Recomendación: 'recommendation', Barrio: 'neighborhood', Aviso: 'warning', Experiencia: 'experience', Vivienda: 'housing' };
-      const { error } = await db.from('posts').insert({ author_id: state.user.id, post_type: typeLabels[first.selected[0]] || 'question', body });
-      if (error) return notify('No se pudo crear la publicación');
+      const body =
+        first.values[0] || '';
+
+      if (!body) {
+        return notify(
+          'Escribe el contenido de la publicación'
+        );
+      }
+
+      const typeLabels = {
+        Pregunta: 'question',
+        Recomendación: 'recommendation',
+        Barrio: 'neighborhood',
+        Aviso: 'warning',
+        Experiencia: 'experience',
+        Vivienda: 'housing'
+      };
+
+      const postType =
+        typeLabels[
+          first.meta?.communityPostType ||
+          first.selected[0]
+        ] || 'question';
+
+
+      if (
+        postType === 'neighborhood' &&
+        !first.meta?.zone
+      ) {
+        return notify(
+          'Indica el barrio o zona'
+        );
+      }
+
+
+      const postPayload = {
+        author_id: state.user.id,
+        post_type: postType,
+        body,
+        zone:
+          first.meta?.zone || null,
+        listing_id:
+          first.meta?.listingId || null,
+        expires_at:
+          first.meta?.expiresAt || null,
+        community_id:
+          state.communityPublishTarget || null,
+        media_urls: []
+      };
+
+
+      const {
+        data: createdPost,
+        error
+      } = await db
+        .from('posts')
+        .insert(postPayload)
+        .select()
+        .single();
+
+
+      if (error) {
+        console.error(
+          'Rooms: error creando publicación',
+          error
+        );
+
+        return notify(
+          'No se pudo crear la publicación'
+        );
+      }
+
+
+      if (
+        state.publishDraft.files?.length
+      ) {
+        const media =
+          await uploadCommunityPostMedia(
+            createdPost.id,
+            state.publishDraft.files
+          );
+
+        if (media.length) {
+          const { error: mediaError } =
+            await db
+              .from('posts')
+              .update({
+                media_urls: media
+              })
+              .eq(
+                'id',
+                createdPost.id
+              );
+
+          if (mediaError) {
+            console.error(
+              'Rooms: error vinculando imágenes',
+              mediaError
+            );
+          }
+        }
+      }
     } else if (type === 'mate') {
       const zones = (first.values[0] || '').split(',').map(item => item.trim()).filter(Boolean);
       const numbers = (first.values[1] || '').match(/\d+/g) || [];
@@ -3462,12 +4691,93 @@
         }
       }
     }
+    const publishedCommunityId =
+      type === 'post'
+        ? state.communityPublishTarget
+        : null;
+
     hideAllModals();
-    notify(type === 'post' ? 'Publicación creada' : type === 'mate' ? 'Tu búsqueda está activa' : 'Vivienda publicada');
-    state.publishDraft = { steps: {}, files: [] };
+
+    notify(
+      type === 'post'
+        ? 'Publicación creada'
+        : type === 'mate'
+          ? 'Tu búsqueda está activa'
+          : 'Vivienda publicada'
+    );
+
+    state.publishDraft = {
+      steps: {},
+      files: []
+    };
+
     await loadRealContent();
     await loadSavedItems();
+
+    if (publishedCommunityId) {
+      state.communityPublishTarget = null;
+      await openRealCommunity(
+        publishedCommunityId
+      );
+    }
   }
+
+
+  async function uploadCommunityPostMedia(
+    postId,
+    files
+  ) {
+    const urls = [];
+
+    for (
+      const [index, file]
+      of files.entries()
+    ) {
+      const extension =
+        (
+          file.name.split('.').pop() ||
+          'jpg'
+        )
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+
+      const storagePath =
+        `${state.user.id}/${postId}/${Date.now()}-${index}.${extension}`;
+
+      const { error } =
+        await db.storage
+          .from('community-post-media')
+          .upload(
+            storagePath,
+            file,
+            {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: file.type
+            }
+          );
+
+      if (error) {
+        console.error(
+          'Rooms: error subiendo imagen de publicación',
+          error
+        );
+        continue;
+      }
+
+      const { data } =
+        db.storage
+          .from('community-post-media')
+          .getPublicUrl(storagePath);
+
+      if (data?.publicUrl) {
+        urls.push(data.publicUrl);
+      }
+    }
+
+    return urls;
+  }
+
 
   async function uploadListingPhotos(listingId, files) {
     const urls = [];
@@ -3926,112 +5236,792 @@
     return `${profile.budget_min || 0}–${profile.budget_max} €`;
   }
 
-  async function loadConnection() {
-    if (!state.targetProfile) return;
-    const { data } = await db.from('connections').select('*').or(
-      `and(requester_id.eq.${state.user.id},recipient_id.eq.${state.targetProfile.id}),and(requester_id.eq.${state.targetProfile.id},recipient_id.eq.${state.user.id})`
-    ).maybeSingle();
-    state.connection = data || null;
-    updateConnectButtons();
+  function getConnectionForUser(userId) {
+    if (!userId) return null;
+
+    return (
+      state.connectionsByUser?.get(String(userId)) ||
+      null
+    );
   }
 
-  function updateConnectButtons() {
-    document.querySelectorAll('[data-connect]').forEach(button => {
-      if (!state.targetProfile) button.textContent = 'Conectar';
-      else if (!state.connection) button.textContent = 'Conectar';
-      else if (state.connection.status === 'accepted') button.textContent = 'Enviar mensaje';
-      else if (state.connection.requester_id === state.user.id) button.textContent = 'Solicitud enviada';
-      else button.textContent = 'Responder solicitud';
-    });
+  function connectionButtonLabel(userId) {
+    const connection =
+      getConnectionForUser(userId);
+
+    if (!connection) {
+      return 'Conectar';
+    }
+
+    if (connection.status === 'accepted') {
+      return 'Enviar mensaje';
+    }
+
+    if (connection.status === 'declined') {
+      return 'Conectar';
+    }
+
+    if (
+      connection.status === 'pending' &&
+      connection.requester_id === state.user.id
+    ) {
+      return 'Cancelar solicitud';
+    }
+
+    if (
+      connection.status === 'pending' &&
+      connection.recipient_id === state.user.id
+    ) {
+      return 'Responder solicitud';
+    }
+
+    return 'Conectar';
   }
 
-  async function handleConnect() {
-    if (!state.targetProfile) {
-      notify('Cuando otra persona cree su perfil podrás conectar con ella');
-      return;
-    }
-    if (state.connection?.status === 'accepted') {
-      openRealConversation(state.targetProfile);
-      return;
-    }
-    if (state.connection) {
-      notify(state.connection.requester_id === state.user.id ? 'La solicitud sigue pendiente' : 'Tienes una solicitud pendiente');
-      return;
-    }
-    const { data, error } = await db.from('connections').insert({
-      requester_id: state.user.id,
-      recipient_id: state.targetProfile.id
-    }).select().single();
+  async function loadAllConnections() {
+    if (!state.user) return;
+
+    const { data, error } = await db
+      .from('connections')
+      .select('*')
+      .or(
+        `requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`
+      );
+
     if (error) {
-      notify('No se pudo enviar la solicitud');
+      console.error(
+        'Rooms: error cargando conexiones',
+        error
+      );
       return;
     }
-    state.connection = data;
+
+    state.connectionsByUser = new Map();
+
+    (data || []).forEach(connection => {
+      const otherUserId =
+        connection.requester_id === state.user.id
+          ? connection.recipient_id
+          : connection.requester_id;
+
+      state.connectionsByUser.set(
+        String(otherUserId),
+        connection
+      );
+    });
+
+    if (state.targetProfile) {
+      state.connection =
+        getConnectionForUser(
+          state.targetProfile.id
+        );
+    } else {
+      state.connection = null;
+    }
+
     updateConnectButtons();
-    notify('Solicitud de conexión enviada');
   }
 
-  async function connectToUser(userId) {
-    const profile = state.profiles.get(userId);
+  async function loadConnection(
+    userId = state.targetProfile?.id
+  ) {
+    if (!userId || !state.user) {
+      return null;
+    }
 
-    if (profile) {
-      state.targetProfile = profile;
+    const { data, error } = await db
+      .from('connections')
+      .select('*')
+      .or(
+        `and(requester_id.eq.${state.user.id},recipient_id.eq.${userId}),and(requester_id.eq.${userId},recipient_id.eq.${state.user.id})`
+      )
+      .order('created_at', {
+        ascending: false
+      })
+      .limit(1)
+      .maybeSingle();
 
-      state.targetVisibility =
-        await getProfileVisibility(profile.id);
+    if (error) {
+      console.error(
+        'Rooms: error cargando conexión',
+        error
+      );
+      return null;
+    }
 
-      applyTargetProfile(profile);
-      applyTargetPrivacy(
-        profile,
-        state.targetVisibility
+    if (data) {
+      state.connectionsByUser.set(
+        String(userId),
+        data
+      );
+    } else {
+      state.connectionsByUser.delete(
+        String(userId)
       );
     }
 
-    await loadConnection();
-    await handleConnect();
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      state.connection = data || null;
+    }
+
+    updateConnectButtons();
+
+    return data || null;
+  }
+
+  function updateConnectButtons() {
+    document
+      .querySelectorAll('[data-connect]')
+      .forEach(button => {
+        const userId =
+          button.dataset.userId ||
+          state.targetProfile?.id;
+
+        if (!userId) {
+          button.textContent = 'Conectar';
+          return;
+        }
+
+        const connection =
+          getConnectionForUser(userId);
+
+        button.textContent =
+          connectionButtonLabel(userId);
+
+        button.classList.toggle(
+          'connection-pending',
+          connection?.status === 'pending' &&
+          connection.requester_id === state.user.id
+        );
+
+        button.classList.toggle(
+          'connection-accepted',
+          connection?.status === 'accepted'
+        );
+
+        button.classList.toggle(
+          'connection-incoming',
+          connection?.status === 'pending' &&
+          connection.recipient_id === state.user.id
+        );
+      });
+  }
+
+  async function handleConnect(userId) {
+    if (!userId || !state.user) return;
+
+    const profile =
+      state.profiles.get(userId) ||
+      (
+        state.targetProfile?.id === userId
+          ? state.targetProfile
+          : null
+      );
+
+    if (!profile) {
+      notify('No encuentro este perfil');
+      return;
+    }
+
+    let connection =
+      getConnectionForUser(userId);
+
+    if (!connection) {
+      connection =
+        await loadConnection(userId);
+    }
+
+
+    // =====================================================
+    // CONEXIÓN YA ACEPTADA → ABRIR CONVERSACIÓN
+    // =====================================================
+
+    if (
+      connection?.status === 'accepted'
+    ) {
+      openRealConversation(profile);
+      return;
+    }
+
+
+    // =====================================================
+    // SOLICITUD ENVIADA POR MÍ → CANCELAR
+    // =====================================================
+
+    if (
+      connection?.status === 'pending' &&
+      connection.requester_id === state.user.id
+    ) {
+      const {
+        data: deletedRows,
+        error
+      } = await db
+        .from('connections')
+        .delete()
+        .eq('id', connection.id)
+        .select('id');
+
+      if (error) {
+        console.error(
+          'Rooms: error cancelando solicitud',
+          error
+        );
+
+        notify(
+          'No se pudo cancelar la solicitud'
+        );
+        return;
+      }
+
+      if (!deletedRows?.length) {
+        console.error(
+          'Rooms: la solicitud no se eliminó',
+          {
+            connectionId: connection.id,
+            userId,
+            connection
+          }
+        );
+
+        await loadConnection(userId);
+
+        notify(
+          'No se pudo cancelar la solicitud'
+        );
+        return;
+      }
+
+      state.connectionsByUser.delete(
+        String(userId)
+      );
+
+      if (
+        state.targetProfile?.id === userId
+      ) {
+        state.connection = null;
+      }
+
+      updateConnectButtons();
+
+      document
+        .querySelectorAll(
+          `[data-connect][data-user-id="${userId}"]`
+        )
+        .forEach(button => {
+          button.textContent =
+            connectionButtonLabel(userId);
+        });
+
+      notify(
+        'Solicitud cancelada'
+      );
+
+      return;
+    }
+
+
+    // =====================================================
+    // SOLICITUD RECIBIDA
+    // =====================================================
+
+    if (
+      connection?.status === 'pending' &&
+      connection.recipient_id === state.user.id
+    ) {
+      await openIncomingConnectionRequest(
+        userId
+      );
+
+      return;
+    }
+
+
+    // =====================================================
+    // SOLICITUD RECHAZADA ANTERIORMENTE → REABRIR
+    // =====================================================
+
+    if (
+      connection?.status === 'declined'
+    ) {
+      const {
+        data,
+        error
+      } = await db
+        .from('connections')
+        .update({
+          requester_id: state.user.id,
+          recipient_id: userId,
+          status: 'pending'
+        })
+        .eq('id', connection.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error(
+          'Rooms: error reabriendo conexión',
+          error
+        );
+
+        notify(
+          'No se pudo enviar la solicitud'
+        );
+        return;
+      }
+
+      state.connectionsByUser.set(
+        String(userId),
+        data
+      );
+
+      if (
+        state.targetProfile?.id === userId
+      ) {
+        state.connection = data;
+      }
+
+      updateConnectButtons();
+
+      notify(
+        'Solicitud de conexión enviada'
+      );
+
+      return;
+    }
+
+
+    // =====================================================
+    // SIN RELACIÓN → CREAR SOLICITUD
+    // =====================================================
+
+    const {
+      data,
+      error
+    } = await db
+      .from('connections')
+      .insert({
+        requester_id: state.user.id,
+        recipient_id: userId,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(
+        'Rooms: error enviando conexión',
+        error
+      );
+
+      notify(
+        'No se pudo enviar la solicitud'
+      );
+      return;
+    }
+
+    state.connectionsByUser.set(
+      String(userId),
+      data
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      state.connection = data;
+    }
+
+    updateConnectButtons();
+
+    document
+      .querySelectorAll(
+        `[data-connect][data-user-id="${userId}"]`
+      )
+      .forEach(button => {
+        button.textContent =
+          connectionButtonLabel(userId);
+      });
+
+    notify(
+      'Solicitud de conexión enviada'
+    );
+  }
+
+  async function connectToUser(userId) {
+    if (!userId) return;
+
+    const profile =
+      state.profiles.get(userId);
+
+    if (!profile) {
+      notify('No encuentro este perfil');
+      return;
+    }
+
+    await loadConnection(userId);
+    await handleConnect(userId);
   }
 
   async function loadIncomingConnections() {
-    const { data } = await db.from('connections')
-      .select('id,requester_id,status')
+    if (!state.user) return;
+
+    const { data, error } = await db
+      .from('connections')
+      .select('*')
       .eq('recipient_id', state.user.id)
       .eq('status', 'pending')
-      .limit(1);
-    if (!data?.length) return;
-    const request = data[0];
-    const { data: requesterRows, error: requesterError } = await db.rpc(
-      'get_visible_profiles',
-      { _target_user_id: request.requester_id }
-    );
+      .order('created_at', { ascending: false });
 
-    if (requesterError) {
-      console.error('Rooms: error cargando perfil de solicitud', requesterError);
+    if (error) {
+      console.error(
+        'Rooms: error cargando solicitudes recibidas',
+        error
+      );
+      return;
     }
 
-    const requester = requesterRows?.[0] || null;
-    state.incomingRequests.set(request.id, { request, requester });
-    showConnectionRequest(request, requester);
+    state.incomingRequests =
+      new Map();
+
+    (data || []).forEach(request => {
+      state.incomingRequests.set(
+        request.id,
+        { request }
+      );
+
+      state.connectionsByUser.set(
+        String(request.requester_id),
+        request
+      );
+    });
+
+    updateConnectButtons();
   }
 
-  function showConnectionRequest(request, requester) {
-    document.querySelector('.connection-request')?.remove();
-    const name = requester?.alias || requester?.name || 'Una persona';
-    const panel = document.createElement('aside');
-    panel.className = 'connection-request';
-    panel.innerHTML = `<small>NUEVA CONEXIÓN</small><b>${escapeHtml(name)} quiere conectar contigo</b><div><button type="button" data-request-answer="accepted">Aceptar</button><button type="button" data-request-answer="declined">Ahora no</button></div>`;
-    panel.addEventListener('click', async event => {
-      const button = event.target.closest('[data-request-answer]');
-      if (!button) return;
-      const status = button.dataset.requestAnswer;
-      const { error } = await db.from('connections').update({ status }).eq('id', request.id);
-      if (error) return notify('No se pudo responder la solicitud');
-      panel.remove();
-      notify(status === 'accepted' ? 'Conexión aceptada' : 'Solicitud rechazada');
-      await loadOtherProfile();
-      await Promise.all([loadRealNotifications(), loadRealInbox()]);
-    });
-    document.body.appendChild(panel);
+
+  function ensureConnectionResponseModal() {
+    let modal =
+      document.querySelector('#connectionResponseModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'connectionResponseModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-connection-response
+      ></div>
+
+      <article class="connection-response-shell">
+
+        <button
+          type="button"
+          class="connection-response-close"
+          data-close-connection-response
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <div id="connectionResponseContent"></div>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
   }
+
+
+  async function openIncomingConnectionRequest(userId) {
+    if (!userId || !state.user) return;
+
+    let connection =
+      getConnectionForUser(userId);
+
+    if (!connection) {
+      connection =
+        await loadConnection(userId);
+    }
+
+    if (
+      !connection ||
+      connection.status !== 'pending' ||
+      connection.recipient_id !== state.user.id
+    ) {
+      notify(
+        'Esta solicitud ya no está pendiente'
+      );
+
+      await loadAllConnections();
+      return;
+    }
+
+    const profile =
+      state.profiles.get(userId);
+
+    if (!profile) {
+      notify(
+        'No encuentro el perfil de esta persona'
+      );
+      return;
+    }
+
+    const modal =
+      ensureConnectionResponseModal();
+
+    const content =
+      modal.querySelector(
+        '#connectionResponseContent'
+      );
+
+    const name =
+      profile.alias ||
+      profile.name ||
+      'Usuario de Rooms';
+
+    const zone =
+      profile.zones?.length
+        ? profile.zones.join(' · ')
+        : 'Madrid';
+
+    const seeking =
+      profile.seeking?.length
+        ? profile.seeking
+            .map(labelSeeking)
+            .join(' · ')
+        : 'Busca vivienda';
+
+    content.innerHTML = `
+      <section class="connection-response-profile">
+
+        <div class="connection-response-avatar">
+          ${
+            profile.avatar_url
+              ? `
+                <img
+                  src="${escapeHtml(profile.avatar_url)}"
+                  alt="${escapeHtml(name)}"
+                >
+              `
+              : `
+                <span>
+                  ${escapeHtml(initials(name))}
+                </span>
+              `
+          }
+        </div>
+
+        <div class="connection-response-copy">
+
+          <small>SOLICITUD DE CONEXIÓN</small>
+
+          <h2>
+            ${escapeHtml(name)}
+            ${profile.age ? `, ${profile.age}` : ''}
+          </h2>
+
+          <p class="connection-response-meta">
+            ${escapeHtml(seeking)}
+            ·
+            ${escapeHtml(zone)}
+          </p>
+
+          <p class="connection-response-bio">
+            ${escapeHtml(
+              profile.bio ||
+              'Quiere conectar contigo en Rooms.'
+            )}
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <div class="connection-response-question">
+        <small>CONEXIÓN</small>
+
+        <h3>
+          ${escapeHtml(name)} quiere conectar contigo
+        </h3>
+
+        <p>
+          Si aceptas, podréis escribiros directamente
+          en Rooms.
+        </p>
+      </div>
+
+
+      <div class="connection-response-actions">
+
+        <button
+          type="button"
+          class="connection-response-accept"
+          data-connection-answer="accepted"
+          data-connection-id="${connection.id}"
+          data-connection-user="${profile.id}"
+        >
+          Aceptar
+        </button>
+
+        <button
+          type="button"
+          class="connection-response-decline"
+          data-connection-answer="declined"
+          data-connection-id="${connection.id}"
+          data-connection-user="${profile.id}"
+        >
+          Ahora no
+        </button>
+
+      </div>
+    `;
+
+    showModal(modal);
+  }
+
+
+  async function answerIncomingConnection(
+    connectionId,
+    userId,
+    status
+  ) {
+    if (
+      !connectionId ||
+      !userId ||
+      !['accepted', 'declined'].includes(status)
+    ) {
+      return;
+    }
+
+    const { data, error } = await db
+      .from('connections')
+      .update({
+        status
+      })
+      .eq('id', connectionId)
+      .eq('recipient_id', state.user.id)
+      .eq('status', 'pending')
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error(
+        'Rooms: error respondiendo solicitud',
+        error
+      );
+
+      notify(
+        'No se pudo responder la solicitud'
+      );
+      return;
+    }
+
+    state.connectionsByUser.set(
+      String(userId),
+      data
+    );
+
+    state.incomingRequests?.delete(
+      connectionId
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      state.connection = data;
+    }
+
+    updateConnectButtons();
+
+    const modal =
+      document.querySelector(
+        '#connectionResponseModal'
+      );
+
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.style.overflow = '';
+
+    await Promise.all([
+      loadRealNotifications(),
+      loadRealInbox()
+    ]);
+
+    notify(
+      status === 'accepted'
+        ? 'Conexión aceptada'
+        : 'Solicitud rechazada'
+    );
+  }
+
+
+  document.addEventListener('click', event => {
+    const close =
+      event.target.closest(
+        '[data-close-connection-response]'
+      );
+
+    if (close) {
+      const modal =
+        document.querySelector(
+          '#connectionResponseModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+      return;
+    }
+
+
+    const answer =
+      event.target.closest(
+        '[data-connection-answer]'
+      );
+
+    if (!answer) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const status =
+      answer.dataset.connectionAnswer;
+
+    const connectionId =
+      answer.dataset.connectionId;
+
+    const userId =
+      answer.dataset.connectionUser;
+
+    answer.disabled = true;
+
+    answerIncomingConnection(
+      connectionId,
+      userId,
+      status
+    ).finally(() => {
+      answer.disabled = false;
+    });
+  });
+
+
 
   function showLiveStatus() {
     if (document.querySelector('.rooms-live-status')) return;
@@ -4159,6 +6149,13 @@
     }
 
     await loadSavedItems();
+
+    if (
+      item.item_type === 'post' &&
+      state.activeCommunity
+    ) {
+      renderRealCommunityDetail();
+    }
   }
 
   async function fetchProfiles(ids) {
@@ -4690,6 +6687,11 @@
   async function loadSavedItems() {
     const { data } = await db.from('saved_items').select('item_type,item_id').eq('user_id', state.user.id);
     if (!data) return;
+
+    state.savedItems = new Set(
+      data.map(item => `${item.item_type}:${item.item_id}`)
+    );
+
     updateSavedCount(data.length);
     document.querySelectorAll('[data-save-id]:not([data-real-remove-saved])').forEach(button => {
       button.classList.remove('saved');
@@ -4715,7 +6717,7 @@
       } else if (person && person.id !== state.user.id) {
         counts.person++;
         const name = person.alias || person.name || 'Usuario de Rooms';
-        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">Conectar</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
       } else if (post) {
         counts.post++;
         cards.push(`<article class="saved-card saved-post" data-saved-type="post"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
@@ -4996,67 +6998,603 @@
   }
 
   async function openRealUser(profile) {
+    if (!profile) return;
+
     state.targetProfile = profile;
-    await loadConnection();
-    const modal = document.querySelector('#userProfileModal');
-    const name = profile.alias || profile.name || 'Usuario de Rooms';
-    const imageBox = modal.querySelector('.profile-hero');
-    imageBox.innerHTML = profile.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">` : `<div class="real-person-placeholder">${escapeHtml(initials(name))}</div>`;
-    modal.querySelector('.user-profile-content').innerHTML = `<section class="user-profile-header"><div class="profile-title"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p>${escapeHtml(profile.bio || 'Todavía no ha añadido una bio.')}</p></div><div class="profile-looking"><span><small>BUSCA AHORA</small><b>${escapeHtml(labelSeeking(profile.seeking?.[0]))}</b></span><span><small>ZONA</small><b>${escapeHtml(profile.zones?.join(' · ') || 'Sin definir')}</b></span><span><small>PRESUPUESTO</small><b>${escapeHtml(formatBudget(profile))}</b></span></div><div class="profile-interest-chips">${profile.interests?.length ? profile.interests.map(item => `<span>${escapeHtml(item)}</span>`).join('') : '<span>Sin intereses visibles</span>'}</div><div class="profile-primary-actions"><button type="button" data-connect data-user-id="${profile.id}">${state.connection?.status === 'accepted' ? 'Enviar mensaje' : 'Conectar'}</button><button type="button" data-person-save data-save-kind="person" data-save-id="${profile.id}">♡ Guardar</button></div></section>`;
-    modal.querySelector('.profile-fixed-actions').innerHTML = `<button type="button" data-connect data-user-id="${profile.id}">${state.connection?.status === 'accepted' ? 'Enviar mensaje' : 'Conectar'}</button>`;
+
+    await loadConnection(profile.id);
+
+    const modal =
+      document.querySelector('#userProfileModal');
+
+    if (!modal) return;
+
+    const name =
+      profile.alias ||
+      profile.name ||
+      'Usuario de Rooms';
+
+    const saved =
+      state.savedItems?.has(
+        `person:${profile.id}`
+      );
+
+    const traitLabels = {
+      tidy: 'Ordenado',
+      social: 'Sociable',
+      calm: 'Tranquilo',
+      independent: 'Independiente',
+      cook: 'Cocinillas',
+      early: 'Madrugador',
+      night: 'Nocturno'
+    };
+
+    const seeking =
+      profile.seeking?.length
+        ? profile.seeking
+            .map(labelSeeking)
+            .join(' · ')
+        : 'Sin definir';
+
+    const zones =
+      profile.zones?.length
+        ? profile.zones.join(' · ')
+        : 'Sin definir';
+
+    const interests =
+      Array.isArray(profile.interests)
+        ? profile.interests
+        : [];
+
+    const traits =
+      Array.isArray(profile.traits)
+        ? profile.traits
+        : [];
+
+    const moveDate =
+      profile.move_in_date
+        ? new Intl.DateTimeFormat(
+            'es-ES',
+            {
+              day: 'numeric',
+              month: 'long'
+            }
+          ).format(
+            new Date(
+              `${profile.move_in_date}T00:00:00`
+            )
+          )
+        : 'Flexible';
+
+    const imageBox =
+      modal.querySelector('.profile-hero');
+
+    if (imageBox) {
+      imageBox.innerHTML =
+        profile.avatar_url
+          ? `
+            <img
+              src="${escapeHtml(profile.avatar_url)}"
+              alt="${escapeHtml(name)}"
+            >
+          `
+          : `
+            <div class="real-person-placeholder profile-person-placeholder">
+              ${escapeHtml(initials(name))}
+            </div>
+          `;
+    }
+
+    const content =
+      modal.querySelector('.user-profile-content');
+
+    if (content) {
+      content.innerHTML = `
+        <section class="real-user-profile-intro">
+
+          <div class="real-user-profile-eyebrow">
+            <span>PERFIL</span>
+            <i></i>
+            <span>ROOMS</span>
+          </div>
+
+          <div class="real-user-profile-title">
+            <div>
+              <h1>
+                ${escapeHtml(name)}
+                ${profile.age ? `<small>, ${profile.age}</small>` : ''}
+              </h1>
+
+              <p>
+                ${escapeHtml(
+                  profile.bio ||
+                  'Todavía no ha añadido una descripción.'
+                )}
+              </p>
+            </div>
+          </div>
+
+
+          <div class="real-user-profile-facts">
+
+            <div>
+              <small>BUSCA</small>
+              <b>${escapeHtml(seeking)}</b>
+            </div>
+
+            <div>
+              <small>ZONAS</small>
+              <b>${escapeHtml(zones)}</b>
+            </div>
+
+            <div>
+              <small>PRESUPUESTO</small>
+              <b>${escapeHtml(formatBudget(profile))}</b>
+            </div>
+
+            <div>
+              <small>ENTRADA</small>
+              <b>${escapeHtml(moveDate)}</b>
+            </div>
+
+            <div>
+              <small>DURACIÓN</small>
+              <b>${escapeHtml(profile.duration || 'Flexible')}</b>
+            </div>
+
+          </div>
+
+
+          ${
+            traits.length
+              ? `
+                <div class="real-user-profile-block">
+                  <small>CONVIVENCIA</small>
+
+                  <div class="real-user-profile-chips">
+                    ${traits.map(item => `
+                      <span>
+                        ${escapeHtml(
+                          traitLabels[item] || item
+                        )}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+              `
+              : ''
+          }
+
+
+          ${
+            interests.length
+              ? `
+                <div class="real-user-profile-block">
+                  <small>INTERESES</small>
+
+                  <div class="real-user-profile-chips interests">
+                    ${interests.map(item => `
+                      <span>
+                        ${escapeHtml(item)}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+              `
+              : ''
+          }
+
+
+          <div class="real-user-profile-actions">
+
+            <button
+              type="button"
+              class="real-user-connect"
+              data-connect
+              data-user-id="${profile.id}"
+            >
+              ${escapeHtml(
+                connectionButtonLabel(profile.id)
+              )}
+            </button>
+
+            <button
+              type="button"
+              class="real-user-group"
+              data-send-person-home="${profile.id}"
+            >
+              + Añadir a grupo
+            </button>
+
+            <button
+              type="button"
+              class="real-user-save ${saved ? 'saved' : ''}"
+              data-person-save
+              data-save-kind="person"
+              data-save-id="${profile.id}"
+            >
+              ${saved ? '♥ Guardado' : '♡ Guardar'}
+            </button>
+
+          </div>
+
+        </section>
+      `;
+    }
+
+    /*
+      Eliminamos el CTA duplicado inferior.
+      Todo el perfil consume ahora la misma acción real.
+    */
+    const fixedActions =
+      modal.querySelector('.profile-fixed-actions');
+
+    if (fixedActions) {
+      fixedActions.innerHTML = '';
+      fixedActions.hidden = true;
+    }
+
+    updateConnectButtons();
+
     showModal(modal);
   }
 
   async function openRealConversation(profile) {
+    if (!profile || !state.user) return;
+
+    const connection =
+      getConnectionForUser(profile.id) ||
+      await loadConnection(profile.id);
+
+    if (
+      !connection ||
+      connection.status !== 'accepted'
+    ) {
+      notify(
+        'Necesitáis estar conectados para poder escribiros'
+      );
+      return;
+    }
+
     state.chatTarget = profile;
+
     hideAllModals();
-    showModal(document.querySelector('#conversationModal'));
-    const name = profile.alias || profile.name || 'Usuario de Rooms';
-    document.querySelector('#conversationName').textContent = name;
-    document.querySelector('#conversationContext').textContent = 'Conectados en Rooms';
+
+    const modal =
+      document.querySelector('#conversationModal');
+
+    if (!modal) return;
+
+    const name =
+      profile.alias ||
+      profile.name ||
+      'Usuario de Rooms';
+
+    const nameNode =
+      document.querySelector('#conversationName');
+
+    const contextNode =
+      document.querySelector('#conversationContext');
+
+    const avatar =
+      document.querySelector('#conversationAvatar');
+
+    const symbol =
+      document.querySelector('#conversationSymbol');
+
+    const input =
+      document.querySelector('#conversationInput');
+
+    if (nameNode) {
+      nameNode.textContent = name;
+    }
+
+    if (contextNode) {
+      contextNode.textContent =
+        'Conectados en Rooms';
+    }
+
+    if (profile.avatar_url && avatar) {
+      avatar.src = profile.avatar_url;
+      avatar.alt = name;
+      avatar.hidden = false;
+
+      if (symbol) {
+        symbol.hidden = true;
+      }
+    } else {
+      if (avatar) {
+        avatar.src = '';
+        avatar.alt = '';
+        avatar.hidden = true;
+      }
+
+      if (symbol) {
+        symbol.textContent =
+          initials(name);
+
+        symbol.hidden = false;
+      }
+    }
+
+    if (input) {
+      input.value = '';
+      input.disabled = false;
+    }
+
+    showModal(modal);
+
     await renderMessages();
+
     subscribeToMessages();
+
+    setTimeout(() => {
+      input?.focus();
+    }, 80);
   }
+
 
   async function renderMessages() {
-    if (!state.chatTarget) return;
-    const { data, error } = await db.from('messages').select('*').or(
-      `and(sender_id.eq.${state.user.id},recipient_id.eq.${state.chatTarget.id}),and(sender_id.eq.${state.chatTarget.id},recipient_id.eq.${state.user.id})`
-    ).order('created_at', { ascending: true });
-    if (error) return notify('No se pudieron cargar los mensajes');
-    const body = document.querySelector('#conversationBody');
-    body.innerHTML = `<div class="chat-day">CONVERSACIÓN</div>${(data || []).map(message => messageBubble(message)).join('')}`;
-    body.scrollTop = body.scrollHeight;
+    if (
+      !state.chatTarget ||
+      !state.user
+    ) {
+      return;
+    }
+
+    const body =
+      document.querySelector(
+        '#conversationBody'
+      );
+
+    if (!body) return;
+
+    body.innerHTML = `
+      <div class="real-chat-loading">
+        Cargando conversación…
+      </div>
+    `;
+
+    const { data, error } = await db
+      .from('messages')
+      .select('*')
+      .or(
+        `and(sender_id.eq.${state.user.id},recipient_id.eq.${state.chatTarget.id}),and(sender_id.eq.${state.chatTarget.id},recipient_id.eq.${state.user.id})`
+      )
+      .order(
+        'created_at',
+        { ascending: true }
+      );
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando mensajes',
+        error
+      );
+
+      body.innerHTML = `
+        <div class="real-chat-empty">
+          <b>No pudimos cargar la conversación</b>
+          <p>Inténtalo de nuevo.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const messages =
+      data || [];
+
+    if (!messages.length) {
+      const name =
+        state.chatTarget.alias ||
+        state.chatTarget.name ||
+        'esta persona';
+
+      body.innerHTML = `
+        <div class="real-chat-empty">
+          <span>✦</span>
+
+          <b>
+            Empieza la conversación
+          </b>
+
+          <p>
+            Tú y ${escapeHtml(name)}
+            ya estáis conectados en Rooms.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    body.innerHTML = `
+      <div class="chat-day">
+        CONVERSACIÓN
+      </div>
+
+      ${messages
+        .map(message => messageBubble(message))
+        .join('')}
+    `;
+
+    body.scrollTop =
+      body.scrollHeight;
   }
+
 
   function messageBubble(message) {
-    const mine = message.sender_id === state.user.id;
-    const time = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.created_at));
-    return `<div class="chat-message ${mine ? 'mine' : 'other'}">${mine ? '' : `<b>${escapeHtml(state.chatTarget.alias || state.chatTarget.name)}</b>`}<p>${escapeHtml(message.body)}</p><small>${time}</small></div>`;
+    const mine =
+      message.sender_id === state.user.id;
+
+    const name =
+      state.chatTarget?.alias ||
+      state.chatTarget?.name ||
+      'Usuario';
+
+    const date =
+      new Date(message.created_at);
+
+    const time =
+      new Intl.DateTimeFormat(
+        'es-ES',
+        {
+          hour: '2-digit',
+          minute: '2-digit'
+        }
+      ).format(date);
+
+    return `
+      <div
+        class="chat-message ${mine ? 'mine' : 'other'}"
+        data-message-id="${escapeHtml(message.id)}"
+      >
+        ${
+          mine
+            ? ''
+            : `<b>${escapeHtml(name)}</b>`
+        }
+
+        <p>
+          ${escapeHtml(message.body)}
+        </p>
+
+        <small>
+          ${escapeHtml(time)}
+        </small>
+      </div>
+    `;
   }
+
 
   async function sendMessage(text) {
-    if (!state.chatTarget || !text) return;
-    const { error } = await db.from('messages').insert({
-      sender_id: state.user.id,
-      recipient_id: state.chatTarget.id,
-      body: text
-    });
-    if (error) notify('No se pudo enviar el mensaje');
+    if (
+      !state.chatTarget ||
+      !state.user ||
+      !text
+    ) {
+      return;
+    }
+
+    const connection =
+      getConnectionForUser(
+        state.chatTarget.id
+      ) ||
+      await loadConnection(
+        state.chatTarget.id
+      );
+
+    if (
+      !connection ||
+      connection.status !== 'accepted'
+    ) {
+      notify(
+        'Esta conexión ya no está activa'
+      );
+
+      return;
+    }
+
+    const cleanText =
+      String(text)
+        .trim()
+        .slice(0, 2000);
+
+    if (!cleanText) return;
+
+    const { error } = await db
+      .from('messages')
+      .insert({
+        sender_id: state.user.id,
+        recipient_id: state.chatTarget.id,
+        body: cleanText
+      });
+
+    if (error) {
+      console.error(
+        'Rooms: error enviando mensaje',
+        error
+      );
+
+      notify(
+        'No se pudo enviar el mensaje'
+      );
+
+      return;
+    }
+
+    /*
+      Re-render inmediato para que el envío
+      no dependa exclusivamente de Realtime.
+    */
+    await renderMessages();
+
+    await Promise.all([
+      loadRealNotifications(),
+      loadRealInbox()
+    ]);
   }
 
+
   function subscribeToMessages() {
-    if (state.channel) db.removeChannel(state.channel);
-    state.channel = db.channel(`messages-${state.user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        const message = payload.new;
-        if (!state.chatTarget) return;
-        const participants = [message.sender_id, message.recipient_id];
-        if (participants.includes(state.user.id) && state.chatTarget && participants.includes(state.chatTarget.id)) renderMessages();
-        if (participants.includes(state.user.id)) Promise.all([loadRealNotifications(), loadRealInbox()]);
-      })
-      .subscribe();
+    if (!state.user) return;
+
+    if (state.channel) {
+      db.removeChannel(state.channel);
+      state.channel = null;
+    }
+
+    state.channel =
+      db
+        .channel(
+          `messages-${state.user.id}`
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          },
+          payload => {
+            const message =
+              payload.new;
+
+            const belongsToUser =
+              message.sender_id === state.user.id ||
+              message.recipient_id === state.user.id;
+
+            if (!belongsToUser) {
+              return;
+            }
+
+            const belongsToOpenChat =
+              state.chatTarget &&
+              (
+                (
+                  message.sender_id === state.user.id &&
+                  message.recipient_id === state.chatTarget.id
+                ) ||
+                (
+                  message.sender_id === state.chatTarget.id &&
+                  message.recipient_id === state.user.id
+                )
+              );
+
+            if (belongsToOpenChat) {
+              renderMessages();
+            }
+
+            Promise.all([
+              loadRealNotifications(),
+              loadRealInbox()
+            ]);
+          }
+        )
+        .subscribe();
   }
+
 
   document.addEventListener('click', event => {
     const shareRealListing =
@@ -5109,27 +7647,100 @@
         state.pendingGroupCandidate;
 
       if (!candidate) {
-        notify('No encuentro el elemento que quieres añadir');
+        notify(
+          'No encuentro el elemento que quieres añadir'
+        );
+
         closeGroupPicker();
         return;
       }
 
-      closeGroupPicker();
+      /*
+        Evita dobles clics mientras Supabase responde.
+      */
+      groupPickerChoice.disabled = true;
 
-      if (candidate.type === 'listing') {
-        addListingToGroup(
-          candidate.id,
-          householdId
+      const originalContent =
+        groupPickerChoice.innerHTML;
+
+      const arrow =
+        groupPickerChoice.querySelector(
+          '.group-picker-option-arrow'
         );
-      } else if (candidate.type === 'person') {
+
+      if (arrow) {
+        arrow.textContent = '…';
+      }
+
+
+      if (candidate.type === 'person') {
         addPersonToGroup(
           candidate.id,
           householdId
-        );
+        )
+          .then(success => {
+            if (!success) {
+              groupPickerChoice.disabled = false;
+              groupPickerChoice.innerHTML =
+                originalContent;
+
+              return;
+            }
+
+            state.pendingGroupCandidate = null;
+
+            closeGroupPicker();
+          })
+          .catch(error => {
+            console.error(
+              'Rooms: error en selector de grupo',
+              error
+            );
+
+            groupPickerChoice.disabled = false;
+            groupPickerChoice.innerHTML =
+              originalContent;
+
+            notify(
+              'No se pudo añadir la persona'
+            );
+          });
+
+        return;
       }
 
-      state.pendingGroupCandidate = null;
-      return;
+
+      if (candidate.type === 'listing') {
+        /*
+          Conservamos el flujo real existente
+          de viviendas.
+        */
+        addListingToGroup(
+          candidate.id,
+          householdId
+        )
+          .then(() => {
+            state.pendingGroupCandidate = null;
+            closeGroupPicker();
+          })
+          .catch(error => {
+            console.error(
+              'Rooms: error añadiendo vivienda al grupo',
+              error
+            );
+
+            groupPickerChoice.disabled = false;
+            groupPickerChoice.innerHTML =
+              originalContent;
+          });
+
+        return;
+      }
+
+
+      groupPickerChoice.disabled = false;
+      groupPickerChoice.innerHTML =
+        originalContent;
     }
 
 
@@ -5264,9 +7875,35 @@
       event.preventDefault();
       event.stopImmediatePropagation();
 
-      notify(
-        'Publicaciones de comunidades: próximo paso'
-      );
+      if (!state.activeCommunity?.id) {
+        notify('No encuentro la comunidad');
+        return;
+      }
+
+      state.communityPublishTarget =
+        state.activeCommunity.id;
+
+      state.publishType = null;
+      state.publishDraft = {
+        steps: {},
+        files: []
+      };
+
+      const publishModal =
+        document.querySelector('#publishModal');
+
+      if (publishModal) {
+        showModal(publishModal);
+      }
+
+      setTimeout(() => {
+        const postChoice =
+          document.querySelector(
+            '[data-publish-type="post"]'
+          );
+
+        postChoice?.click();
+      }, 50);
 
       return;
     }
@@ -5295,6 +7932,52 @@
       event.stopImmediatePropagation();
 
       closeManageCommunityModal();
+
+      return;
+    }
+
+
+    const communityLikeButton =
+      event.target.closest(
+        '[data-community-post-like]'
+      );
+
+    if (communityLikeButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      toggleCommunityPostLike(
+        communityLikeButton.dataset.communityPostLike
+      );
+
+      return;
+    }
+
+
+    const communityCommentsButton =
+      event.target.closest(
+        '[data-community-post-comments]'
+      );
+
+    if (communityCommentsButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const postId =
+        communityCommentsButton.dataset.communityPostComments;
+
+      const panel =
+        document.querySelector(
+          `[data-community-comments-panel="${postId}"]`
+        );
+
+      if (panel) {
+        panel.hidden = !panel.hidden;
+
+        if (!panel.hidden) {
+          renderCommunityCommentsPanel(postId);
+        }
+      }
 
       return;
     }
@@ -5567,7 +8250,13 @@
     if (event.target.closest('[data-open-real-publish]')) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      showModal(document.querySelector('#publishModal'));
+
+      state.communityPublishTarget = null;
+
+      showModal(
+        document.querySelector('#publishModal')
+      );
+
       return;
     }
 
@@ -5647,14 +8336,58 @@
   }, true);
 
   document.addEventListener('submit', event => {
-    if (event.target.id !== 'conversationForm' || !state.chatTarget) return;
+    if (
+      event.target.id !== 'conversationForm' ||
+      !state.chatTarget
+    ) {
+      return;
+    }
+
     event.preventDefault();
     event.stopImmediatePropagation();
-    const input = document.querySelector('#conversationInput');
-    const text = input.value.trim();
+
+    const form =
+      event.target;
+
+    const input =
+      document.querySelector(
+        '#conversationInput'
+      );
+
+    const button =
+      form.querySelector(
+        'button[type="submit"]'
+      );
+
+    const text =
+      input?.value.trim();
+
     if (!text) return;
-    input.value = '';
-    sendMessage(text);
+
+    input.disabled = true;
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Enviando…';
+    }
+
+    sendMessage(text)
+      .then(() => {
+        if (input) {
+          input.value = '';
+        }
+      })
+      .finally(() => {
+        if (input) {
+          input.disabled = false;
+          input.focus();
+        }
+
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Enviar';
+        }
+      });
   }, true);
 
   injectAuthGate();
@@ -7465,6 +10198,7 @@
       if (empty) empty.hidden = true;
 
       renderExplorePeople(profiles);
+      updateConnectButtons();
       return;
     }
 
@@ -7655,6 +10389,55 @@
       notify('Filtros eliminados');
     }
   });
+
+
+
+  /* COMMUNITY COMMENT SUBMIT — REAL */
+  document.addEventListener('submit', event => {
+    const form =
+      event.target.closest(
+        '[data-community-comment-form]'
+      );
+
+    if (!form) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const input =
+      form.querySelector('input');
+
+    if (!input) return;
+
+    const body =
+      input.value.trim();
+
+    if (!body) {
+      notify('Escribe un comentario');
+      return;
+    }
+
+    const postId =
+      form.dataset.communityCommentForm;
+
+    const button =
+      form.querySelector('button[type="submit"]');
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Enviando...';
+    }
+
+    createCommunityPostComment(
+      postId,
+      body
+    ).finally(() => {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Enviar';
+      }
+    });
+  }, true);
 
 
   document.addEventListener('click', async event => {
@@ -8694,7 +11477,27 @@
     userId,
     householdId
   ) {
-    if (!state.user || !householdId) return;
+    if (
+      !state.user ||
+      !householdId ||
+      !userId
+    ) {
+      return false;
+    }
+
+    if (userId === state.user.id) {
+      notify('No puedes añadirte a ti misma');
+      return false;
+    }
+
+    const household =
+      (state.households || [])
+        .find(item => item.id === householdId);
+
+    if (!household) {
+      notify('No encuentro ese grupo de búsqueda');
+      return false;
+    }
 
     const { error } = await db
       .from('household_person_candidates')
@@ -8706,8 +11509,11 @@
 
     if (error) {
       if (error.code === '23505') {
-        notify('Esta persona ya está en ese grupo');
-        return;
+        notify(
+          'Esta persona ya está en ese grupo'
+        );
+
+        return false;
       }
 
       console.error(
@@ -8715,15 +11521,42 @@
         error
       );
 
-      notify('No se pudo añadir la persona');
-      return;
+      notify(
+        'No se pudo añadir la persona'
+      );
+
+      return false;
     }
 
-    if (state.household?.id === householdId) {
+    /*
+      Si es el grupo que está actualmente abierto,
+      refrescamos sus candidatos al instante.
+    */
+    if (
+      state.household?.id === householdId
+    ) {
       await loadHouseholdCandidates();
     }
 
-    notify('Persona añadida al grupo');
+    /*
+      Refrescamos las tarjetas de Grupos de búsqueda
+      sin cambiar el grupo activo del usuario.
+    */
+    renderSearchGroupsHome();
+
+    const profile =
+      state.profiles.get(userId);
+
+    const personName =
+      profile?.alias ||
+      profile?.name ||
+      'Persona';
+
+    notify(
+      `${personName} añadida a ${household.name}`
+    );
+
+    return true;
   }
 
 
@@ -9292,13 +12125,46 @@
   }
 
   async function removeHouseholdPersonCandidate(userId) {
-    if (!state.household) return;
+    if (
+      !state.household ||
+      !state.user ||
+      !userId
+    ) {
+      return false;
+    }
 
-    const { error } = await db
+    const profile =
+      state.profiles?.get(userId);
+
+    const name =
+      profile?.alias ||
+      profile?.name ||
+      'esta persona';
+
+    const confirmed =
+      window.confirm(
+        `¿Quieres quitar a ${name} de este grupo de búsqueda?`
+      );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    const {
+      data: deletedRows,
+      error
+    } = await db
       .from('household_person_candidates')
       .delete()
-      .eq('household_id', state.household.id)
-      .eq('user_id', userId);
+      .eq(
+        'household_id',
+        state.household.id
+      )
+      .eq(
+        'user_id',
+        userId
+      )
+      .select('user_id');
 
     if (error) {
       console.error(
@@ -9306,13 +12172,60 @@
         error
       );
 
-      notify('No se pudo quitar la persona');
-      return;
+      notify(
+        'No se pudo quitar la persona'
+      );
+
+      return false;
+    }
+
+    if (!deletedRows?.length) {
+      notify(
+        'Esta persona ya no estaba en el grupo'
+      );
+
+      await loadHouseholdCandidates();
+
+      return false;
+    }
+
+    /*
+      Limpiamos también sus votos dentro de este grupo.
+    */
+    const { error: voteError } = await db
+      .from('household_candidate_votes')
+      .delete()
+      .eq(
+        'household_id',
+        state.household.id
+      )
+      .eq(
+        'candidate_type',
+        'person'
+      )
+      .eq(
+        'candidate_id',
+        userId
+      );
+
+    if (voteError) {
+      console.error(
+        'Rooms: error limpiando votos de persona',
+        voteError
+      );
     }
 
     await loadHouseholdCandidates();
-    notify('Persona eliminada del Hogar');
+
+    renderSearchGroupsHome();
+
+    notify(
+      `${name} eliminada del grupo`
+    );
+
+    return true;
   }
+
 
   async function removeHouseholdCandidate(listingId) {
     if (!state.household) return;

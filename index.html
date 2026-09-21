@@ -802,7 +802,54 @@
   </article>
 </div>
 <div class="modal" id="chatInboxModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail inbox-shell"><header><div><small>MENSAJES</small><h2>Chat</h2></div><button type="button" data-close aria-label="Cerrar">×</button></header><label class="inbox-search"><span>⌕</span><input type="search" placeholder="Buscar conversación"></label><div class="inbox-filters"><button class="active" type="button" data-chat-filter="all">Todos</button><button type="button" data-chat-filter="person">Personas</button><button type="button" data-chat-filter="home">Hogares</button><button type="button" data-chat-filter="listing">Anuncios</button></div><div class="conversation-list"><button type="button" data-conversation="lucia" data-chat-type="person"><img src="assets/images/lucia-profile.png" alt="Lucía"><div><b>Lucía</b><p>La zona sí. Preguntaría por el ruido.</p><small>91% MATCH</small></div><time>10:34</time><i>2</i></button><button type="button" data-conversation="home" data-chat-type="home"><span class="home-chat-icon">CML</span><div><b>Buscar piso con Marta</b><p>Marta ha compartido un piso.</p><small>HOGAR · 3 MIEMBROS</small></div><time>10:24</time></button><button type="button" data-conversation="listing" data-chat-type="listing"><span class="listing-chat-icon">⌂</span><div><b>Habitación en Ponzano</b><p>Álvaro: ¿Cuándo podrías verla?</p><small>ANUNCIO · 92% MATCH</small></div><time>Ayer</time></button></div></article></div>
-  <div class="modal" id="conversationModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail conversation-shell"><header><button type="button" id="conversationBack" aria-label="Volver">←</button><img id="conversationAvatar" src="assets/images/lucia-profile.png" alt="Lucía"><span class="conversation-symbol" id="conversationSymbol" hidden>⌂</span><div><b id="conversationName">Lucía</b><span id="conversationContext">91% Match · Conectadas</span></div><button type="button" data-conversation-options aria-label="Opciones">•••</button></header><div class="conversation-options-menu" id="conversationOptionsMenu" hidden><button type="button" data-toast="Abriendo perfil o anuncio">Ver perfil o anuncio</button><button type="button" data-report="conversación con Lucía">Reportar</button><button type="button" data-block-user>Bloquear</button></div><div class="conversation-body" id="conversationBody"><div class="chat-day">HOY</div><div class="chat-message other"><b>Lucía</b><p>¡Hola! He visto que también estás buscando por Chamberí.</p><small>10:18</small></div><div class="chat-message mine"><p>Sí, y creo que tenemos horarios bastante parecidos.</p><small>10:21</small></div><article class="message-listing-card" data-listing-id="1"><img src="assets/images/chamberi-villanueva.jpg" alt="Habitación compartida en el chat"><div><span>92% MATCH · MUY FIABLE</span><h3>850 €/mes · Chamberí</h3><p>Habitación · Disponible 15 sep</p><div><i>Amueblado</i><i>Mascotas</i></div></div></article><div class="chat-message other"><p>Este me gusta muchísimo. ¿Lo añadimos al Hogar?</p><small>10:34</small></div></div><form class="conversation-composer" id="conversationForm"><button type="button" id="chatAttach" aria-label="Adjuntar">＋</button><input id="conversationInput" placeholder="Escribe un mensaje…" aria-label="Mensaje"><button type="submit">Enviar</button></form><div class="attachment-menu" id="attachmentMenu" hidden><button type="button" data-toast="Selector de fotos abierto">Foto</button><button type="button" data-toast="Elige un perfil para compartir">Perfil</button><button type="button" data-toast="Elige una vivienda para compartir">Vivienda</button><button type="button" data-toast="Invitación al Hogar enviada">Invitación a Hogar</button><button type="button" data-toast="Pega un enlace externo">Enlace</button></div></article></div>
+  <div class="modal" id="conversationModal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+
+    <article class="detail conversation-shell">
+      <header>
+        <button type="button" id="conversationBack" aria-label="Volver">←</button>
+
+        <img
+          id="conversationAvatar"
+          src=""
+          alt=""
+          hidden
+        >
+
+        <span
+          class="conversation-symbol"
+          id="conversationSymbol"
+        >R</span>
+
+        <div>
+          <b id="conversationName">Conversación</b>
+          <span id="conversationContext">Conectados en Rooms</span>
+        </div>
+      </header>
+
+      <div
+        class="conversation-body"
+        id="conversationBody"
+      ></div>
+
+      <form
+        class="conversation-composer"
+        id="conversationForm"
+      >
+        <input
+          id="conversationInput"
+          placeholder="Escribe un mensaje…"
+          aria-label="Mensaje"
+          autocomplete="off"
+          maxlength="2000"
+        >
+
+        <button type="submit">
+          Enviar
+        </button>
+      </form>
+    </article>
+  </div>
   <div class="modal" id="notificationsModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail notifications-shell"><header><div><small>ACTIVIDAD</small><h2>Notificaciones</h2></div><div><button type="button" id="notificationSettings" aria-label="Ajustes">⚙</button><button type="button" data-close aria-label="Cerrar">×</button></div></header><div class="notification-actions"><button type="button" id="markNotificationsRead">Marcar todas como leídas</button></div><div class="notification-list"><button type="button" data-notification><span class="notification-icon match-notification">94%</span><div><small>MATCHES · AHORA</small><b>Nueva habitación · 94% Match</b><p>Chamberí · Disponible en septiembre</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">L</span><div><small>SOCIAL · HACE 8 MIN</small><b>Lucía quiere conectar contigo</b><p>Tenéis un 91% de compatibilidad</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">⌂</span><div><small>HOGAR · HACE 20 MIN</small><b>Lucía ha añadido un piso</b><p>Buscar piso con Marta</p></div><i></i></button><button type="button" data-notification><span class="notification-icon">3/3</span><div><small>ACTIVIDAD · HACE 1 H</small><b>Todo el Hogar ha votado</b><p>El piso de Ponzano es vuestro favorito</p></div></button><button type="button" data-notification><span class="notification-icon">#</span><div><small>COMUNIDADES · HACE 2 H</small><b>Nueva publicación destacada</b><p>Vivir en Chamberí</p></div></button><button type="button" data-notification><span class="notification-icon">＋1</span><div><small>ANUNCIOS · AYER</small><b>Nuevo interesado en tu habitación</b><p>Consulta su match antes de responder</p></div></button><button type="button" data-notification><span class="notification-icon">✓</span><div><small>SISTEMA · HACE 2 DÍAS</small><b>¿Sigue disponible este anuncio?</b><p>Confírmalo para mantenerlo activo</p></div></button></div><div class="notification-preferences" id="notificationPreferences" hidden><h3>Qué quieres recibir</h3><label>Matches <input type="checkbox" checked></label><label>Social <input type="checkbox" checked></label><label>Hogar <input type="checkbox" checked></label><label>Comunidades <input type="checkbox" checked></label><label>Anuncios <input type="checkbox" checked></label><label>Sistema <input type="checkbox" checked></label><small>Rooms agrupa la actividad para no bombardearte.</small></div></article></div>
   <div class="modal" id="adminModerationModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail moderation-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">HERRAMIENTAS DE ADMIN</p><h2>Moderar comunidad</h2><div class="moderation-summary"><span><b>3</b> solicitudes</span><span><b>2</b> reportes</span><span><b>1</b> revisión prioritaria</span></div><div class="moderation-actions"><button type="button" data-admin-action="pin">Fijar publicación <span>⌂</span></button><button type="button" data-admin-action="remove">Eliminar contenido <span>×</span></button><button type="button" data-admin-action="expel">Expulsar usuario <span>→</span></button><button type="button" data-admin-action="requests">Revisar solicitudes <span>3</span></button><button type="button" data-admin-action="reports">Gestionar reportes <span>2</span></button></div><p class="safe">Estas acciones solo son visibles para administradores y quedan registradas.</p></article></div>
   <div class="modal" id="reportModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail report-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">SEGURIDAD</p><h2>¿Qué quieres reportar?</h2><p class="report-target" id="reportTarget">Sobre este contenido</p><div class="report-reasons" role="radiogroup" aria-label="Motivo del reporte"><button type="button" role="radio" aria-checked="false">Fraude / posible estafa</button><button type="button" role="radio" aria-checked="false">Información falsa</button><button type="button" role="radio" aria-checked="false">Comportamiento inapropiado</button><button type="button" role="radio" aria-checked="false">Spam</button><button type="button" role="radio" aria-checked="false">Contenido fuera de temática</button><button type="button" role="radio" aria-checked="false">Acoso</button><button type="button" role="radio" aria-checked="false">Otro</button></div><label class="report-details">Añade contexto, si quieres<textarea id="reportDetails" rows="3" placeholder="No incluyas datos personales sensibles"></textarea></label><p class="report-privacy">Tu identidad no se mostrará a la persona reportada.</p><button class="cta" type="button" id="submitReport" disabled>Enviar reporte</button></article></div>
