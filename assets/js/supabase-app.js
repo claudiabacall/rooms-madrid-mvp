@@ -162,7 +162,6 @@
     await Promise.all([
       loadSavedItems(),
       loadSavedCollections(),
-      loadIncomingConnections(),
       loadRealNotifications(),
       loadRealInbox()
     ]);
