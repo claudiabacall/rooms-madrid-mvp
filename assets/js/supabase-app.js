@@ -142,7 +142,9 @@
 
   async function startSession(session) {
     state.user = session.user;
-    document.querySelector('#authGate').hidden = true;
+
+    const authGate =
+      document.querySelector('#authGate');
 
     const [{ data: profile }, { data: preferences }] = await Promise.all([
       db.from('profiles').select('*').eq('id', state.user.id).maybeSingle(),
@@ -153,8 +155,26 @@
     if (profile) state.profiles.set(profile.id, profile);
     updateOwnProfile(profile, preferences);
 
-    if (profile?.onboarding_completed && !document.body.classList.contains('app-visible')) {
-      if (typeof window.openPersonalizedFeed === 'function') window.openPersonalizedFeed();
+    /*
+      Una cuenta ya configurada siempre entra desde Home.
+      Lo hacemos mientras el login sigue cubriendo la app
+      para que nunca aparezca fugazmente la última subvista.
+    */
+    if (profile?.onboarding_completed) {
+      if (typeof window.showMainView === 'function') {
+        window.showMainView('home');
+      }
+
+      if (
+        !document.body.classList.contains('app-visible') &&
+        typeof window.openPersonalizedFeed === 'function'
+      ) {
+        window.openPersonalizedFeed();
+      }
+    }
+
+    if (authGate) {
+      authGate.hidden = true;
     }
 
     await loadOtherProfile();
@@ -261,6 +281,12 @@
       a la cuenta anterior.
     */
     hideAllModals();
+
+    /*
+      La próxima autenticación debe arrancar desde Home,
+      no desde la última subvista que quedó abierta.
+    */
+    document.body.classList.remove('app-visible');
 
     const authGate =
       document.querySelector('#authGate');
@@ -8409,13 +8435,6 @@
     const finalOnboarding = event.target.closest('#onboardingContinue');
     if (finalOnboarding && finalOnboarding.textContent.includes('Ver mi feed')) saveOnboarding();
 
-    const logout = event.target.closest('.logout-button');
-    if (logout) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      db.auth.signOut();
-    }
-
     const ownActivity = event.target.closest('[data-own-activity]');
     if (ownActivity) {
       event.preventDefault();
@@ -9849,7 +9868,6 @@
       return;
     }
 
-    endSession();
     notify('Sesión cerrada');
   }
 
