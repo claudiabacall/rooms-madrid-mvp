@@ -12164,3 +12164,49 @@
   }
 
 }
+
+/* Reportes reales */
+.real-report-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.real-report-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 7px 0;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  opacity: .64;
+}
+
+.real-report-button:hover {
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .real-report-row {
+    margin: 8px 0;
+  }
+
+  .real-report-button {
+    min-height: 40px;
+    padding: 8px 0;
+    font-size: 13px;
+  }
+}
+
+/* Report modal above listing/profile detail */
+#reportModal{
+  z-index:5000 !important;
+}
+
+#reportModal.open{
+  display:flex !important;
+}

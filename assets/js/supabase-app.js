@@ -16,6 +16,7 @@
     profile: null,
     preferences: null,
     targetProfile: null,
+    reportTarget: null,
     connection: null,
     connectionsByUser: new Map(),
     chatTarget: null,
@@ -204,6 +205,7 @@
     state.profile = null;
     state.preferences = null;
     state.targetProfile = null;
+    state.reportTarget = null;
     state.targetVisibility = null;
     state.currentListingId = null;
     state.currentCollectionId = null;
@@ -1670,6 +1672,19 @@
           </div>
 
 
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="post"
+              data-report-id="${escapeHtml(post.id)}"
+              data-report-user="${escapeHtml(post.author_id || '')}"
+            >
+              Reportar publicación
+            </button>
+          </div>
+
           <footer class="home-post-actions">
 
             <button
@@ -2076,6 +2091,19 @@
             `
             : ''
         }
+
+        <div class="real-report-row">
+          <button
+            type="button"
+            class="real-report-button"
+            data-real-report
+            data-report-type="post"
+            data-report-id="${escapeHtml(post.id)}"
+            data-report-user="${escapeHtml(post.author_id || '')}"
+          >
+            Reportar publicación
+          </button>
+        </div>
 
         <div class="community-post-actions">
 
@@ -6300,6 +6328,159 @@
     return result;
   }
 
+  function openRealReport(target) {
+    if (!target || !state.user) return;
+
+    state.reportTarget = {
+      type: target.dataset.reportType || 'user',
+      id: target.dataset.reportId || null,
+      userId: target.dataset.reportUser || null
+    };
+
+    const modal = document.querySelector('#reportModal');
+    const label = document.querySelector('#reportTarget');
+    const details = document.querySelector('#reportDetails');
+    const submit = document.querySelector('#submitReport');
+
+    if (!modal) return;
+
+    document
+      .querySelectorAll('#reportModal .report-reasons button')
+      .forEach(button => {
+        button.setAttribute('aria-checked', 'false');
+      });
+
+    if (details) details.value = '';
+    if (submit) submit.disabled = true;
+
+    const labels = {
+      profile: 'Este perfil',
+      listing: 'Este anuncio',
+      post: 'Esta publicación',
+      community: 'Esta comunidad',
+      message: 'Este mensaje',
+      user: 'Este usuario'
+    };
+
+    if (label) {
+      label.textContent =
+        `Sobre: ${labels[state.reportTarget.type] || 'Este contenido'}`;
+    }
+
+    showModal(modal);
+  }
+
+
+  async function submitRealReport() {
+    if (!state.user || !state.reportTarget) return;
+
+    const modal = document.querySelector('#reportModal');
+
+    const selected =
+      modal?.querySelector(
+        '.report-reasons button[aria-checked="true"]'
+      );
+
+    const details =
+      document.querySelector('#reportDetails')?.value.trim() || null;
+
+    const submit =
+      document.querySelector('#submitReport');
+
+    if (!selected) {
+      notify('Selecciona un motivo para continuar.');
+      return;
+    }
+
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = 'Enviando…';
+    }
+
+    const payload = {
+      reporter_id: state.user.id,
+      reported_user_id:
+        state.reportTarget.userId || null,
+      target_type:
+        state.reportTarget.type,
+      target_id:
+        state.reportTarget.id || null,
+      reason:
+        selected.textContent.trim(),
+      details,
+      status: 'pending'
+    };
+
+    const { error } =
+      await db
+        .from('reports')
+        .insert(payload);
+
+    if (submit) {
+      submit.textContent = 'Enviar reporte';
+    }
+
+    if (error) {
+      console.error('Error creando reporte:', error);
+
+      if (submit) {
+        submit.disabled = false;
+      }
+
+      notify(
+        'No hemos podido enviar el reporte. Inténtalo de nuevo.'
+      );
+
+      return;
+    }
+
+    state.reportTarget = null;
+
+    hideAllModals();
+
+    notify(
+      'Reporte enviado. Gracias por ayudarnos a cuidar Rooms.'
+    );
+  }
+
+
+  async function showMyRealReports() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('reports')
+        .select('id,status,reason,target_type,created_at')
+        .eq('reporter_id', state.user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error cargando reportes:', error);
+      notify('No hemos podido cargar tus reportes.');
+      return;
+    }
+
+    const reports = data || [];
+
+    if (!reports.length) {
+      notify('No tienes reportes activos.');
+      return;
+    }
+
+    const pending =
+      reports.filter(item =>
+        item.status === 'pending' ||
+        item.status === 'reviewing'
+      ).length;
+
+    notify(
+      pending
+        ? `${pending} ${pending === 1 ? 'reporte activo' : 'reportes activos'}`
+        : `${reports.length} ${reports.length === 1 ? 'reporte enviado' : 'reportes enviados'}`
+    );
+  }
+
+
   async function loadRealNotifications() {
     if (!state.user) return;
     const [{ data: connections }, { data: messages }] = await Promise.all([
@@ -7042,6 +7223,24 @@
           }
 
 
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="listing"
+              data-report-id="${escapeHtml(String(listing.id))}"
+              data-report-user="${escapeHtml(String(
+                listing.user_id ||
+                listing.owner_id ||
+                listing.author_id ||
+                ''
+              ))}"
+            >
+              Reportar anuncio
+            </button>
+          </div>
+
           <div class="rooms-property-copy">
             <small>SOBRE ESTA VIVIENDA</small>
 
@@ -7206,6 +7405,19 @@
     if (content) {
       content.innerHTML = `
         <section class="real-user-profile-intro">
+
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="profile"
+              data-report-id="${escapeHtml(profile.id)}"
+              data-report-user="${escapeHtml(profile.id)}"
+            >
+              Reportar perfil
+            </button>
+          </div>
 
           <div class="real-user-profile-eyebrow">
             <span>PERFIL</span>
@@ -7712,6 +7924,17 @@
 
 
   document.addEventListener('click', event => {
+    const realReport =
+      event.target.closest('[data-real-report]');
+
+    if (realReport) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openRealReport(realReport);
+      return;
+    }
+
+
     const shareRealListing =
       event.target.closest('[data-share-real-listing]');
 
@@ -8234,6 +8457,54 @@
         modal.setAttribute('aria-hidden', 'true');
       }
       document.body.style.overflow = '';
+      return;
+    }
+
+    const myReports =
+      event.target.closest('#myReports');
+
+    if (myReports) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showMyRealReports();
+      return;
+    }
+
+    const reportReason =
+      event.target.closest(
+        '#reportModal .report-reasons button'
+      );
+
+    if (reportReason) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      document
+        .querySelectorAll(
+          '#reportModal .report-reasons button'
+        )
+        .forEach(button => {
+          button.setAttribute(
+            'aria-checked',
+            String(button === reportReason)
+          );
+        });
+
+      const submit =
+        document.querySelector('#submitReport');
+
+      if (submit) submit.disabled = false;
+
+      return;
+    }
+
+    const submitReport =
+      event.target.closest('#submitReport');
+
+    if (submitReport) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      submitRealReport();
       return;
     }
 
