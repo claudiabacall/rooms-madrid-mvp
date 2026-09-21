@@ -9704,22 +9704,6 @@
   });
 
 
-  document.addEventListener('click', event => {
-    if (!event.target.closest('#trustRecommendations')) return;
-
-    const trustView = document.querySelector('#trustView');
-    const profileView = document.querySelector('#ownProfileView');
-
-    if (trustView) trustView.hidden = true;
-    if (profileView) profileView.hidden = false;
-
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  });
-
-
   function renderProfilePrivacySettings() {
     const privacy = state.preferences?.answers?.privacy || {};
     const level = privacy.level || 'balanced';
