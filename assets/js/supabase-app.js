@@ -10066,18 +10066,6 @@
   setTimeout(renderContactSettings, 0);
 
 
-  document.addEventListener('click', event => {
-    const activityTab = event.target.closest('[data-own-activity]');
-    if (!activityTab) return;
-
-    event.preventDefault();
-
-    refreshOwnActivity(
-      activityTab.dataset.ownActivity
-    );
-  });
-
-
   function sortExploreListings(listings) {
     const mode = document.querySelector('#exploreSort')?.value || 'recent';
     const result = [...listings];
