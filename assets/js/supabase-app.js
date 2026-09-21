@@ -2452,7 +2452,7 @@
                     class="${isMember ? 'joined' : ''}"
                     data-toggle-community-membership="${escapeHtml(community.id)}"
                   >
-                    ${isMember ? 'Miembro ✓' : 'Unirme'}
+                    ${isMember ? 'Salir de la comunidad' : 'Unirme'}
                   </button>
                 `
             }
