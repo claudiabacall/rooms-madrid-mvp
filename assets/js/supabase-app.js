@@ -170,14 +170,104 @@
   }
 
   function endSession() {
+    /*
+      Cerrar cualquier suscripción realtime de la sesión anterior.
+    */
+    if (state.channel) {
+      db.removeChannel(state.channel);
+    }
+
+    /*
+      Identidad y navegación.
+    */
     state.user = null;
     state.profile = null;
     state.preferences = null;
     state.targetProfile = null;
+    state.targetVisibility = null;
+    state.currentListingId = null;
+    state.currentCollectionId = null;
+
+    /*
+      Conexiones y chat.
+    */
     state.connection = null;
+    state.connectionsByUser = new Map();
+    state.incomingRequests = new Map();
     state.chatTarget = null;
-    if (state.channel) db.removeChannel(state.channel);
-    document.querySelector('#authGate').hidden = false;
+    state.channel = null;
+
+    /*
+      Contenido cargado.
+    */
+    state.profiles = new Map();
+    state.listings = new Map();
+    state.posts = new Map();
+    state.communities = new Map();
+
+    /*
+      Interacciones con publicaciones.
+    */
+    state.postLikes = new Map();
+    state.postComments = new Map();
+    state.userPostLikes = new Set();
+
+    /*
+      Guardados.
+    */
+    state.savedItems = new Set();
+    state.savedCollections = new Map();
+
+    /*
+      Comunidades.
+    */
+    state.activeCommunity = null;
+    state.activeCommunityMembers = [];
+    state.activeCommunityMembership = null;
+    state.communityMemberships = [];
+    state.communityMemberCounts = new Map();
+    state.communityPublishTarget = null;
+
+    /*
+      Grupos de búsqueda.
+    */
+    state.household = null;
+    state.households = [];
+    state.householdMembers = [];
+    state.householdCandidates = [];
+    state.householdPersonCandidates = [];
+    state.householdCandidateVotes = [];
+    state.pendingHouseholdInvite = null;
+    state.pendingGroupCandidate = null;
+
+    /*
+      Publicación y edición.
+    */
+    state.publishType = null;
+    state.publishDraft = {
+      steps: {},
+      files: []
+    };
+    state.editListingPhotos = [];
+    state.editListingOriginalPhotos = [];
+
+    /*
+      Datos temporales del onboarding/perfil.
+    */
+    state.living = {};
+
+    /*
+      Evitar que quede abierto un modal perteneciente
+      a la cuenta anterior.
+    */
+    hideAllModals();
+
+    const authGate =
+      document.querySelector('#authGate');
+
+    if (authGate) {
+      authGate.hidden = false;
+    }
   }
 
   function updateOwnProfile(profile, preferences = state.preferences) {
