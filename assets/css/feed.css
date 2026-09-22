@@ -12210,3 +12210,172 @@
 #reportModal.open{
   display:flex !important;
 }
+
+/* Bloqueo real */
+#blockModal{
+  z-index:5000 !important;
+}
+
+#blockModal.open{
+  display:flex !important;
+}
+
+.real-report-row{
+  flex-wrap:wrap;
+  gap:14px;
+}
+
+.real-block-button{
+  color:#8c352a;
+}
+
+@media(max-width:700px){
+  .real-report-row{
+    gap:12px;
+  }
+
+  .real-block-button{
+    min-height:40px;
+  }
+}
+
+/* =========================================================
+   BLOCKED USERS
+   ========================================================= */
+
+#blockedUsersModal {
+  z-index: 5000 !important;
+}
+
+.blocked-users-shell {
+  position: relative;
+  width: min(560px, calc(100vw - 40px));
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  background: #fff;
+  border-radius: 24px;
+  padding: 32px;
+}
+
+.blocked-users-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.blocked-users-header {
+  padding-right: 44px;
+  margin-bottom: 28px;
+}
+
+.blocked-users-header small {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: .12em;
+}
+
+.blocked-users-header h2 {
+  margin: 0 0 10px;
+}
+
+.blocked-users-header p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.blocked-users-list {
+  display: grid;
+  gap: 12px;
+}
+
+.blocked-user-row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(0, 0, 0, .08);
+}
+
+.blocked-user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .06);
+  font-weight: 600;
+}
+
+.blocked-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.blocked-user-info {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.blocked-user-info b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-user-info small {
+  opacity: .6;
+}
+
+.blocked-user-unblock {
+  border: 1px solid rgba(0, 0, 0, .16);
+  background: transparent;
+  border-radius: 999px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+.blocked-users-loading {
+  padding: 28px 0;
+  text-align: center;
+  opacity: .6;
+}
+
+@media (max-width: 640px) {
+  .blocked-users-shell {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    border-radius: 20px;
+    padding: 24px 18px 20px;
+  }
+
+  .blocked-users-header {
+    padding-right: 36px;
+    margin-bottom: 20px;
+  }
+
+  .blocked-user-row {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .blocked-user-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .blocked-user-unblock {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 2px;
+  }
+}
+

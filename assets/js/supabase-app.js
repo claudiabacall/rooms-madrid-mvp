@@ -17,6 +17,8 @@
     preferences: null,
     targetProfile: null,
     reportTarget: null,
+    blockTarget: null,
+    blockedUsers: new Set(),
     connection: null,
     connectionsByUser: new Map(),
     chatTarget: null,
@@ -156,6 +158,8 @@
     if (profile) state.profiles.set(profile.id, profile);
     updateOwnProfile(profile, preferences);
 
+    await loadUserBlocks();
+
     /*
       Una cuenta ya configurada siempre entra desde Home.
       Lo hacemos mientras el login sigue cubriendo la app
@@ -206,6 +210,8 @@
     state.preferences = null;
     state.targetProfile = null;
     state.reportTarget = null;
+    state.blockTarget = null;
+    state.blockedUsers = new Set();
     state.targetVisibility = null;
     state.currentListingId = null;
     state.currentCollectionId = null;
@@ -1112,11 +1118,46 @@
       db.from('posts').select('*').eq('status', 'published').order('created_at', { ascending: false }),
       db.from('communities').select('*').eq('status', 'active').order('created_at', { ascending: false })
     ]);
-    state.listings = new Map((listings || []).map(item => [item.id, item]));
-    state.posts = new Map((posts || []).map(item => [item.id, item]));
-    state.communities = new Map((communities || []).map(item => [item.id, item]));
-    (profiles || []).forEach(profile => state.profiles.set(profile.id, profile));
-    if (!state.targetProfile && profiles?.length) state.targetProfile = profiles[0];
+    const visibleListings =
+      (listings || []).filter(listing =>
+        !listing.owner_id ||
+        !state.blockedUsers?.has(listing.owner_id)
+      );
+
+    const visiblePosts =
+      (posts || []).filter(post =>
+        !post.author_id ||
+        !state.blockedUsers?.has(post.author_id)
+      );
+
+    state.listings = new Map(
+      visibleListings.map(item => [item.id, item])
+    );
+
+    state.posts = new Map(
+      visiblePosts.map(item => [item.id, item])
+    );
+
+    state.communities = new Map(
+      (communities || []).map(item => [item.id, item])
+    );
+
+    const visibleProfiles =
+      (profiles || []).filter(profile =>
+        !state.blockedUsers?.has(profile.id)
+      );
+
+    visibleProfiles.forEach(profile =>
+      state.profiles.set(profile.id, profile)
+    );
+
+    if (
+      !state.targetProfile &&
+      visibleProfiles.length
+    ) {
+      state.targetProfile =
+        visibleProfiles[0];
+    }
     const {
       data: communityMemberRows,
       error: communityMemberCountError
@@ -1163,9 +1204,16 @@
   function renderRealFeed(listings, profiles, posts, communities) {
     const feed = document.querySelector('#personalFeed');
     if (!feed) return;
+
+    const visibleProfiles =
+      (profiles || []).filter(profile =>
+        profile?.id &&
+        !state.blockedUsers?.has(profile.id)
+      );
+
     const cards = [
       ...listings.map(renderListingCard),
-      ...profiles.map(renderPersonCard),
+      ...visibleProfiles.map(renderPersonCard),
       ...communities.map(renderCommunityCard),
       ...posts.map(renderPostCard)
     ];
@@ -1178,6 +1226,16 @@
   }
 
   function renderListingCard(listing) {
+    if (
+      !listing ||
+      (
+        listing.owner_id &&
+        state.blockedUsers?.has(listing.owner_id)
+      )
+    ) {
+      return '';
+    }
+
     const photos =
       Array.isArray(listing.photos)
         ? listing.photos
@@ -1385,6 +1443,13 @@
   }
 
   function renderPersonCard(profile) {
+    if (
+      !profile ||
+      state.blockedUsers?.has(profile.id)
+    ) {
+      return '';
+    }
+
     const name = profile.alias || profile.name || 'Usuario de Rooms';
     const zone = profile.zones?.[0] || 'Madrid';
     const seeking = labelSeeking(profile.seeking?.[0]);
@@ -1404,6 +1469,16 @@
   }
 
   function renderPostCard(post) {
+    if (
+      !post ||
+      (
+        post.author_id &&
+        state.blockedUsers?.has(post.author_id)
+      )
+    ) {
+      return '';
+    }
+
     const author =
       state.profiles.get(post.author_id);
 
@@ -4022,7 +4097,8 @@
     let profiles = [...state.profiles.values()]
       .filter(profile =>
         profile.id &&
-        profile.id !== state.user?.id
+        profile.id !== state.user?.id &&
+        !state.blockedUsers?.has(profile.id)
       );
 
     if (query) {
@@ -5527,6 +5603,22 @@
           return;
         }
 
+        if (
+          state.blockedUsers?.has(userId)
+        ) {
+          button.textContent = 'Bloqueado';
+          button.disabled = true;
+          button.classList.add(
+            'connection-blocked'
+          );
+          return;
+        }
+
+        button.disabled = false;
+        button.classList.remove(
+          'connection-blocked'
+        );
+
         const connection =
           getConnectionForUser(userId);
 
@@ -5554,6 +5646,15 @@
 
   async function handleConnect(userId) {
     if (!userId || !state.user) return;
+
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'Desbloquea a este usuario para poder conectar.'
+      );
+      return;
+    }
 
     const profile =
       state.profiles.get(userId) ||
@@ -5794,6 +5895,15 @@
   async function connectToUser(userId) {
     if (!userId) return;
 
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'Desbloquea a este usuario para poder conectar.'
+      );
+      return;
+    }
+
     const profile =
       state.profiles.get(userId);
 
@@ -5828,6 +5938,14 @@
       new Map();
 
     (data || []).forEach(request => {
+      if (
+        state.blockedUsers?.has(
+          request.requester_id
+        )
+      ) {
+        return;
+      }
+
       state.incomingRequests.set(
         request.id,
         { request }
@@ -6268,6 +6386,16 @@
     const item = savedDescriptor(target);
     if (!item || !state.user) return;
 
+    if (
+      item.item_type === 'person' &&
+      state.blockedUsers?.has(item.item_id)
+    ) {
+      notify(
+        'No puedes guardar a un usuario bloqueado.'
+      );
+      return;
+    }
+
     const wasSaved = target.classList.contains('saved');
     let result;
 
@@ -6481,19 +6609,569 @@
   }
 
 
+  async function loadUserBlocks() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', state.user.id);
+
+    if (error) {
+      console.error('Rooms: error cargando bloqueos', error);
+      state.blockedUsers = new Set();
+      return;
+    }
+
+    state.blockedUsers =
+      new Set(
+        (data || []).map(item => item.blocked_id)
+      );
+
+    updateBlockedUsersCount();
+  }
+
+
+  function updateBlockedUsersCount() {
+    const count =
+      state.blockedUsers?.size || 0;
+
+    const label =
+      document.querySelector(
+        '#blockedUsersCount'
+      );
+
+    if (!label) return;
+
+    label.textContent =
+      `${count} ${
+        count === 1
+          ? 'persona'
+          : 'personas'
+      }`;
+  }
+
+
+  function ensureBlockedUsersModal() {
+    let modal =
+      document.querySelector(
+        '#blockedUsersModal'
+      );
+
+    if (modal) return modal;
+
+    modal =
+      document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'blockedUsersModal';
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-blocked-users
+      ></div>
+
+      <article class="blocked-users-shell">
+
+        <button
+          type="button"
+          class="blocked-users-close"
+          data-close-blocked-users
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <header class="blocked-users-header">
+          <small>SEGURIDAD</small>
+          <h2>Usuarios bloqueados</h2>
+          <p>
+            Estas personas no pueden conectar
+            ni enviarte mensajes mientras estén
+            bloqueadas.
+          </p>
+        </header>
+
+        <div
+          id="blockedUsersList"
+          class="blocked-users-list"
+        ></div>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+
+  async function openBlockedUsersManager() {
+    if (!state.user) return;
+
+    const modal =
+      ensureBlockedUsersModal();
+
+    const list =
+      modal.querySelector(
+        '#blockedUsersList'
+      );
+
+    list.innerHTML = `
+      <div class="blocked-users-loading">
+        Cargando...
+      </div>
+    `;
+
+    showModal(modal);
+
+    const { data, error } =
+      await db.rpc(
+        'get_blocked_profiles'
+      );
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando usuarios bloqueados',
+        error
+      );
+
+      list.innerHTML = `
+        <div class="real-empty-state">
+          <b>No hemos podido cargar esta lista</b>
+          <p>Inténtalo de nuevo.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const users = data || [];
+
+    if (!users.length) {
+      list.innerHTML = `
+        <div class="real-empty-state">
+          <b>No tienes usuarios bloqueados</b>
+          <p>
+            Las personas que bloquees
+            aparecerán aquí.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    list.innerHTML =
+      users.map(user => {
+        const name =
+          user.alias ||
+          user.name ||
+          'Usuario de Rooms';
+
+        return `
+          <article class="blocked-user-row">
+
+            <div class="blocked-user-avatar">
+              ${
+                user.avatar_url
+                  ? `
+                    <img
+                      src="${escapeHtml(user.avatar_url)}"
+                      alt="${escapeHtml(name)}"
+                    >
+                  `
+                  : `
+                    <span>
+                      ${escapeHtml(initials(name))}
+                    </span>
+                  `
+              }
+            </div>
+
+            <div class="blocked-user-info">
+              <b>${escapeHtml(name)}</b>
+              <small>Usuario bloqueado</small>
+            </div>
+
+            <button
+              type="button"
+              class="blocked-user-unblock"
+              data-unblock-user="${user.id}"
+              data-unblock-name="${escapeHtml(name)}"
+            >
+              Desbloquear
+            </button>
+
+          </article>
+        `;
+      }).join('');
+  }
+
+
+  function openRealBlock(target) {
+    if (!state.user || !target) return;
+
+    const userId =
+      target.dataset.realBlockUser;
+
+    const name =
+      target.dataset.realBlockName ||
+      'este usuario';
+
+    if (!userId || userId === state.user.id) return;
+
+    /*
+     * Si ya está bloqueado, desbloqueamos directamente
+     * desde la misma acción.
+     */
+    if (state.blockedUsers?.has(userId)) {
+      unblockRealUser(userId, name);
+      return;
+    }
+
+    state.blockTarget = {
+      id: userId,
+      name
+    };
+
+    const modal =
+      document.querySelector('#blockModal');
+
+    if (!modal) return;
+
+    const title =
+      modal.querySelector('h2');
+
+    if (title) {
+      title.textContent =
+        `¿Bloquear a ${name}?`;
+    }
+
+    showModal(modal);
+  }
+
+
+  async function removeConnectionWithUser(userId) {
+    if (!state.user || !userId) {
+      return { ok: false };
+    }
+
+    const { error } =
+      await db
+        .from('connections')
+        .delete()
+        .or(
+          `and(requester_id.eq.${state.user.id},recipient_id.eq.${userId}),and(requester_id.eq.${userId},recipient_id.eq.${state.user.id})`
+        );
+
+    if (error) {
+      console.error(
+        'Rooms: error eliminando conexión al bloquear',
+        error
+      );
+
+      return {
+        ok: false,
+        error
+      };
+    }
+
+    state.connectionsByUser.delete(
+      String(userId)
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      state.connection = null;
+    }
+
+    for (
+      const [requestId, entry]
+      of state.incomingRequests
+    ) {
+      const requesterId =
+        entry?.request?.requester_id;
+
+      if (requesterId === userId) {
+        state.incomingRequests.delete(
+          requestId
+        );
+      }
+    }
+
+    updateConnectButtons();
+
+    return {
+      ok: true
+    };
+  }
+
+
+  async function removeBlockedUserFromSavedAndGroups(userId) {
+    if (!state.user || !userId) {
+      return { ok: false };
+    }
+
+    const [
+      savedResult,
+      groupResult
+    ] = await Promise.all([
+      db
+        .from('saved_items')
+        .delete()
+        .match({
+          user_id: state.user.id,
+          item_type: 'person',
+          item_id: userId
+        }),
+
+      db
+        .from('household_person_candidates')
+        .delete()
+        .eq('user_id', userId)
+        .eq('added_by', state.user.id)
+    ]);
+
+    if (savedResult.error) {
+      console.error(
+        'Rooms: error eliminando perfil bloqueado de Guardados',
+        savedResult.error
+      );
+
+      return {
+        ok: false,
+        error: savedResult.error
+      };
+    }
+
+    if (groupResult.error) {
+      console.error(
+        'Rooms: error eliminando perfil bloqueado de grupos',
+        groupResult.error
+      );
+
+      return {
+        ok: false,
+        error: groupResult.error
+      };
+    }
+
+    state.savedItems?.delete(
+      `person:${userId}`
+    );
+
+    await loadSavedItems();
+
+    if (state.household) {
+      await loadHouseholdCandidates();
+    }
+
+    return {
+      ok: true
+    };
+  }
+
+
+  async function confirmRealBlock() {
+    if (!state.user || !state.blockTarget?.id) return;
+
+    const target =
+      state.blockTarget;
+
+    const button =
+      document.querySelector('#confirmBlock');
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Bloqueando…';
+    }
+
+    const { error } =
+      await db
+        .from('user_blocks')
+        .insert({
+          blocker_id: state.user.id,
+          blocked_id: target.id
+        });
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Bloquear usuario';
+    }
+
+    if (error) {
+      console.error(
+        'Rooms: error bloqueando usuario',
+        error
+      );
+
+      notify(
+        'No hemos podido bloquear al usuario.'
+      );
+
+      return;
+    }
+
+    const connectionResult =
+      await removeConnectionWithUser(
+        target.id
+      );
+
+    if (!connectionResult.ok) {
+      /*
+       * Si no podemos cortar la relación existente,
+       * revertimos el bloqueo para no dejar un estado
+       * inconsistente.
+       */
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', target.id);
+
+      if (button) {
+        button.disabled = false;
+      }
+
+      notify(
+        'No hemos podido completar el bloqueo.'
+      );
+
+      return;
+    }
+
+    const cleanupResult =
+      await removeBlockedUserFromSavedAndGroups(
+        target.id
+      );
+
+    if (!cleanupResult.ok) {
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', target.id);
+
+      notify(
+        'No hemos podido completar el bloqueo.'
+      );
+
+      return;
+    }
+
+    state.blockedUsers.add(target.id);
+    state.blockTarget = null;
+
+    updateConnectButtons();
+
+    await loadRealInbox();
+    await loadRealNotifications();
+
+    hideAllModals();
+
+    notify(
+      'Usuario bloqueado.'
+    );
+  }
+
+
+  async function unblockRealUser(userId, name) {
+    if (!state.user || !userId) return;
+
+    const confirmed =
+      window.confirm(
+        `¿Desbloquear a ${name || 'este usuario'}?`
+      );
+
+    if (!confirmed) return;
+
+    const { error } =
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', userId);
+
+    if (error) {
+      console.error(
+        'Rooms: error desbloqueando usuario',
+        error
+      );
+
+      notify(
+        'No hemos podido desbloquear al usuario.'
+      );
+
+      return;
+    }
+
+    state.blockedUsers.delete(userId);
+
+    updateBlockedUsersCount();
+
+    if (
+      document.querySelector(
+        '#blockedUsersModal'
+      )?.getAttribute('aria-hidden') === 'false'
+    ) {
+      await openBlockedUsersManager();
+    }
+
+    notify(
+      'Usuario desbloqueado.'
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      openRealUser(state.targetProfile);
+    }
+  }
+
+
   async function loadRealNotifications() {
     if (!state.user) return;
     const [{ data: connections }, { data: messages }] = await Promise.all([
       db.from('connections').select('*').or(`requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`).order('created_at', { ascending: false }),
       db.from('messages').select('*').eq('recipient_id', state.user.id).is('read_at', null).order('created_at', { ascending: false }).limit(20)
     ]);
-    const relevantConnections = (connections || []).filter(item =>
-      (item.recipient_id === state.user.id && item.status === 'pending') ||
-      (item.requester_id === state.user.id && item.status === 'accepted')
+    state.incomingRequests = new Map();
+
+    const relevantConnections = (connections || []).filter(item => {
+      const otherId =
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id;
+
+      if (state.blockedUsers?.has(otherId)) {
+        return false;
+      }
+
+      return (
+        (item.recipient_id === state.user.id && item.status === 'pending') ||
+        (item.requester_id === state.user.id && item.status === 'accepted')
+      );
+    });
+
+    const visibleMessages = (messages || []).filter(message =>
+      !state.blockedUsers?.has(message.sender_id)
     );
+
     const ids = [
-      ...relevantConnections.map(item => item.requester_id === state.user.id ? item.recipient_id : item.requester_id),
-      ...(messages || []).map(item => item.sender_id)
+      ...relevantConnections.map(item =>
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id
+      ),
+      ...visibleMessages.map(item => item.sender_id)
     ];
     const profiles = await fetchProfiles(ids);
     const items = [];
@@ -6517,7 +7195,7 @@
     });
 
     const seenSenders = new Set();
-    (messages || []).forEach(message => {
+    visibleMessages.forEach(message => {
       if (seenSenders.has(message.sender_id)) return;
       seenSenders.add(message.sender_id);
       const profile = profiles.get(message.sender_id);
@@ -6547,15 +7225,34 @@
       .or(`requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .eq('status', 'accepted')
       .order('updated_at', { ascending: false });
-    const otherIds = (connections || []).map(item => item.requester_id === state.user.id ? item.recipient_id : item.requester_id);
+    const otherIds = (connections || [])
+      .map(item =>
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id
+      )
+      .filter(id =>
+        !state.blockedUsers?.has(id)
+      );
+
     const profiles = await fetchProfiles(otherIds);
     const { data: messages } = await db.from('messages').select('*')
       .or(`sender_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .order('created_at', { ascending: false });
     const latestByUser = new Map();
     (messages || []).forEach(message => {
-      const otherId = message.sender_id === state.user.id ? message.recipient_id : message.sender_id;
-      if (!latestByUser.has(otherId)) latestByUser.set(otherId, message);
+      const otherId =
+        message.sender_id === state.user.id
+          ? message.recipient_id
+          : message.sender_id;
+
+      if (state.blockedUsers?.has(otherId)) {
+        return;
+      }
+
+      if (!latestByUser.has(otherId)) {
+        latestByUser.set(otherId, message);
+      }
     });
     const list = document.querySelector('#chatInboxModal .conversation-list');
     if (!list) return;
@@ -7417,6 +8114,19 @@
             >
               Reportar perfil
             </button>
+
+            <button
+              type="button"
+              class="real-report-button real-block-button"
+              data-real-block-user="${escapeHtml(profile.id)}"
+              data-real-block-name="${escapeHtml(name)}"
+            >
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'Desbloquear usuario'
+                  : 'Bloquear usuario'
+              }
+            </button>
           </div>
 
           <div class="real-user-profile-eyebrow">
@@ -7516,32 +8226,51 @@
 
             <button
               type="button"
-              class="real-user-connect"
+              class="real-user-connect ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'connection-blocked'
+                  : ''
+              }"
               data-connect
               data-user-id="${profile.id}"
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'disabled'
+                  : ''
+              }
             >
-              ${escapeHtml(
-                connectionButtonLabel(profile.id)
-              )}
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'Bloqueado'
+                  : escapeHtml(
+                      connectionButtonLabel(profile.id)
+                    )
+              }
             </button>
 
-            <button
-              type="button"
-              class="real-user-group"
-              data-send-person-home="${profile.id}"
-            >
-              + Añadir a grupo
-            </button>
+            ${
+              !state.blockedUsers?.has(profile.id)
+                ? `
+                  <button
+                    type="button"
+                    class="real-user-group"
+                    data-send-person-home="${profile.id}"
+                  >
+                    + Añadir a grupo
+                  </button>
 
-            <button
-              type="button"
-              class="real-user-save ${saved ? 'saved' : ''}"
-              data-person-save
-              data-save-kind="person"
-              data-save-id="${profile.id}"
-            >
-              ${saved ? '♥ Guardado' : '♡ Guardar'}
-            </button>
+                  <button
+                    type="button"
+                    class="real-user-save ${saved ? 'saved' : ''}"
+                    data-person-save
+                    data-save-kind="person"
+                    data-save-id="${profile.id}"
+                  >
+                    ${saved ? '♥ Guardado' : '♡ Guardar'}
+                  </button>
+                `
+                : ''
+            }
 
           </div>
 
@@ -7568,6 +8297,15 @@
 
   async function openRealConversation(profile) {
     if (!profile || !state.user) return;
+
+    if (
+      state.blockedUsers?.has(profile.id)
+    ) {
+      notify(
+        'Has bloqueado a este usuario.'
+      );
+      return;
+    }
 
     const connection =
       getConnectionForUser(profile.id) ||
@@ -7804,6 +8542,17 @@
       return;
     }
 
+    if (
+      state.blockedUsers?.has(
+        state.chatTarget.id
+      )
+    ) {
+      notify(
+        'Has bloqueado a este usuario.'
+      );
+      return;
+    }
+
     const connection =
       getConnectionForUser(
         state.chatTarget.id
@@ -7924,6 +8673,80 @@
 
 
   document.addEventListener('click', event => {
+    const blockedUsersButton =
+      event.target.closest('#blockedUsers');
+
+    if (blockedUsersButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openBlockedUsersManager();
+      return;
+    }
+
+    const closeBlockedUsers =
+      event.target.closest(
+        '[data-close-blocked-users]'
+      );
+
+    if (closeBlockedUsers) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#blockedUsersModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+      return;
+    }
+
+    const unblockUser =
+      event.target.closest(
+        '[data-unblock-user]'
+      );
+
+    if (unblockUser) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      unblockRealUser(
+        unblockUser.dataset.unblockUser,
+        unblockUser.dataset.unblockName
+      );
+
+      return;
+    }
+
+    const realBlock =
+      event.target.closest('[data-real-block-user]');
+
+    if (realBlock) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openRealBlock(realBlock);
+      return;
+    }
+
+    const confirmBlock =
+      event.target.closest('#confirmBlock');
+
+    if (confirmBlock) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      confirmRealBlock();
+      return;
+    }
+
     const realReport =
       event.target.closest('[data-real-report]');
 
@@ -11832,6 +12655,15 @@
       !householdId ||
       !userId
     ) {
+      return false;
+    }
+
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'No puedes añadir a un usuario bloqueado.'
+      );
       return false;
     }
 
