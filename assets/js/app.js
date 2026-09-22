@@ -51,7 +51,33 @@ document.querySelector('#onboardingZoneSearch').addEventListener('input',event=>
 onboardingBack.addEventListener('click',()=>showOnboardingStep(onboardingStep-1));
 document.querySelector('#onboardingLater').addEventListener('click',()=>showOnboardingStep(10));
 function completeLightVerification(){lightVerificationComplete=true;['phone','photo'].forEach(name=>{const item=document.querySelector(`[data-verification="${name}"]`);item.classList.add('verified');item.querySelector('.verification-icon').textContent='✓';item.querySelector('em').textContent='LISTO'});document.querySelector('#verifiedProfile').hidden=false;onboardingContinue.innerHTML='Continuar <span aria-hidden="true">→</span>'}
-function openPersonalizedFeed(){onboarding.classList.add('leaving');setTimeout(()=>{onboarding.hidden=true;document.querySelectorAll('.app-shell').forEach(el=>el.hidden=false);document.body.classList.add('app-visible');window.scrollTo(0,0)},260)}
+function openPersonalizedFeed(
+  view='home',
+  {animate=true}={}
+){
+  const revealApp=()=>{
+    onboarding.hidden=true;
+    onboarding.classList.remove('leaving');
+
+    document
+      .querySelectorAll('.app-shell')
+      .forEach(el=>{
+        el.hidden=false;
+      });
+
+    document.body.classList.add('app-visible');
+
+    showMainView(view);
+  };
+
+  if(animate){
+    onboarding.classList.add('leaving');
+    setTimeout(revealApp,260);
+    return;
+  }
+
+  revealApp();
+}
 onboardingContinue.addEventListener('click',()=>{if(onboardingStep===9&&!lightVerificationComplete){completeLightVerification();return}if(onboardingStep<10){showOnboardingStep(onboardingStep+1);return}openPersonalizedFeed()});
 renderOnboardingZones();
 renderLivingCategories();
@@ -116,7 +142,58 @@ document.querySelector('#publishFlowBack').addEventListener('click',()=>{if(publ
 document.querySelector('#publishFlowContinue').addEventListener('click',()=>{const flow=publishFlows[publishType];if(publishStep<flow.steps.length-1){publishStep++;renderPublishFlow();return}closeAll();ping(publishType==='external'?'Piso compartido con tu Hogar':publishType==='post'?'Publicación creada':'Publicado en Rooms')});
 document.querySelector('#savePublishDraft').addEventListener('click',()=>{closeAll();ping('Borrador guardado · Puedes continuar después')});
 document.querySelector('#publishFlowContent').addEventListener('click',event=>{const button=event.target.closest('[data-selectable]');if(!button)return;const exclusive=button.closest('.flow-choice,.post-types');if(exclusive)exclusive.querySelectorAll('[data-selectable]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));else button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'))});
-function showMainView(view){const views={home:feedMain,explore:exploreView,communities:communitiesView,household:householdView,profile:ownProfileView,saved:savedView,settings:settingsView,trust:trustView};Object.values(views).forEach(item=>item.hidden=true);communityView.hidden=true;if(views[view])views[view].hidden=false;document.querySelectorAll('[data-bottom-nav]').forEach(item=>{const activeView=view==='household'?'communities':['saved','settings','trust'].includes(view)?'profile':view;item.classList.toggle('active',item.dataset.bottomNav===activeView)});window.scrollTo({top:0,behavior:'smooth'})}
+function showMainView(view){
+  const views={
+    home:feedMain,
+    explore:exploreView,
+    communities:communitiesView,
+    household:householdView,
+    profile:ownProfileView,
+    saved:savedView,
+    settings:settingsView,
+    trust:trustView
+  };
+
+  if(!views[view])return;
+
+  Object.values(views).forEach(item=>{
+    item.hidden=true;
+  });
+
+  communityView.hidden=true;
+  views[view].hidden=false;
+
+  try{
+    sessionStorage.setItem(
+      'rooms:last-main-view',
+      view
+    );
+  }catch(error){
+    console.warn(
+      'Rooms: no se pudo guardar la vista actual.',
+      error
+    );
+  }
+
+  document.querySelectorAll('[data-bottom-nav]').forEach(item=>{
+    const activeView=
+      view==='household'
+        ?'communities'
+        :['saved','settings','trust'].includes(view)
+          ?'profile'
+          :view;
+
+    item.classList.toggle(
+      'active',
+      item.dataset.bottomNav===activeView
+    );
+  });
+
+  window.scrollTo({
+    top:0,
+    behavior:'smooth'
+  });
+}
 function openCommunity(){closeAll();[feedMain,exploreView,householdView,ownProfileView,savedView,settingsView,trustView].forEach(item=>item.hidden=true);communityView.hidden=false;document.querySelectorAll('[data-bottom-nav]').forEach(item=>item.classList.remove('active'));window.scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('[data-bottom-nav]').forEach(button=>button.addEventListener('click',()=>{const view=button.dataset.bottomNav;if(['home','explore','communities','profile'].includes(view)){showMainView(view);return}ping(`${button.textContent.trim()} estará disponible muy pronto`)}));
 function showHouseholdTab(name){document.querySelectorAll('[data-household-tab]').forEach(item=>item.classList.toggle('active',item.dataset.householdTab===name));document.querySelectorAll('[data-household-panel]').forEach(panel=>{const active=panel.dataset.householdPanel===name;panel.hidden=!active;panel.classList.toggle('active',active)})}

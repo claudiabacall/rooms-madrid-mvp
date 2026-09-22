@@ -12690,3 +12690,17 @@
   }
 }
 
+
+/* =========================================================
+   SESSION BOOT
+   Evita flashes de login/onboarding mientras Supabase
+   resuelve si existe una sesión persistida.
+   ========================================================= */
+
+body.rooms-booting #onboarding,
+body.rooms-booting .app-shell,
+body.rooms-booting .auth-gate,
+body.rooms-booting main {
+  visibility: hidden !important;
+}
+

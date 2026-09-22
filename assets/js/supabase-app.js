@@ -64,10 +64,13 @@
     document.body.style.overflow = '';
   }
 
+  let manualAuthNavigationPending = false;
+
   function injectAuthGate() {
     const gate = document.createElement('section');
     gate.className = 'auth-gate';
     gate.id = 'authGate';
+    gate.hidden = true;
     gate.innerHTML = `
       <article class="auth-panel">
         <span class="auth-brand">rooms<span>.</span></span>
@@ -116,16 +119,22 @@
       message.className = 'auth-message';
       message.textContent = mode === 'signup' ? 'Creando tu cuenta…' : 'Entrando…';
 
+      manualAuthNavigationPending = true;
+
       const result = mode === 'signup'
         ? await db.auth.signUp({ email, password, options: { data: { name, alias: name } } })
         : await db.auth.signInWithPassword({ email, password });
 
       submit.disabled = false;
+
       if (result.error) {
+        manualAuthNavigationPending = false;
         message.textContent = translateAuthError(result.error.message);
         return;
       }
+
       if (mode === 'signup' && !result.data.session) {
+        manualAuthNavigationPending = false;
         message.className = 'auth-message success';
         message.textContent = 'Cuenta creada. Revisa tu email y confirma el enlace para entrar.';
         return;
@@ -144,7 +153,10 @@
     return 'No hemos podido completar el acceso. Inténtalo de nuevo.';
   }
 
-  async function startSession(session) {
+  async function startSession(
+    session,
+    { forceHome = false } = {}
+  ) {
     state.user = session.user;
 
     const authGate =
@@ -163,20 +175,60 @@
     await loadConversationPreferences();
 
     /*
-      Una cuenta ya configurada siempre entra desde Home.
-      Lo hacemos mientras el login sigue cubriendo la app
-      para que nunca aparezca fugazmente la última subvista.
+      Una cuenta con onboarding completado nunca debe
+      volver a mostrar el onboarding al restaurar sesión.
+
+      - Login manual: Home.
+      - Refresh/restauración: última vista válida.
+      - Sin vista guardada: Home.
     */
     if (profile?.onboarding_completed) {
-      if (typeof window.showMainView === 'function') {
-        window.showMainView('home');
+      const allowedViews = new Set([
+        'home',
+        'explore',
+        'communities',
+        'household',
+        'profile',
+        'saved',
+        'settings',
+        'trust'
+      ]);
+
+      let restoredView = 'home';
+
+      if (!forceHome) {
+        try {
+          const savedView =
+            sessionStorage.getItem(
+              'rooms:last-main-view'
+            );
+
+          if (allowedViews.has(savedView)) {
+            restoredView = savedView;
+          }
+        } catch (error) {
+          console.warn(
+            'Rooms: no se pudo restaurar la vista anterior.',
+            error
+          );
+        }
       }
 
       if (
-        !document.body.classList.contains('app-visible') &&
-        typeof window.openPersonalizedFeed === 'function'
+        typeof window.openPersonalizedFeed ===
+        'function'
       ) {
-        window.openPersonalizedFeed();
+        window.openPersonalizedFeed(
+          forceHome ? 'home' : restoredView,
+          { animate: false }
+        );
+      } else if (
+        typeof window.showMainView ===
+        'function'
+      ) {
+        window.showMainView(
+          forceHome ? 'home' : restoredView
+        );
       }
     }
 
@@ -184,14 +236,22 @@
       authGate.hidden = true;
     }
 
-    await loadOtherProfile();
-    await loadRealContent();
-    await Promise.all([
-      loadSavedItems(),
-      loadSavedCollections(),
-      loadRealNotifications(),
-      loadRealInbox()
-    ]);
+    try {
+      await loadOtherProfile();
+      await loadRealContent();
+
+      await Promise.all([
+        loadSavedItems(),
+        loadSavedCollections(),
+        loadRealNotifications(),
+        loadRealInbox()
+      ]);
+    } finally {
+      document.body.classList.remove(
+        'rooms-booting'
+      );
+    }
+
     subscribeToMessages();
     showLiveStatus();
   }
@@ -297,6 +357,17 @@
       La próxima autenticación debe arrancar desde Home,
       no desde la última subvista que quedó abierta.
     */
+    try {
+      sessionStorage.removeItem(
+        'rooms:last-main-view'
+      );
+    } catch (error) {
+      console.warn(
+        'Rooms: no se pudo limpiar la vista anterior.',
+        error
+      );
+    }
+
     document.body.classList.remove('app-visible');
 
     const authGate =
@@ -305,6 +376,10 @@
     if (authGate) {
       authGate.hidden = false;
     }
+
+    document.body.classList.remove(
+      'rooms-booting'
+    );
   }
 
   function updateOwnProfile(profile, preferences = state.preferences) {
@@ -11145,12 +11220,39 @@
   injectAuthGate();
 
   db.auth.onAuthStateChange((event, session) => {
-    if (session) startSession(session);
-    else if (event === 'SIGNED_OUT') endSession();
+    if (session) {
+      const forceHome =
+        event === 'SIGNED_IN' &&
+        manualAuthNavigationPending;
+
+      manualAuthNavigationPending = false;
+
+      startSession(session, { forceHome });
+    } else if (event === 'SIGNED_OUT') {
+      manualAuthNavigationPending = false;
+      endSession();
+    }
   });
 
   db.auth.getSession().then(({ data }) => {
-    if (data.session) startSession(data.session);
+    if (data.session) {
+      startSession(data.session, {
+        forceHome: false
+      });
+
+      return;
+    }
+
+    const authGate =
+      document.querySelector('#authGate');
+
+    if (authGate) {
+      authGate.hidden = false;
+    }
+
+    document.body.classList.remove(
+      'rooms-booting'
+    );
   });
   function ensureProfileEditorModal() {
     let modal = document.querySelector('#profileEditorModal');
