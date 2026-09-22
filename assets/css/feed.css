@@ -12704,3 +12704,825 @@ body.rooms-booting main {
   visibility: hidden !important;
 }
 
+
+/* =========================================
+   ROOMS — REAL EXPLORE MAP / LEAFLET
+   ========================================= */
+
+.real-map-layout{
+  position:relative;
+  display:block;
+  min-height:610px;
+  overflow:hidden;
+  border:1px solid var(--ink);
+  background:#e9e9e4;
+}
+
+.rooms-leaflet-map{
+  width:100%;
+  height:610px;
+  background:#e9e9e4;
+  overflow:hidden;
+  z-index:1;
+}
+
+.rooms-leaflet-map .leaflet-control-zoom{
+  border:1px solid var(--ink);
+  border-radius:0;
+  box-shadow:none;
+}
+
+.rooms-leaflet-map .leaflet-control-zoom a{
+  color:var(--ink);
+  border-radius:0 !important;
+  font-family:'DM Sans',sans-serif;
+}
+
+.rooms-leaflet-map .leaflet-control-attribution{
+  font-family:'DM Sans',sans-serif;
+  font-size:9px;
+}
+
+.rooms-map-price-marker{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  background:transparent;
+  border:0;
+}
+
+.rooms-map-price-marker span{
+  display:block;
+  white-space:nowrap;
+  transform:translate(-50%,-50%);
+  padding:7px 11px;
+  border:1px solid var(--ink);
+  border-radius:999px;
+  background:var(--white);
+  color:var(--ink);
+  box-shadow:0 2px 8px rgba(0,0,0,.16);
+  font:800 12px 'DM Sans',sans-serif;
+  cursor:pointer;
+  transition:
+    transform .15s ease,
+    background .15s ease,
+    box-shadow .15s ease;
+}
+
+.rooms-map-price-marker:hover span{
+  transform:translate(-50%,-50%) scale(1.04);
+  box-shadow:0 4px 12px rgba(0,0,0,.18);
+}
+
+.rooms-map-price-marker.active span{
+  background:var(--acid);
+  box-shadow:0 0 0 2px var(--ink);
+}
+
+.real-map-card{
+  position:absolute;
+  left:18px;
+  bottom:18px;
+  top:auto;
+  z-index:500;
+  width:min(360px,calc(100% - 36px));
+  display:grid;
+  grid-template-columns:132px minmax(0,1fr);
+  background:var(--white);
+  border:1px solid var(--ink);
+  box-shadow:0 10px 32px rgba(0,0,0,.18);
+}
+
+.real-map-card-media{
+  min-height:140px;
+}
+
+.real-map-card-copy{
+  padding:16px;
+}
+
+@media(max-width:620px){
+  .real-map-layout{
+    min-height:calc(100dvh - 210px);
+  }
+
+  .rooms-leaflet-map{
+    height:calc(100dvh - 210px);
+    min-height:500px;
+    max-height:720px;
+  }
+
+  .real-map-card{
+    position:absolute;
+    left:10px;
+    right:10px;
+    bottom:10px;
+    width:auto;
+    grid-template-columns:105px minmax(0,1fr);
+    max-height:160px;
+    overflow:auto;
+  }
+
+  .real-map-card-media{
+    min-height:115px;
+  }
+
+  .real-map-card-copy{
+    padding:12px;
+  }
+
+  .rooms-leaflet-map .leaflet-control-attribution{
+    max-width:70%;
+    white-space:normal;
+    line-height:1.2;
+  }
+}
+
+/* =========================================================
+   EXPLORE MAP — VISUAL POLISH
+   Punto 1: composición y card flotante
+   ========================================================= */
+
+.real-map-layout{
+  position:relative;
+  display:block;
+  width:100%;
+  min-height:610px;
+  overflow:hidden;
+  border:1px solid var(--ink);
+  background:#e9e9e4;
+}
+
+.rooms-leaflet-map{
+  width:100%;
+  height:610px;
+}
+
+/* Card flotante: fuera del menú inferior */
+.real-map-card{
+  position:absolute !important;
+  top:16px !important;
+  left:16px !important;
+  right:auto !important;
+  bottom:auto !important;
+
+  z-index:500;
+
+  width:310px !important;
+  min-height:118px;
+
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr);
+
+  background:rgba(255,255,255,.97);
+  border:1px solid var(--ink);
+  box-shadow:0 8px 24px rgba(0,0,0,.14);
+
+  overflow:hidden;
+}
+
+/* Imagen más proporcionada */
+.real-map-card-media{
+  min-height:118px;
+  height:100%;
+}
+
+.real-map-card-media img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* Contenido más compacto */
+.real-map-card-copy{
+  padding:13px 14px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+
+.real-map-card-copy small{
+  margin:0 0 4px;
+  font-size:8px;
+  letter-spacing:.7px;
+}
+
+.real-map-card-copy h2{
+  margin:0 0 7px;
+  font-size:17px;
+  line-height:1.1;
+}
+
+.real-map-card-copy p{
+  margin:0;
+  font-size:11px;
+}
+
+.real-map-card-copy p b{
+  font-size:17px;
+}
+
+.real-map-card-copy button{
+  margin-top:auto;
+  padding-top:10px;
+  font-size:10px;
+}
+
+/* Pines un poco menos bastos */
+.rooms-map-price-marker span{
+  padding:7px 10px;
+  border:1px solid var(--ink);
+  box-shadow:0 2px 7px rgba(0,0,0,.15);
+  font-size:11px;
+}
+
+/* Móvil */
+@media(max-width:620px){
+
+  .real-map-layout{
+    min-height:calc(100dvh - 205px);
+  }
+
+  .rooms-leaflet-map{
+    height:calc(100dvh - 205px);
+    min-height:500px;
+  }
+
+  .real-map-card{
+    top:12px !important;
+    left:12px !important;
+    right:12px !important;
+    bottom:auto !important;
+
+    width:auto !important;
+    min-height:104px;
+
+    grid-template-columns:96px minmax(0,1fr);
+  }
+
+  .real-map-card-media{
+    min-height:104px;
+  }
+
+  .real-map-card-copy{
+    padding:11px 12px;
+  }
+
+  .real-map-card-copy h2{
+    font-size:16px;
+  }
+}
+
+
+/* =========================================================
+   EXPLORE MAP — VIEWPORT RESULTS
+   ========================================================= */
+
+.rooms-map-results-count{
+  position:absolute;
+  top:16px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:500;
+
+  padding:8px 13px;
+  border:1px solid var(--ink);
+  border-radius:999px;
+
+  background:rgba(255,255,255,.96);
+  box-shadow:0 3px 12px rgba(0,0,0,.10);
+
+  color:var(--ink);
+  font:700 11px 'DM Sans',sans-serif;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+@media(max-width:620px){
+  .rooms-map-results-count{
+    top:10px;
+    right:10px;
+    left:auto;
+    transform:none;
+    padding:7px 10px;
+    font-size:10px;
+  }
+}
+
+/* =========================================================
+   EXPLORE MAP — DESKTOP MAP + SIDE PROPERTY
+   ========================================================= */
+
+.real-map-layout{
+  position:relative;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 330px !important;
+  gap:14px;
+  min-height:610px;
+  overflow:visible;
+  border:0;
+  background:transparent;
+}
+
+.rooms-leaflet-map{
+  width:100%;
+  height:610px;
+  border:1px solid var(--ink);
+}
+
+/* Contador centrado SOBRE el mapa, no sobre todo el layout */
+.rooms-map-results-count{
+  position:absolute;
+  top:16px;
+  left:calc((100% - 344px) / 2);
+  transform:translateX(-50%);
+  z-index:500;
+
+  padding:8px 14px;
+  border:1px solid var(--ink);
+  border-radius:999px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 3px 12px rgba(0,0,0,.10);
+
+  color:var(--ink);
+  font:700 11px 'DM Sans',sans-serif;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* Card seleccionada a la derecha */
+.real-map-card{
+  position:relative !important;
+  top:auto !important;
+  left:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+
+  width:100% !important;
+  min-height:0;
+
+  display:block;
+  align-self:start;
+
+  background:var(--white);
+  border:1px solid var(--ink);
+  box-shadow:none;
+  overflow:hidden;
+}
+
+.real-map-card-media{
+  width:100%;
+  height:210px;
+  min-height:0;
+}
+
+.real-map-card-media img{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+}
+
+.real-map-card-placeholder{
+  height:210px;
+  min-height:0;
+}
+
+.real-map-card-copy{
+  min-height:190px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+
+.real-map-card-copy small{
+  margin-bottom:6px;
+}
+
+.real-map-card-copy h2{
+  margin:0 0 10px;
+  font-size:22px;
+}
+
+.real-map-card-copy p{
+  margin:0;
+}
+
+.real-map-card-copy p b{
+  font-size:22px;
+}
+
+.real-map-card-copy button{
+  margin-top:auto;
+  padding-top:22px;
+  font-size:12px;
+}
+
+/* Mobile: mapa completo + ficha dentro del mapa */
+@media(max-width:700px){
+
+  .real-map-layout{
+    display:block !important;
+    min-height:calc(100dvh - 205px);
+    overflow:hidden;
+    border:1px solid var(--ink);
+  }
+
+  .rooms-leaflet-map{
+    height:calc(100dvh - 205px);
+    min-height:500px;
+    border:0;
+  }
+
+  .rooms-map-results-count{
+    top:10px;
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    max-width:calc(100% - 120px);
+  }
+
+  .real-map-card{
+    position:absolute !important;
+    left:10px !important;
+    right:10px !important;
+    bottom:10px !important;
+    top:auto !important;
+
+    width:auto !important;
+
+    display:grid;
+    grid-template-columns:105px minmax(0,1fr);
+
+    z-index:500;
+    box-shadow:0 8px 24px rgba(0,0,0,.16);
+  }
+
+  .real-map-card-media{
+    height:auto;
+    min-height:115px;
+  }
+
+  .real-map-card-placeholder{
+    height:100%;
+    min-height:115px;
+  }
+
+  .real-map-card-copy{
+    min-height:115px;
+    padding:12px;
+  }
+
+  .real-map-card-copy h2{
+    font-size:16px;
+  }
+
+  .real-map-card-copy p b{
+    font-size:17px;
+  }
+
+  .real-map-card-copy button{
+    padding-top:10px;
+  }
+}
+
+/* =========================================================
+   EXPLORE MAP — RESPONSIVE DESKTOP COMPOSITION
+   ========================================================= */
+
+/* Aprovechar mejor el ancho disponible en Explore */
+.explore-main{
+  width:min(1380px, calc(100% - 48px));
+  max-width:none;
+}
+
+/* Layout principal mapa + ficha */
+.real-map-layout{
+  width:100%;
+  display:grid !important;
+  grid-template-columns:minmax(0, 2.15fr) minmax(300px, .85fr) !important;
+  gap:16px;
+  align-items:stretch;
+}
+
+/* Mapa */
+.rooms-leaflet-map{
+  width:100%;
+  height:clamp(560px, 68vh, 760px);
+}
+
+/* Card lateral */
+.real-map-card{
+  width:100% !important;
+  height:100%;
+  max-height:clamp(560px, 68vh, 760px);
+  display:flex;
+  flex-direction:column;
+}
+
+.real-map-card-media{
+  width:100%;
+  height:42%;
+  min-height:220px;
+}
+
+.real-map-card-copy{
+  flex:1;
+  min-height:0;
+  padding:22px;
+}
+
+.real-map-card-copy h2{
+  font-size:24px;
+}
+
+.real-map-card-copy p b{
+  font-size:24px;
+}
+
+/* El contador debe centrarse solo sobre la columna del mapa */
+.rooms-map-results-count{
+  left:calc((100% - 346px - 16px) * .5);
+}
+
+/* Que el contenido no quede tapado por la navegación inferior */
+.explore-main{
+  padding-bottom:150px;
+}
+
+/* Pantallas intermedias */
+@media(max-width:1100px){
+
+  .explore-main{
+    width:min(100% - 32px, 1100px);
+  }
+
+  .real-map-layout{
+    grid-template-columns:minmax(0,1.7fr) minmax(280px,.9fr) !important;
+  }
+
+  .rooms-map-results-count{
+    left:calc((100% - 296px - 16px) * .5);
+  }
+}
+
+/* Tablet */
+@media(max-width:850px){
+
+  .real-map-layout{
+    grid-template-columns:minmax(0,1fr) 280px !important;
+  }
+
+  .rooms-leaflet-map{
+    height:560px;
+  }
+
+  .real-map-card{
+    max-height:560px;
+  }
+
+  .real-map-card-media{
+    min-height:180px;
+  }
+
+  .rooms-map-results-count{
+    left:calc((100% - 296px) * .5);
+  }
+}
+
+/* Mobile */
+@media(max-width:700px){
+
+  .explore-main{
+    width:100%;
+    padding-left:14px;
+    padding-right:14px;
+    padding-bottom:105px;
+  }
+
+  .real-map-layout{
+    display:block !important;
+    width:100%;
+  }
+
+  .rooms-leaflet-map{
+    height:calc(100dvh - 230px);
+    min-height:500px;
+    max-height:none;
+  }
+
+  .rooms-map-results-count{
+    left:50%;
+    transform:translateX(-50%);
+  }
+
+  .real-map-card{
+    height:auto;
+    max-height:none;
+  }
+}
+
+
+/* =========================================================
+   EXPLORE MAP — PROPERTY CARD DETAILS
+   ========================================================= */
+
+.real-map-card-price{
+  display:flex;
+  align-items:baseline;
+  gap:4px;
+  margin:0;
+}
+
+.real-map-card-price b{
+  font-size:24px;
+  line-height:1;
+}
+
+.real-map-card-price span{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.real-map-card-specs{
+  margin:18px 0 0 !important;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+  font-size:12px !important;
+  font-weight:700;
+  color:var(--ink);
+}
+
+.real-map-card-features{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:14px;
+}
+
+.real-map-card-features span{
+  padding:6px 8px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  font-size:10px;
+  font-weight:700;
+  line-height:1;
+}
+
+.real-map-card-availability{
+  margin:15px 0 0 !important;
+  font-size:11px !important;
+  color:var(--muted);
+}
+
+.real-map-card-copy button{
+  margin-top:auto;
+  padding-top:22px;
+}
+
+/* Mobile */
+@media(max-width:700px){
+
+  .real-map-card-specs{
+    margin-top:9px !important;
+    padding-top:8px;
+    font-size:10px !important;
+  }
+
+  .real-map-card-features{
+    gap:4px;
+    margin-top:7px;
+  }
+
+  .real-map-card-features span{
+    padding:4px 6px;
+    font-size:8px;
+  }
+
+  .real-map-card-features span:nth-child(n+3){
+    display:none;
+  }
+
+  .real-map-card-availability{
+    display:none;
+  }
+
+  .real-map-card-copy button{
+    padding-top:8px;
+  }
+}
+
+/* =========================================================
+   PUBLISH — PRIVATE LISTING LOCATION
+   ========================================================= */
+
+.publish-private-location{
+  margin:14px 0;
+}
+
+.publish-private-location-field{
+  display:grid;
+  gap:7px;
+}
+
+.publish-private-location-field > span{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:12px;
+  font-weight:700;
+}
+
+.publish-private-location-field > span b{
+  color:#829600;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.7px;
+}
+
+.publish-private-location-field input{
+  width:100%;
+  min-height:48px;
+  padding:0 13px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--ink);
+  font:600 13px 'DM Sans',sans-serif;
+  outline:none;
+}
+
+.publish-private-location-field input:focus{
+  border-color:var(--ink);
+}
+
+.publish-private-location-help{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  margin:9px 0 0;
+  padding:11px 12px;
+  background:var(--paper);
+  border-left:3px solid var(--acid);
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+
+.publish-private-location-help > span:first-child{
+  flex:0 0 auto;
+  color:var(--ink);
+  font-size:15px;
+}
+
+.publish-private-location-help b{
+  color:var(--ink);
+}
+
+@media(max-width:620px){
+  .publish-private-location{
+    margin:12px 0;
+  }
+
+  .publish-private-location-field input{
+    min-height:46px;
+    font-size:16px;
+  }
+
+  .publish-private-location-help{
+    padding:10px;
+    font-size:10px;
+  }
+}
+
+.publish-detected-zone{
+  margin:9px 0 0;
+  padding:9px 11px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--ink);
+  font-size:10px;
+  font-weight:700;
+}
+
+@media(max-width:620px){
+  .publish-detected-zone{
+    font-size:10px;
+    padding:9px 10px;
+  }
+}
+
+/* =========================================================
+   ROOMS — FINAL LAYER ORDER
+   contenido < navegación < modales
+   ========================================================= */
+
+.feed-bottom-nav{
+  z-index:1200 !important;
+}
+
+.modal{
+  z-index:2000 !important;
+}
+

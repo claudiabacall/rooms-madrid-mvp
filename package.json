@@ -9,5 +9,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.3",
+    "leaflet": "^1.9.4"
   }
 }

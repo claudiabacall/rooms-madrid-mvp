@@ -4298,6 +4298,29 @@
     const photo = item.photos?.[0] || '';
     const title = item.title || `${item.zone || 'Madrid'} · ${kind}`;
 
+    const specs = [
+      item.rooms ? `${item.rooms} hab` : null,
+      item.baths ? `${item.baths} baño${Number(item.baths) === 1 ? '' : 's'}` : null,
+      item.area ? `${item.area} m²` : null
+    ].filter(Boolean);
+
+    const featureChips = Array.isArray(item.features)
+      ? item.features.filter(Boolean).slice(0, 3)
+      : [];
+
+    let availableLabel = '';
+
+    if (item.available_from) {
+      const date = new Date(`${item.available_from}T12:00:00`);
+
+      if (!Number.isNaN(date.getTime())) {
+        availableLabel = date.toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'short'
+        });
+      }
+    }
+
     return `
       <div class="real-map-card-media">
         ${
@@ -4309,12 +4332,39 @@
 
       <div class="real-map-card-copy">
         <small>${escapeHtml(kind)}</small>
+
         <h2>${escapeHtml(item.zone || 'Madrid')}</h2>
 
-        <p>
+        <p class="real-map-card-price">
           <b>${Number(item.price || 0).toLocaleString('es-ES')} €</b>
-          / mes
+          <span>/ mes</span>
         </p>
+
+        ${
+          specs.length
+            ? `<p class="real-map-card-specs">
+                ${specs.map(escapeHtml).join(' · ')}
+              </p>`
+            : ''
+        }
+
+        ${
+          featureChips.length
+            ? `<div class="real-map-card-features">
+                ${featureChips.map(feature => `
+                  <span>${escapeHtml(feature)}</span>
+                `).join('')}
+              </div>`
+            : ''
+        }
+
+        ${
+          availableLabel
+            ? `<p class="real-map-card-availability">
+                Disponible ${escapeHtml(availableLabel)}
+              </p>`
+            : ''
+        }
 
         <button
           type="button"
@@ -4324,6 +4374,195 @@
         </button>
       </div>
     `;
+  }
+
+  let exploreLeafletMap = null;
+  let exploreLeafletMarkers = new Map();
+
+  function destroyExploreLeafletMap() {
+    if (exploreLeafletMap) {
+      exploreLeafletMap.remove();
+      exploreLeafletMap = null;
+    }
+
+    exploreLeafletMarkers.clear();
+  }
+
+  function initExploreLeafletMap(listings) {
+    const container = document.querySelector('#realExploreMap');
+
+    if (!container || !window.L) return;
+
+    destroyExploreLeafletMap();
+
+    const madridCenter = [40.4168, -3.7038];
+
+    exploreLeafletMap = window.L.map(container, {
+      zoomControl: true,
+      attributionControl: true
+    }).setView(madridCenter, 12);
+
+    window.L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    ).addTo(exploreLeafletMap);
+
+    const validListings = listings.filter(item => {
+      const latitude = Number(item.latitude);
+      const longitude = Number(item.longitude);
+
+      return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180
+      );
+    });
+
+    const bounds = [];
+
+    validListings.forEach((item, index) => {
+      const latitude = Number(item.latitude);
+      const longitude = Number(item.longitude);
+      const price =
+        `${Number(item.price || 0).toLocaleString('es-ES')} €`;
+
+      const icon = window.L.divIcon({
+        className:
+          `rooms-map-price-marker${index === 0 ? ' active' : ''}`,
+        html: `<span>${escapeHtml(price)}</span>`,
+        iconSize: null,
+        iconAnchor: [0, 0]
+      });
+
+      const marker = window.L.marker(
+        [latitude, longitude],
+        {
+          icon,
+          title: item.title || item.zone || 'Vivienda'
+        }
+      ).addTo(exploreLeafletMap);
+
+      marker.on('click', () => {
+        const card = document.querySelector('#realMapCard');
+
+        if (card) {
+          card.innerHTML = renderRealMapCard(item);
+          card.dataset.mapSelected = item.id;
+        }
+
+        document
+          .querySelectorAll('.rooms-map-price-marker')
+          .forEach(element => {
+            element.classList.remove('active');
+          });
+
+        const markerElement = marker.getElement();
+        if (markerElement) {
+          markerElement.classList.add('active');
+        }
+      });
+
+      exploreLeafletMarkers.set(item.id, marker);
+      bounds.push([latitude, longitude]);
+    });
+
+    if (bounds.length > 1) {
+      exploreLeafletMap.fitBounds(bounds, {
+        padding: [55, 55],
+        maxZoom: 14
+      });
+    } else if (bounds.length === 1) {
+      exploreLeafletMap.setView(bounds[0], 14);
+    }
+
+    function updateVisibleMapListings() {
+      if (!exploreLeafletMap) return;
+
+      const mapBounds = exploreLeafletMap.getBounds();
+
+      const visibleListings = validListings.filter(item => {
+        return mapBounds.contains([
+          Number(item.latitude),
+          Number(item.longitude)
+        ]);
+      });
+
+      const count = document.querySelector('#mapVisibleCount');
+
+      if (count) {
+        count.textContent =
+          `${visibleListings.length} ${
+            visibleListings.length === 1
+              ? 'vivienda en esta zona'
+              : 'viviendas en esta zona'
+          }`;
+
+        count.hidden = false;
+      }
+
+      const card = document.querySelector('#realMapCard');
+
+      if (!visibleListings.length) {
+        if (card) {
+          card.hidden = true;
+          card.dataset.mapSelected = '';
+        }
+
+        document
+          .querySelectorAll('.rooms-map-price-marker')
+          .forEach(element => {
+            element.classList.remove('active');
+          });
+
+        return;
+      }
+
+      if (card) {
+        const selectedId = card.dataset.mapSelected;
+
+        const selectedStillVisible = visibleListings.some(
+          item => item.id === selectedId
+        );
+
+        if (!selectedStillVisible) {
+          const next = visibleListings[0];
+
+          card.hidden = false;
+          card.dataset.mapSelected = next.id;
+          card.innerHTML = renderRealMapCard(next);
+
+          document
+            .querySelectorAll('.rooms-map-price-marker')
+            .forEach(element => {
+              element.classList.remove('active');
+            });
+
+          const marker = exploreLeafletMarkers.get(next.id);
+          const markerElement = marker?.getElement();
+
+          if (markerElement) {
+            markerElement.classList.add('active');
+          }
+        } else {
+          card.hidden = false;
+        }
+      }
+    }
+
+    exploreLeafletMap.on('moveend zoomend', updateVisibleMapListings);
+
+    window.setTimeout(() => {
+      if (exploreLeafletMap) {
+        exploreLeafletMap.invalidateSize();
+        updateVisibleMapListings();
+      }
+    }, 80);
   }
 
   function renderRealExplore(listings) {
@@ -4444,18 +4683,7 @@
     }
 
     if (map) {
-      const zonePositions = {
-        'Chamberí': [38, 32],
-        'Moncloa': [25, 42],
-        'Argüelles': [31, 46],
-        'Salamanca': [63, 35],
-        'Retiro': [66, 52],
-        'Centro': [48, 50],
-        'Malasaña': [43, 40],
-        'La Latina': [42, 61],
-        'Lavapiés': [52, 62],
-        'Chamartín': [62, 20]
-      };
+      destroyExploreLeafletMap();
 
       if (!listings.length) {
         map.innerHTML = `
@@ -4466,41 +4694,41 @@
           </section>
         `;
       } else {
-        const first = listings[0];
+        const mappedListings = listings.filter(item => {
+          const latitude = Number(item.latitude);
+          const longitude = Number(item.longitude);
+
+          return (
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude)
+          );
+        });
+
+        const first = mappedListings[0] || listings[0];
 
         map.innerHTML = `
           <div class="real-map-layout">
-            <div class="real-map-canvas">
-              <div class="real-map-grid"></div>
+            <div
+              class="rooms-leaflet-map"
+              id="realExploreMap"
+              aria-label="Mapa de viviendas en Madrid"
+            ></div>
 
-              <span class="real-map-label north">NORTE</span>
-              <span class="real-map-label centro">CENTRO</span>
-              <span class="real-map-label retiro">RETIRO</span>
+            <div class="rooms-map-results-count" id="mapVisibleCount"></div>
 
-              ${listings.map((item, index) => {
-                const position =
-                  zonePositions[item.zone] ||
-                  [35 + ((index * 17) % 40), 28 + ((index * 13) % 45)];
-
-                return `
-                  <button
-                    type="button"
-                    class="real-map-pin ${index === 0 ? 'active' : ''}"
-                    style="--x:${position[0]}%;--y:${position[1]}%"
-                    data-real-map-pin="${item.id}"
-                    aria-label="${escapeHtml(item.zone || 'Madrid')} · ${Number(item.price || 0).toLocaleString('es-ES')} euros"
-                  >
-                    ${Number(item.price || 0).toLocaleString('es-ES')} €
-                  </button>
-                `;
-              }).join('')}
-            </div>
-
-            <article class="real-map-card" id="realMapCard">
+            <article
+              class="real-map-card"
+              id="realMapCard"
+              data-map-selected="${first?.id || ''}"
+            >
               ${renderRealMapCard(first)}
             </article>
           </div>
         `;
+
+        window.setTimeout(() => {
+          initExploreLeafletMap(listings);
+        }, 0);
       }
     }
   }
@@ -4573,31 +4801,48 @@
     }
     const step = currentPublishStep(type);
     const content = document.querySelector('#publishFlowContent');
-    const values = [...content.querySelectorAll('input:not([type="file"]),textarea,select')].map(field => field.value.trim());
+    const values = [...content.querySelectorAll(
+      'input:not([type="file"]):not([data-exact-address]):not([data-auto-zone-input]),textarea,select'
+    )].map(field => field.value.trim());
     const selected = [...content.querySelectorAll('[data-selectable][aria-pressed="true"]')].map(button => button.textContent.trim());
-    const meta =
-      type === 'post'
-        ? {
-            zone:
-              content
-                .querySelector('[data-post-zone]')
-                ?.value
-                .trim() || null,
+    let meta = {};
 
-            expiresAt:
-              content
-                .querySelector('[data-post-expires]')
-                ?.value || null,
+    if (type === 'post') {
+      meta = {
+        zone:
+          content
+            .querySelector('[data-post-zone]')
+            ?.value
+            .trim() || null,
 
-            listingId:
-              content
-                .querySelector('[data-post-listing]')
-                ?.value || null,
+        expiresAt:
+          content
+            .querySelector('[data-post-expires]')
+            ?.value || null,
 
-            communityPostType:
-              selectedCommunityPostType(content)
-          }
-        : {};
+        listingId:
+          content
+            .querySelector('[data-post-listing]')
+            ?.value || null,
+
+        communityPostType:
+          selectedCommunityPostType(content)
+      };
+    }
+
+    if (
+      (type === 'room' || type === 'apartment') &&
+      step === 0
+    ) {
+      meta = {
+        ...meta,
+        exactAddress:
+          content
+            .querySelector('[data-exact-address]')
+            ?.value
+            .trim() || null
+      };
+    }
 
     state.publishDraft.steps[step] = {
       values,
@@ -4836,6 +5081,99 @@
   }
 
 
+  function prepareListingLocationField(
+    content,
+    type,
+    step,
+    saved
+  ) {
+    if (
+      !content ||
+      step !== 0 ||
+      !['room', 'apartment'].includes(type)
+    ) {
+      return;
+    }
+
+    const existing =
+      content.querySelector('[data-exact-address]');
+
+    if (existing) {
+      existing.value =
+        saved?.meta?.exactAddress || '';
+      return;
+    }
+
+    const regularFields =
+      [...content.querySelectorAll(
+        'input:not([type="file"]),textarea,select'
+      )];
+
+    const zoneField = regularFields[0];
+
+    if (!zoneField) return;
+
+    const zoneContainer =
+      zoneField.closest('label') ||
+      zoneField.parentElement;
+
+    if (!zoneContainer) return;
+
+    /*
+      Para vivienda, la zona pública se obtiene automáticamente
+      desde la dirección exacta geocodificada.
+    */
+    zoneField.value = '';
+    zoneField.removeAttribute('required');
+    zoneField.dataset.autoZoneInput = 'true';
+    zoneContainer.hidden = true;
+    zoneContainer.dataset.autoZoneField = 'true';
+
+    const wrapper =
+      document.createElement('div');
+
+    wrapper.className =
+      'publish-private-location';
+
+    wrapper.innerHTML = `
+      <label class="publish-private-location-field">
+        <span>
+          Dirección exacta
+          <b>Obligatorio</b>
+        </span>
+
+        <input
+          type="text"
+          data-exact-address
+          autocomplete="street-address"
+          placeholder="Ej. Calle de Serrano 55, Madrid"
+          value="${escapeHtml(saved?.meta?.exactAddress || '')}"
+        >
+      </label>
+
+      <p class="publish-private-location-help">
+        <span>⌖</span>
+        <span>
+          <b>Tu dirección exacta es privada.</b>
+          Solo la usamos para situar la vivienda.
+          En Rooms se mostrará una ubicación aproximada.
+        </span>
+      </p>
+
+      <p
+        class="publish-detected-zone"
+        data-detected-zone
+        hidden
+      ></p>
+    `;
+
+    zoneContainer.insertAdjacentElement(
+      'afterend',
+      wrapper
+    );
+  }
+
+
   function preparePublishStep() {
     const type = currentPublishType();
     if (!type) return;
@@ -4846,11 +5184,21 @@
     const step = currentPublishStep(type);
     const content = document.querySelector('#publishFlowContent');
     const saved = state.publishDraft.steps[step];
-    const fields = [...content.querySelectorAll('input:not([type="file"]),textarea,select')];
+    const fields = [...content.querySelectorAll(
+      'input:not([type="file"]):not([data-exact-address]):not([data-auto-zone-input]),textarea,select'
+    )];
+
     fields.forEach((field, index) => {
       if (saved) field.value = saved.values[index] || '';
       else if (field.tagName !== 'SELECT') field.value = '';
     });
+
+    prepareListingLocationField(
+      content,
+      type,
+      step,
+      saved
+    );
     content.querySelectorAll('.linked-people article').forEach(item => item.remove());
     content.querySelectorAll('.completion-card strong').forEach(item => { item.textContent = '✓'; });
     content.querySelectorAll('.completion-card b').forEach(item => { item.textContent = 'Datos del anuncio'; });
@@ -4922,8 +5270,86 @@
     }
     const values = state.publishDraft.steps[0]?.values || [];
     const features = state.publishDraft.steps[1]?.selected || [];
-    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[1] || '—')} €/mes · ${escapeHtml(values[0] || 'Zona sin definir')}</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[2] || 'Fecha sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
+    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[0] || '—')} €/mes</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[1] || 'Fecha sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
   }
+
+  async function geocodeListingAddress(address) {
+    const cleanAddress =
+      String(address || '').trim();
+
+    if (cleanAddress.length < 5) {
+      throw new Error(
+        'Introduce la dirección exacta de la vivienda'
+      );
+    }
+
+    const response = await fetch(
+      '/api/geocode',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          address: cleanAddress
+        })
+      }
+    );
+
+    let payload = {};
+
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        payload.error ||
+        'No hemos podido localizar esa dirección'
+      );
+    }
+
+    const latitude =
+      Number(payload.latitude);
+
+    const longitude =
+      Number(payload.longitude);
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      throw new Error(
+        'No hemos podido localizar esa dirección'
+      );
+    }
+
+    const result = {
+      latitude,
+      longitude,
+      formattedAddress:
+        payload.formattedAddress ||
+        cleanAddress,
+      district:
+        payload.district || null
+    };
+
+    const detectedZone =
+      document.querySelector('[data-detected-zone]');
+
+    if (detectedZone) {
+      detectedZone.hidden = false;
+      detectedZone.textContent =
+        result.district
+          ? `Ubicación detectada: ${result.district}, Madrid`
+          : 'Ubicación detectada: Madrid';
+    }
+
+    return result;
+  }
+
 
   async function publishRealContent(type) {
     const first = state.publishDraft.steps[0] || { values: [], selected: [] };
@@ -5046,33 +5472,184 @@
       }).eq('id', state.user.id);
       if (error) return notify('No se pudo actualizar tu búsqueda');
     } else {
-      const second = state.publishDraft.steps[1] || { values: [], selected: [] };
-      const finalStep = state.publishDraft.steps[publishTotals[type] - 1] || { values: [] };
-      const zone = first.values[0] || '';
-      const price = Number(String(first.values[1] || '').replace(/\D/g, ''));
-      if (!zone || !price) return notify('Añade al menos la zona y el precio');
-      const { data: listing, error } = await db.from('listings').insert({
-        owner_id: state.user.id,
-        kind: type,
-        title: `${type === 'apartment' ? 'Piso' : 'Habitación'} en ${zone}`,
-        zone,
-        price,
-        available_from: first.values[2] || null,
-        duration: first.values[3] || null,
-        rooms: second.values[0] ? Number(second.values[0]) : null,
-        baths: second.values[1] ? Number(second.values[1]) : null,
-        area: second.values[2] ? Number(second.values[2]) : null,
-        furnished: second.selected.includes('Amueblado'),
-        features: second.selected,
-        description: finalStep.values[0] || null,
-        photos: []
-      }).select().single();
-      if (error) return notify('No se pudo publicar la vivienda');
-      if (state.publishDraft.files?.length) {
-        const photos = await uploadListingPhotos(listing.id, state.publishDraft.files);
+      const second =
+        state.publishDraft.steps[1] ||
+        { values: [], selected: [] };
+
+      const finalStep =
+        state.publishDraft.steps[
+          publishTotals[type] - 1
+        ] || { values: [] };
+
+      const price =
+        Number(
+          String(first.values[0] || '')
+            .replace(/\D/g, '')
+        );
+
+      const exactAddress =
+        first.meta?.exactAddress || '';
+
+      if (!price) {
+        return notify(
+          'Añade el precio de la vivienda'
+        );
+      }
+
+      if (!exactAddress) {
+        return notify(
+          'Añade la dirección exacta de la vivienda'
+        );
+      }
+
+      let geocodedLocation;
+
+      try {
+        geocodedLocation =
+          await geocodeListingAddress(
+            exactAddress
+          );
+      } catch (error) {
+        console.error(
+          'Rooms: error geocodificando vivienda',
+          error
+        );
+
+        return notify(
+          error?.message ||
+          'No hemos podido localizar esa dirección'
+        );
+      }
+
+      const zone =
+        geocodedLocation.district ||
+        'Madrid';
+
+      const {
+        data: listing,
+        error
+      } = await db
+        .from('listings')
+        .insert({
+          owner_id: state.user.id,
+          kind: type,
+          title:
+            `${type === 'apartment'
+              ? 'Piso'
+              : 'Habitación'
+            } en ${zone}`,
+          zone,
+          price,
+          available_from:
+            first.values[1] || null,
+          duration:
+            first.values[2] || null,
+          rooms:
+            second.values[0]
+              ? Number(second.values[0])
+              : null,
+          baths:
+            second.values[1]
+              ? Number(second.values[1])
+              : null,
+          area:
+            second.values[2]
+              ? Number(second.values[2])
+              : null,
+          furnished:
+            second.selected.includes(
+              'Amueblado'
+            ),
+          features:
+            second.selected,
+          description:
+            finalStep.values[0] || null,
+          photos: [],
+          location_precision:
+            'approximate'
+        })
+        .select()
+        .single();
+
+      if (error || !listing) {
+        console.error(
+          'Rooms: error creando vivienda',
+          error
+        );
+
+        return notify(
+          'No se pudo publicar la vivienda'
+        );
+      }
+
+      const {
+        error: locationError
+      } = await db.rpc(
+        'set_listing_private_location',
+        {
+          target_listing_id:
+            listing.id,
+
+          target_exact_address:
+            geocodedLocation.formattedAddress ||
+            exactAddress,
+
+          target_exact_latitude:
+            geocodedLocation.latitude,
+
+          target_exact_longitude:
+            geocodedLocation.longitude
+        }
+      );
+
+      if (locationError) {
+        console.error(
+          'Rooms: error guardando ubicación privada',
+          locationError
+        );
+
+        const {
+          error: rollbackError
+        } = await db
+          .from('listings')
+          .delete()
+          .eq('id', listing.id)
+          .eq('owner_id', state.user.id);
+
+        if (rollbackError) {
+          console.error(
+            'Rooms: error revirtiendo vivienda',
+            rollbackError
+          );
+        }
+
+        return notify(
+          'No se pudo guardar la ubicación de la vivienda'
+        );
+      }
+
+      if (
+        state.publishDraft.files?.length
+      ) {
+        const photos =
+          await uploadListingPhotos(
+            listing.id,
+            state.publishDraft.files
+          );
+
         if (photos.length) {
-          const { error: photoError } = await db.from('listings').update({ photos }).eq('id', listing.id);
-          if (photoError) notify('La vivienda se publicó, pero no pudimos vincular todas las fotos');
+          const {
+            error: photoError
+          } = await db
+            .from('listings')
+            .update({ photos })
+            .eq('id', listing.id);
+
+          if (photoError) {
+            notify(
+              'La vivienda se publicó, pero no pudimos vincular todas las fotos'
+            );
+          }
         }
       }
     }
@@ -12836,6 +13413,25 @@
 
 
   document.addEventListener('click', event => {
+    const viewToggle =
+      event.target.closest('[data-explore-view]');
+
+    if (viewToggle) {
+      event.preventDefault();
+
+      document
+        .querySelectorAll('[data-explore-view]')
+        .forEach(button => {
+          button.classList.toggle(
+            'active',
+            button === viewToggle
+          );
+        });
+
+      renderFilteredExplore();
+      return;
+    }
+
     const pin = event.target.closest('[data-real-map-pin]');
 
     if (pin) {
