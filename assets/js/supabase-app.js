@@ -22,6 +22,7 @@
     connection: null,
     connectionsByUser: new Map(),
     chatTarget: null,
+    conversationPreferences: new Map(),
     channel: null,
     currentListingId: null,
     living: {},
@@ -159,6 +160,7 @@
     updateOwnProfile(profile, preferences);
 
     await loadUserBlocks();
+    await loadConversationPreferences();
 
     /*
       Una cuenta ya configurada siempre entra desde Home.
@@ -223,6 +225,7 @@
     state.connectionsByUser = new Map();
     state.incomingRequests = new Map();
     state.chatTarget = null;
+    state.conversationPreferences = new Map();
     state.channel = null;
 
     /*
@@ -6609,6 +6612,115 @@
   }
 
 
+  async function loadConversationPreferences() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('conversation_preferences')
+        .select(
+          'other_user_id,muted,deleted_before,updated_at'
+        )
+        .eq('user_id', state.user.id);
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando preferencias de conversación',
+        error
+      );
+
+      state.conversationPreferences =
+        new Map();
+
+      return;
+    }
+
+    state.conversationPreferences =
+      new Map(
+        (data || []).map(item => [
+          String(item.other_user_id),
+          item
+        ])
+      );
+  }
+
+
+  function getConversationPreference(userId) {
+    return (
+      state.conversationPreferences?.get(
+        String(userId)
+      ) || {
+        other_user_id: userId,
+        muted: false,
+        deleted_before: null
+      }
+    );
+  }
+
+
+  async function saveConversationPreference(
+    userId,
+    changes
+  ) {
+    if (
+      !state.user ||
+      !userId ||
+      userId === state.user.id
+    ) {
+      return null;
+    }
+
+    const current =
+      getConversationPreference(userId);
+
+    const payload = {
+      user_id: state.user.id,
+      other_user_id: userId,
+      muted:
+        changes.muted ??
+        current.muted ??
+        false,
+      deleted_before:
+        changes.deleted_before !== undefined
+          ? changes.deleted_before
+          : current.deleted_before ?? null,
+      updated_at:
+        new Date().toISOString()
+    };
+
+    const { data, error } =
+      await db
+        .from('conversation_preferences')
+        .upsert(
+          payload,
+          {
+            onConflict:
+              'user_id,other_user_id'
+          }
+        )
+        .select(
+          'other_user_id,muted,deleted_before,updated_at'
+        )
+        .single();
+
+    if (error) {
+      console.error(
+        'Rooms: error guardando preferencias de conversación',
+        error
+      );
+
+      return null;
+    }
+
+    state.conversationPreferences.set(
+      String(userId),
+      data
+    );
+
+    return data;
+  }
+
+
   async function loadUserBlocks() {
     if (!state.user) return;
 
@@ -7137,6 +7249,154 @@
   }
 
 
+  async function toggleConversationMute() {
+    if (
+      !state.user ||
+      !state.chatTarget
+    ) {
+      return;
+    }
+
+    const userId =
+      state.chatTarget.id;
+
+    const current =
+      getConversationPreference(
+        userId
+      );
+
+    const nextMuted =
+      !Boolean(current.muted);
+
+    const saved =
+      await saveConversationPreference(
+        userId,
+        {
+          muted: nextMuted
+        }
+      );
+
+    if (!saved) {
+      notify(
+        'No hemos podido actualizar las notificaciones.'
+      );
+      return;
+    }
+
+    await loadRealNotifications();
+
+    renderConversationOptionsMenu();
+
+    notify(
+      nextMuted
+        ? 'Conversación silenciada.'
+        : 'Notificaciones activadas.'
+    );
+  }
+
+
+  async function deleteConversationForMe() {
+    if (
+      !state.user ||
+      !state.chatTarget
+    ) {
+      return;
+    }
+
+    const name =
+      state.chatTarget.alias ||
+      state.chatTarget.name ||
+      'esta persona';
+
+    const confirmed =
+      window.confirm(
+        `¿Eliminar la conversación con ${name}? Desaparecerá para ti. Si recibes un mensaje nuevo, volverá a aparecer.`
+      );
+
+    if (!confirmed) return;
+
+    const deletedBefore =
+      new Date().toISOString();
+
+    const saved =
+      await saveConversationPreference(
+        state.chatTarget.id,
+        {
+          deleted_before:
+            deletedBefore
+        }
+      );
+
+    if (!saved) {
+      notify(
+        'No hemos podido eliminar la conversación.'
+      );
+      return;
+    }
+
+    /*
+     * Los mensajes anteriores ya no deben seguir
+     * apareciendo como pendientes para este usuario.
+     */
+    const { error: readError } =
+      await db
+        .from('messages')
+        .update({
+          read_at:
+            new Date().toISOString()
+        })
+        .eq(
+          'sender_id',
+          state.chatTarget.id
+        )
+        .eq(
+          'recipient_id',
+          state.user.id
+        )
+        .is(
+          'read_at',
+          null
+        )
+        .lte(
+          'created_at',
+          deletedBefore
+        );
+
+    if (readError) {
+      console.error(
+        'Rooms: error cerrando notificaciones de conversación eliminada',
+        readError
+      );
+    }
+
+    const modal =
+      document.querySelector(
+        '#conversationModal'
+      );
+
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+    }
+
+    document.body.style.overflow = '';
+
+    state.chatTarget = null;
+
+    await Promise.all([
+      loadRealInbox(),
+      loadRealNotifications()
+    ]);
+
+    notify(
+      'Conversación eliminada para ti.'
+    );
+  }
+
+
   async function loadRealNotifications() {
     if (!state.user) return;
     const [{ data: connections }, { data: messages }] = await Promise.all([
@@ -7161,9 +7421,42 @@
       );
     });
 
-    const visibleMessages = (messages || []).filter(message =>
-      !state.blockedUsers?.has(message.sender_id)
-    );
+    const visibleMessages = (messages || []).filter(message => {
+      if (
+        state.blockedUsers?.has(
+          message.sender_id
+        )
+      ) {
+        return false;
+      }
+
+      const preference =
+        getConversationPreference(
+          message.sender_id
+        );
+
+      if (preference.muted) {
+        return false;
+      }
+
+      if (preference.deleted_before) {
+        const deletedBefore =
+          new Date(
+            preference.deleted_before
+          ).getTime();
+
+        const messageTime =
+          new Date(
+            message.created_at
+          ).getTime();
+
+        if (messageTime <= deletedBefore) {
+          return false;
+        }
+      }
+
+      return true;
+    });
 
     const ids = [
       ...relevantConnections.map(item =>
@@ -7240,6 +7533,7 @@
       .or(`sender_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .order('created_at', { ascending: false });
     const latestByUser = new Map();
+
     (messages || []).forEach(message => {
       const otherId =
         message.sender_id === state.user.id
@@ -7250,13 +7544,52 @@
         return;
       }
 
+      const preference =
+        getConversationPreference(otherId);
+
+      const deletedBefore =
+        preference.deleted_before
+          ? new Date(
+              preference.deleted_before
+            ).getTime()
+          : null;
+
+      if (
+        deletedBefore &&
+        new Date(
+          message.created_at
+        ).getTime() <= deletedBefore
+      ) {
+        return;
+      }
+
       if (!latestByUser.has(otherId)) {
         latestByUser.set(otherId, message);
       }
     });
-    const list = document.querySelector('#chatInboxModal .conversation-list');
+
+    const visibleConversationIds =
+      otherIds.filter(id => {
+        const preference =
+          getConversationPreference(id);
+
+        if (!preference.deleted_before) {
+          return true;
+        }
+
+        return latestByUser.has(id);
+      });
+
+    const list =
+      document.querySelector(
+        '#chatInboxModal .conversation-list'
+      );
+
     if (!list) return;
-    list.innerHTML = otherIds.length ? otherIds.map(id => {
+
+    list.innerHTML =
+      visibleConversationIds.length
+        ? visibleConversationIds.map(id => {
       const profile = profiles.get(id);
       const name = profile?.alias || profile?.name || 'Usuario de Rooms';
       const last = latestByUser.get(id);
@@ -7265,7 +7598,8 @@
         <div><b>${escapeHtml(name)}</b><p>${escapeHtml(last?.body || 'Ya podéis empezar a hablar.')}</p><small>CONEXIÓN ROOMS</small></div>
         <time>${last ? relativeTime(last.created_at) : ''}</time>
       </button>`;
-    }).join('') : '<div class="real-empty-state"><b>Todavía no tienes conversaciones</b><p>Cuando aceptéis una conexión, el chat aparecerá aquí.</p></div>';
+    }).join('')
+        : '<div class="real-empty-state"><b>Todavía no tienes conversaciones</b><p>Cuando aceptéis una conexión, el chat aparecerá aquí.</p></div>';
   }
 
   function initials(name) {
@@ -8295,6 +8629,154 @@
     showModal(modal);
   }
 
+  function ensureConversationOptionsMenu() {
+    const header =
+      document.querySelector(
+        '#conversationModal .conversation-shell header'
+      );
+
+    if (!header) return null;
+
+    let button =
+      header.querySelector(
+        '[data-real-conversation-options]'
+      );
+
+    if (!button) {
+      button =
+        document.createElement('button');
+
+      button.type = 'button';
+      button.className =
+        'conversation-options-trigger';
+
+      button.setAttribute(
+        'data-real-conversation-options',
+        ''
+      );
+
+      button.setAttribute(
+        'aria-label',
+        'Opciones de conversación'
+      );
+
+      button.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+
+      button.textContent = '•••';
+
+      header.appendChild(button);
+    }
+
+    let menu =
+      document.querySelector(
+        '#realConversationOptionsMenu'
+      );
+
+    if (!menu) {
+      menu =
+        document.createElement('div');
+
+      menu.id =
+        'realConversationOptionsMenu';
+
+      menu.className =
+        'real-conversation-options';
+
+      menu.hidden = true;
+
+      header.appendChild(menu);
+    }
+
+    return menu;
+  }
+
+
+  function renderConversationOptionsMenu() {
+    if (!state.chatTarget) return;
+
+    const menu =
+      ensureConversationOptionsMenu();
+
+    if (!menu) return;
+
+    const preference =
+      getConversationPreference(
+        state.chatTarget.id
+      );
+
+    menu.innerHTML = `
+      <button
+        type="button"
+        data-real-chat-action="profile"
+      >
+        Ver perfil
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="mute"
+      >
+        ${
+          preference.muted
+            ? 'Activar notificaciones'
+            : 'Silenciar conversación'
+        }
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="report"
+      >
+        Reportar usuario
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="block"
+      >
+        Bloquear usuario
+      </button>
+
+      <hr>
+
+      <button
+        type="button"
+        class="danger"
+        data-real-chat-action="delete"
+      >
+        Eliminar conversación
+      </button>
+    `;
+  }
+
+
+  function closeConversationOptionsMenu() {
+    const menu =
+      document.querySelector(
+        '#realConversationOptionsMenu'
+      );
+
+    const button =
+      document.querySelector(
+        '[data-real-conversation-options]'
+      );
+
+    if (menu) {
+      menu.hidden = true;
+    }
+
+    if (button) {
+      button.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+    }
+  }
+
+
   async function openRealConversation(profile) {
     if (!profile || !state.user) return;
 
@@ -8389,6 +8871,10 @@
 
     showModal(modal);
 
+    ensureConversationOptionsMenu();
+    renderConversationOptionsMenu();
+    closeConversationOptionsMenu();
+
     await renderMessages();
 
     subscribeToMessages();
@@ -8447,8 +8933,25 @@
       return;
     }
 
+    const preference =
+      getConversationPreference(
+        state.chatTarget.id
+      );
+
+    const deletedBefore =
+      preference.deleted_before
+        ? new Date(
+            preference.deleted_before
+          ).getTime()
+        : null;
+
     const messages =
-      data || [];
+      (data || []).filter(message =>
+        !deletedBefore ||
+        new Date(
+          message.created_at
+        ).getTime() > deletedBefore
+      );
 
     if (!messages.length) {
       const name =
@@ -8673,6 +9176,92 @@
 
 
   document.addEventListener('click', event => {
+    const conversationOptions =
+      event.target.closest(
+        '[data-real-conversation-options]'
+      );
+
+    if (conversationOptions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const menu =
+        ensureConversationOptionsMenu();
+
+      if (!menu) return;
+
+      menu.hidden =
+        !menu.hidden;
+
+      conversationOptions.setAttribute(
+        'aria-expanded',
+        String(!menu.hidden)
+      );
+
+      return;
+    }
+
+    const conversationAction =
+      event.target.closest(
+        '[data-real-chat-action]'
+      );
+
+    if (conversationAction) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (!state.chatTarget) return;
+
+      const action =
+        conversationAction.dataset.realChatAction;
+
+      const profile =
+        state.chatTarget;
+
+      const name =
+        profile.alias ||
+        profile.name ||
+        'este usuario';
+
+      closeConversationOptionsMenu();
+
+      if (action === 'profile') {
+        openRealUser(profile);
+        return;
+      }
+
+      if (action === 'mute') {
+        toggleConversationMute();
+        return;
+      }
+
+      if (action === 'report') {
+        openRealReport({
+          dataset: {
+            reportType: 'user',
+            reportId: profile.id,
+            reportUser: profile.id
+          }
+        });
+        return;
+      }
+
+      if (action === 'block') {
+        openRealBlock({
+          dataset: {
+            realBlockUser: profile.id,
+            realBlockName: name
+          }
+        });
+        return;
+      }
+
+      if (action === 'delete') {
+        deleteConversationForMe();
+        return;
+      }
+    }
+
     const blockedUsersButton =
       event.target.closest('#blockedUsers');
 
