@@ -451,8 +451,11 @@
   function updateTrustView() {
     const profile = state.profile || {};
 
-    const emailVerified = Boolean(state.user?.email_confirmed_at);
-    const hasPhoto = Boolean(profile.avatar_url);
+    const emailVerified =
+      Boolean(state.user?.email_confirmed_at);
+
+    const hasPhoto =
+      Boolean(profile.avatar_url);
 
     const completionFields = [
       profile.name || profile.alias,
@@ -465,103 +468,182 @@
       profile.duration,
       profile.interests?.length,
       state.preferences?.answers?.living &&
-        Object.keys(state.preferences.answers.living).length
+        Object.keys(
+          state.preferences.answers.living
+        ).length
     ];
 
     const completion =
       Math.round(
-        (completionFields.filter(Boolean).length / completionFields.length) * 100
+        (
+          completionFields.filter(Boolean).length /
+          completionFields.length
+        ) * 100
       ) || 0;
 
-    const verified = emailVerified;
-    const levelName = verified ? 'Verificado' : 'Nuevo';
+    const profileComplete =
+      completion >= 80;
 
-    const title = document.querySelector('#trustView .subpage-header h1');
-    const level = document.querySelector('#trustView .trust-level-card strong');
-    const copy = document.querySelector('#trustView .trust-level-card p');
+    const acceptedConnections =
+      [...state.connectionsByUser.values()]
+        .filter(connection =>
+          connection.status === 'accepted'
+        )
+        .length;
 
-    if (title) title.textContent = levelName;
-    if (level) level.textContent = levelName;
+    const hasConnections =
+      acceptedConnections > 0;
+
+    const signalCount = [
+      emailVerified,
+      hasPhoto,
+      profileComplete,
+      hasConnections
+    ].filter(Boolean).length;
+
+    const title =
+      document.querySelector(
+        '#trustView .subpage-header h1'
+      );
+
+    const level =
+      document.querySelector(
+        '#trustView .trust-level-card strong'
+      );
+
+    const copy =
+      document.querySelector(
+        '#trustView .trust-level-card p'
+      );
+
+    if (title) {
+      title.textContent =
+        'Señales de confianza';
+    }
+
+    if (level) {
+      level.textContent =
+        `${signalCount} de 4 señales`;
+    }
 
     if (copy) {
-      copy.textContent = emailVerified
-        ? 'Tu email está confirmado. Sigue completando tu perfil y creando relaciones reales para añadir más señales de confianza.'
-        : 'Confirma tu email para conseguir tu primera señal de confianza en Rooms.';
+      copy.textContent =
+        'Rooms muestra señales objetivas de tu actividad y perfil. No asignamos una nota personal ni un nivel de fiabilidad.';
     }
 
-    const levels = document.querySelectorAll(
-      '#trustView .trust-levels span'
-    );
+    const levels =
+      document.querySelector(
+        '#trustView .trust-levels'
+      );
 
-    if (levels[0]) {
-      levels[0].textContent = 'Nuevo ✓';
-      levels[0].className = 'done';
-    }
+    if (levels) {
+      levels.innerHTML = `
+        <span class="${emailVerified ? 'done' : ''}">
+          Email ${emailVerified ? '✓' : ''}
+        </span>
 
-    if (levels[1]) {
-      levels[1].textContent = emailVerified
-        ? 'Verificado ✓'
-        : 'Verificado';
-      levels[1].className = emailVerified ? 'current' : '';
-    }
+        <span class="${hasPhoto ? 'done' : ''}">
+          Foto ${hasPhoto ? '✓' : ''}
+        </span>
 
-    if (levels[2]) {
-      levels[2].textContent = 'Fiable';
-      levels[2].className = '';
-    }
+        <span class="${profileComplete ? 'done' : ''}">
+          Perfil ${profileComplete ? '✓' : ''}
+        </span>
 
-    if (levels[3]) {
-      levels[3].textContent = 'Muy fiable';
-      levels[3].className = '';
-    }
-
-    const signals = document.querySelectorAll(
-      '#trustView .trust-signals-grid article'
-    );
-
-    if (signals[0]) {
-      signals[0].innerHTML = `
-        <span>${emailVerified ? '✓' : '○'}</span>
-        <div>
-          <b>Email</b>
-          <small>${emailVerified ? 'Verificado' : 'Pendiente de verificar'}</small>
-        </div>
+        <span class="${hasConnections ? 'done' : ''}">
+          Conexiones ${hasConnections ? '✓' : ''}
+        </span>
       `;
     }
 
-    if (signals[1]) {
-      signals[1].innerHTML = `
-        <span>${hasPhoto ? '✓' : '○'}</span>
-        <div>
-          <b>Foto de perfil</b>
-          <small>${hasPhoto ? 'Añadida' : 'Pendiente'}</small>
-        </div>
+    const signals =
+      document.querySelector(
+        '#trustView .trust-signals-grid'
+      );
+
+    if (signals) {
+      signals.innerHTML = `
+        <article>
+          <span>${emailVerified ? '✓' : '○'}</span>
+          <div>
+            <b>Email</b>
+            <small>
+              ${
+                emailVerified
+                  ? 'Verificado'
+                  : 'Pendiente de verificar'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${hasPhoto ? '✓' : '○'}</span>
+          <div>
+            <b>Foto de perfil</b>
+            <small>
+              ${
+                hasPhoto
+                  ? 'Añadida'
+                  : 'Pendiente'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${completion}%</span>
+          <div>
+            <b>Perfil completado</b>
+            <small>
+              ${
+                profileComplete
+                  ? 'Información principal añadida'
+                  : 'Puedes añadir más información'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${acceptedConnections}</span>
+          <div>
+            <b>Conexiones aceptadas</b>
+            <small>
+              ${
+                acceptedConnections === 1
+                  ? '1 conexión real'
+                  : `${acceptedConnections} conexiones reales`
+              }
+            </small>
+          </div>
+        </article>
       `;
     }
 
-    if (signals[2]) {
-      signals[2].innerHTML = `
-        <span>${completion}%</span>
-        <div>
-          <b>Perfil completo</b>
-          <small>${completion >= 80 ? 'Buen nivel de información' : 'Puedes añadir más información'}</small>
-        </div>
-      `;
-    }
-
-    const recommendationButton = document.querySelector(
-      '#trustView .trust-level-card button'
-    );
+    const recommendationButton =
+      document.querySelector(
+        '#trustView .trust-level-card button'
+      );
 
     if (recommendationButton) {
-      recommendationButton.removeAttribute('data-toast');
-      recommendationButton.id = 'trustRecommendations';
-      recommendationButton.textContent = completion < 100
-        ? 'Completar perfil →'
-        : 'Perfil completo ✓';
+      recommendationButton.removeAttribute(
+        'data-toast'
+      );
+
+      recommendationButton.id =
+        'trustRecommendations';
+
+      recommendationButton.textContent =
+        completion < 100
+          ? 'Completar perfil →'
+          : 'Perfil completo ✓';
     }
 
-    const reviews = document.querySelector('#trustView .reviews-grid');
+    const reviews =
+      document.querySelector(
+        '#trustView .reviews-grid'
+      );
 
     if (reviews) {
       reviews.innerHTML = `
@@ -569,29 +651,35 @@
           <header>
             <span>SIN RESEÑAS TODAVÍA</span>
           </header>
-          <h3>Las reseñas llegarán después de relaciones reales</h3>
+
+          <h3>
+            Todavía no hay reseñas reales
+          </h3>
+
           <p>
-            Cuando hayas conectado y convivido, alquilado o interactuado
-            mediante una relación verificable en Rooms, podrán aparecer aquí.
+            Cuando Rooms tenga un sistema de reseñas
+            verificadas, aparecerán aquí.
           </p>
         </article>
       `;
     }
 
-    const writeReview = document.querySelector(
-      '#trustView .reviews-heading button'
-    );
+    const writeReview =
+      document.querySelector(
+        '#trustView .reviews-heading button'
+      );
 
     if (writeReview) {
       writeReview.hidden = true;
     }
 
     document
-      .querySelectorAll('#ownProfileView [data-open-trust] small')
+      .querySelectorAll(
+        '#ownProfileView [data-open-trust] small'
+      )
       .forEach(item => {
-        item.textContent = emailVerified
-          ? 'Email verificado'
-          : 'Perfil nuevo';
+        item.textContent =
+          `${signalCount} de 4 señales`;
       });
   }
 
@@ -5542,6 +5630,7 @@
     }
 
     updateConnectButtons();
+    updateTrustView();
   }
 
   async function loadConnection(
@@ -6927,6 +7016,140 @@
   }
 
 
+  function ensureSessionsModal() {
+    let modal =
+      document.querySelector(
+        '#sessionsModal'
+      );
+
+    if (modal) return modal;
+
+    modal =
+      document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'sessionsModal';
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-sessions
+      ></div>
+
+      <article class="sessions-shell">
+
+        <button
+          type="button"
+          class="sessions-close"
+          data-close-sessions
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <small class="sessions-eyebrow">
+          SEGURIDAD
+        </small>
+
+        <h2>Gestionar sesiones</h2>
+
+        <p>
+          Tu sesión actual permanecerá abierta.
+          Puedes cerrar las demás sesiones de
+          Rooms iniciadas en otros navegadores
+          o dispositivos.
+        </p>
+
+        <div class="sessions-current">
+          <span>✓</span>
+          <div>
+            <b>Sesión actual</b>
+            <small>Este navegador</small>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="sessions-signout-others"
+          id="signOutOtherSessions"
+        >
+          Cerrar las demás sesiones
+        </button>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+
+  function openSessionsManager() {
+    if (!state.user) return;
+
+    const modal =
+      ensureSessionsModal();
+
+    showModal(modal);
+  }
+
+
+  async function signOutOtherSessions() {
+    if (!state.user) return;
+
+    const confirmed =
+      window.confirm(
+        '¿Cerrar las demás sesiones de Rooms? Tu sesión actual seguirá abierta.'
+      );
+
+    if (!confirmed) return;
+
+    const button =
+      document.querySelector(
+        '#signOutOtherSessions'
+      );
+
+    if (button) {
+      button.disabled = true;
+      button.textContent =
+        'Cerrando sesiones…';
+    }
+
+    const { error } =
+      await db.auth.signOut({
+        scope: 'others'
+      });
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        'Cerrar las demás sesiones';
+    }
+
+    if (error) {
+      console.error(
+        'Rooms: error cerrando otras sesiones',
+        error
+      );
+
+      notify(
+        'No hemos podido cerrar las demás sesiones.'
+      );
+
+      return;
+    }
+
+    notify(
+      'Las demás sesiones se han cerrado.'
+    );
+  }
+
+
   function openRealBlock(target) {
     if (!state.user || !target) return;
 
@@ -8012,7 +8235,12 @@
   window.roomsBackend.openSavedCollection = openSavedCollection;
 
   async function loadSavedItems() {
-    const { data } = await db.from('saved_items').select('item_type,item_id').eq('user_id', state.user.id);
+    const { data } = await db
+      .from('saved_items')
+      .select('item_type,item_id,created_at')
+      .eq('user_id', state.user.id)
+      .order('created_at', { ascending: false });
+
     if (!data) return;
 
     state.savedItems = new Set(
@@ -8040,17 +8268,17 @@
       if (listing) {
         const type = listing.kind === 'apartment' ? 'flat' : 'room';
         counts[type]++;
-        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}" data-saved-created="${escapeHtml(item.created_at || '')}" data-saved-price="${Number(listing.price || 0)}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
       } else if (person && person.id !== state.user.id) {
         counts.person++;
         const name = person.alias || person.name || 'Usuario de Rooms';
-        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
       } else if (post) {
         counts.post++;
-        cards.push(`<article class="saved-card saved-post" data-saved-type="post"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-post" data-saved-type="post" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
       } else if (community) {
         counts.community++;
-        cards.push(`<article class="saved-card saved-community" data-saved-type="community"><div class="saved-community-cover">#</div><div><small>COMUNIDAD</small><h3>${escapeHtml(community.name)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="community" data-save-id="${community.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-community" data-saved-type="community" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-community-cover">#</div><div><small>COMUNIDAD</small><h3>${escapeHtml(community.name)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="community" data-save-id="${community.id}">Eliminar</button></div></div></article>`);
       }
     });
     const grid = document.querySelector('#savedView .saved-grid');
@@ -8059,9 +8287,104 @@
       const label = document.querySelector(`#savedView [data-saved-filter="${type}"] i`);
       if (label) label.textContent = count;
     });
-    const all = document.querySelector('#savedView [data-saved-filter="all"] i');
-    if (all) all.textContent = data.length;
+    const all =
+      document.querySelector(
+        '#savedView [data-saved-filter="all"] i'
+      );
+
+    if (all) {
+      all.textContent = data.length;
+    }
+
+    sortSavedItems(
+      document.querySelector(
+        '#savedSort'
+      )?.value || 'recent'
+    );
   }
+
+  function sortSavedItems(mode = 'recent') {
+    const grid =
+      document.querySelector(
+        '#savedView .saved-grid'
+      );
+
+    if (!grid) return;
+
+    const cards =
+      [...grid.querySelectorAll(
+        '.saved-card'
+      )];
+
+    cards.sort((a, b) => {
+      if (mode === 'price-asc') {
+        const aPrice =
+          Number(a.dataset.savedPrice);
+
+        const bPrice =
+          Number(b.dataset.savedPrice);
+
+        const aHasPrice =
+          Number.isFinite(aPrice) &&
+          a.dataset.savedPrice !== undefined;
+
+        const bHasPrice =
+          Number.isFinite(bPrice) &&
+          b.dataset.savedPrice !== undefined;
+
+        if (!aHasPrice && !bHasPrice) {
+          return 0;
+        }
+
+        if (!aHasPrice) return 1;
+        if (!bHasPrice) return -1;
+
+        return aPrice - bPrice;
+      }
+
+      if (mode === 'price-desc') {
+        const aPrice =
+          Number(a.dataset.savedPrice);
+
+        const bPrice =
+          Number(b.dataset.savedPrice);
+
+        const aHasPrice =
+          Number.isFinite(aPrice) &&
+          a.dataset.savedPrice !== undefined;
+
+        const bHasPrice =
+          Number.isFinite(bPrice) &&
+          b.dataset.savedPrice !== undefined;
+
+        if (!aHasPrice && !bHasPrice) {
+          return 0;
+        }
+
+        if (!aHasPrice) return 1;
+        if (!bHasPrice) return -1;
+
+        return bPrice - aPrice;
+      }
+
+      const aDate =
+        new Date(
+          a.dataset.savedCreated || 0
+        ).getTime();
+
+      const bDate =
+        new Date(
+          b.dataset.savedCreated || 0
+        ).getTime();
+
+      return bDate - aDate;
+    });
+
+    cards.forEach(card =>
+      grid.appendChild(card)
+    );
+  }
+
 
   function openRealListingDetail(listing) {
     state.currentListingId = listing.id;
@@ -8342,6 +8665,521 @@
     showModal(document.querySelector('#detailModal'));
   }
 
+  function normalizeMatchValue(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase();
+  }
+
+
+  function calculateRealMatch(target) {
+    const ownProfile = state.profile || {};
+    const ownAnswers =
+      state.preferences?.answers || {};
+
+    const factors = [];
+
+    /*
+     * ZONAS
+     */
+    const ownZones =
+      (ownProfile.zones || [])
+        .map(normalizeMatchValue)
+        .filter(Boolean);
+
+    const targetZones =
+      (target?.zones || [])
+        .map(normalizeMatchValue)
+        .filter(Boolean);
+
+    if (ownZones.length && targetZones.length) {
+      const sharedZones =
+        ownZones.filter(zone =>
+          targetZones.includes(zone)
+        );
+
+      factors.push({
+        key: 'zones',
+        label: 'Zonas',
+        score: sharedZones.length ? 100 : 0,
+        detail: sharedZones.length
+          ? `Coincidís en ${sharedZones.join(', ')}`
+          : 'No hay una zona coincidente'
+      });
+    }
+
+
+    /*
+     * PRESUPUESTO
+     */
+    const ownHasBudget =
+      ownProfile.budget_min != null ||
+      ownProfile.budget_max != null;
+
+    const targetHasBudget =
+      target?.budget_min != null ||
+      target?.budget_max != null;
+
+    if (ownHasBudget && targetHasBudget) {
+      const ownMin =
+        Number(ownProfile.budget_min ?? 0);
+
+      const ownMax =
+        Number(
+          ownProfile.budget_max ??
+          Number.MAX_SAFE_INTEGER
+        );
+
+      const targetMin =
+        Number(target.budget_min ?? 0);
+
+      const targetMax =
+        Number(
+          target.budget_max ??
+          Number.MAX_SAFE_INTEGER
+        );
+
+      const overlaps =
+        ownMin <= targetMax &&
+        targetMin <= ownMax;
+
+      factors.push({
+        key: 'budget',
+        label: 'Presupuesto',
+        score: overlaps ? 100 : 0,
+        detail: overlaps
+          ? 'Vuestros rangos de presupuesto se solapan'
+          : 'Vuestros rangos de presupuesto no se solapan'
+      });
+    }
+
+
+    /*
+     * FECHA DE ENTRADA
+     *
+     * <= 31 días: compatible
+     * 32–62 días: compatibilidad parcial
+     * > 62 días: diferente
+     */
+    if (
+      ownProfile.move_in_date &&
+      target?.move_in_date
+    ) {
+      const ownDate =
+        new Date(
+          `${ownProfile.move_in_date}T00:00:00`
+        );
+
+      const targetDate =
+        new Date(
+          `${target.move_in_date}T00:00:00`
+        );
+
+      const differenceDays =
+        Math.round(
+          Math.abs(
+            ownDate.getTime() -
+            targetDate.getTime()
+          ) /
+          86400000
+        );
+
+      let score = 0;
+
+      if (differenceDays <= 31) {
+        score = 100;
+      } else if (differenceDays <= 62) {
+        score = 50;
+      }
+
+      factors.push({
+        key: 'date',
+        label: 'Fecha de entrada',
+        score,
+        detail:
+          differenceDays === 0
+            ? 'Buscáis entrar en la misma fecha'
+            : `${differenceDays} días de diferencia`
+      });
+    }
+
+
+    /*
+     * DURACIÓN
+     */
+    if (
+      ownProfile.duration &&
+      ownProfile.duration !== 'unknown' &&
+      target?.duration &&
+      target.duration !== 'unknown'
+    ) {
+      const sameDuration =
+        ownProfile.duration ===
+        target.duration;
+
+      factors.push({
+        key: 'duration',
+        label: 'Duración',
+        score: sameDuration ? 100 : 0,
+        detail: sameDuration
+          ? 'Buscáis una duración similar'
+          : 'Buscáis duraciones distintas'
+      });
+    }
+
+
+    /*
+     * CONVIVENCIA
+     *
+     * Solo se usa si la RPC ha autorizado
+     * expresamente esos datos.
+     *
+     * Misma respuesta: 100
+     * Respuestas contiguas: 50
+     * Extremos opuestos: 0
+     */
+    const ownLiving =
+      ownAnswers.living || {};
+
+    const targetLiving =
+      target?.living_visible
+        ? target.living || {}
+        : {};
+
+    const livingNames = [
+      'Limpieza',
+      'Horarios',
+      'Ruido',
+      'Visitas',
+      'Fiestas en casa',
+      'Teletrabajo / estudio',
+      'Fumar',
+      'Mascotas'
+    ];
+
+    const livingScores = [];
+
+    Object.keys(ownLiving).forEach(key => {
+      const ownOption =
+        Number(ownLiving?.[key]?.option);
+
+      const targetOption =
+        Number(targetLiving?.[key]?.option);
+
+      if (
+        !Number.isInteger(ownOption) ||
+        !Number.isInteger(targetOption)
+      ) {
+        return;
+      }
+
+      const distance =
+        Math.abs(
+          ownOption -
+          targetOption
+        );
+
+      const score =
+        distance === 0
+          ? 100
+          : distance === 1
+            ? 50
+            : 0;
+
+      livingScores.push({
+        category:
+          livingNames[Number(key)] ||
+          `Convivencia ${key}`,
+        score
+      });
+    });
+
+    if (livingScores.length) {
+      const livingScore =
+        Math.round(
+          livingScores.reduce(
+            (total, item) =>
+              total + item.score,
+            0
+          ) /
+          livingScores.length
+        );
+
+      factors.push({
+        key: 'living',
+        label: 'Convivencia',
+        score: livingScore,
+        detail:
+          `${livingScores.length} ${
+            livingScores.length === 1
+              ? 'hábito comparado'
+              : 'hábitos comparados'
+          }`,
+        breakdown: livingScores
+      });
+    }
+
+
+    /*
+     * TIPO DE BÚSQUEDA
+     *
+     * Lo mostramos como información,
+     * pero no entra todavía en la nota:
+     * "buscar habitación", "piso" o
+     * "compañeros" no determina por sí solo
+     * que dos personas sean incompatibles.
+     */
+    const ownSeeking =
+      ownProfile.seeking || [];
+
+    const targetSeeking =
+      target?.seeking || [];
+
+    const comparableSeeking =
+      ownSeeking.length &&
+      targetSeeking.length;
+
+    const seekingInfo =
+      comparableSeeking
+        ? {
+            own: ownSeeking,
+            target: targetSeeking
+          }
+        : null;
+
+
+    const score =
+      factors.length
+        ? Math.round(
+            factors.reduce(
+              (total, factor) =>
+                total + factor.score,
+              0
+            ) /
+            factors.length
+          )
+        : null;
+
+    return {
+      score,
+      factors,
+      seekingInfo,
+      comparedFactors: factors.length
+    };
+  }
+
+
+  async function loadRealMatchProfile(userId) {
+    if (!state.user || !userId) {
+      return null;
+    }
+
+    const { data, error } =
+      await db.rpc(
+        'get_match_profile',
+        {
+          target_user_id: userId
+        }
+      );
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando datos de compatibilidad',
+        error
+      );
+
+      return null;
+    }
+
+    return data || null;
+  }
+
+
+  function ensureRealMatchModal() {
+    const modal =
+      document.querySelector('#matchModal');
+
+    if (!modal) return null;
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-real-match
+      ></div>
+
+      <article class="detail match-detail-shell">
+
+        <button
+          type="button"
+          class="close match-back"
+          data-close-real-match
+          aria-label="Volver"
+        >
+          ←
+        </button>
+
+        <div id="realMatchContent"></div>
+
+      </article>
+    `;
+
+    return modal;
+  }
+
+
+  async function openRealMatch(profile) {
+    if (
+      !profile ||
+      !state.user ||
+      state.blockedUsers?.has(profile.id)
+    ) {
+      return;
+    }
+
+    const modal =
+      ensureRealMatchModal();
+
+    if (!modal) return;
+
+    const content =
+      modal.querySelector(
+        '#realMatchContent'
+      );
+
+    content.innerHTML = `
+      <div class="real-match-loading">
+        Calculando compatibilidad…
+      </div>
+    `;
+
+    showModal(modal);
+
+    const target =
+      await loadRealMatchProfile(
+        profile.id
+      );
+
+    if (!target) {
+      content.innerHTML = `
+        <div class="real-empty-state">
+          <b>No hay suficientes datos disponibles</b>
+          <p>
+            La privacidad del perfil o los datos
+            disponibles no permiten calcular la
+            compatibilidad ahora mismo.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const match =
+      calculateRealMatch(target);
+
+    const name =
+      profile.alias ||
+      profile.name ||
+      'esta persona';
+
+    const scoreLabel =
+      match.score == null
+        ? '—'
+        : `${match.score}%`;
+
+    content.innerHTML = `
+      <section class="real-match-hero">
+
+        <small>
+          COMPATIBILIDAD CON
+          ${escapeHtml(name.toUpperCase())}
+        </small>
+
+        <strong>
+          ${escapeHtml(scoreLabel)}
+        </strong>
+
+        <h2>
+          ${
+            match.comparedFactors
+              ? `Calculado con ${match.comparedFactors} ${
+                  match.comparedFactors === 1
+                    ? 'factor real'
+                    : 'factores reales'
+                }`
+              : 'Sin datos suficientes'
+          }
+        </h2>
+
+        <p>
+          El porcentaje utiliza únicamente información
+          disponible y autorizada por la privacidad de
+          ambos perfiles.
+        </p>
+
+      </section>
+
+      <section class="real-match-factors">
+
+        ${
+          match.factors.length
+            ? match.factors.map(factor => `
+                <article>
+                  <div>
+                    <b>
+                      ${escapeHtml(factor.label)}
+                    </b>
+
+                    <span>
+                      ${escapeHtml(factor.detail)}
+                    </span>
+                  </div>
+
+                  <strong>
+                    ${factor.score}%
+                  </strong>
+                </article>
+              `).join('')
+            : `
+                <div class="real-empty-state">
+                  <b>No hay factores comparables todavía</b>
+                </div>
+              `
+        }
+
+      </section>
+
+      ${
+        match.seekingInfo
+          ? `
+            <section class="real-match-note">
+              <small>TIPO DE BÚSQUEDA</small>
+              <p>
+                Este dato se muestra como contexto,
+                pero no altera el porcentaje hasta
+                que Rooms pueda distinguir mejor
+                el rol de cada persona en la búsqueda.
+              </p>
+            </section>
+          `
+          : ''
+      }
+
+      <aside class="real-match-method">
+        <b>Cómo se calcula</b>
+        <p>
+          Zona, presupuesto, fecha, duración y
+          convivencia se comparan solo cuando ambas
+          partes tienen datos disponibles. Ningún
+          dato privado oculto se utiliza para generar
+          este resultado.
+        </p>
+      </aside>
+
+    `;
+  }
+
+
   async function openRealUser(profile) {
     if (!profile) return;
 
@@ -8557,6 +9395,20 @@
 
 
           <div class="real-user-profile-actions">
+
+            ${
+              !state.blockedUsers?.has(profile.id)
+                ? `
+                  <button
+                    type="button"
+                    class="real-user-match"
+                    data-open-real-match="${profile.id}"
+                  >
+                    Ver compatibilidad
+                  </button>
+                `
+                : ''
+            }
 
             <button
               type="button"
@@ -9176,6 +10028,113 @@
 
 
   document.addEventListener('click', event => {
+    const openMatch =
+      event.target.closest(
+        '[data-open-real-match]'
+      );
+
+    if (openMatch) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const profile =
+        state.profiles.get(
+          openMatch.dataset.openRealMatch
+        ) ||
+        state.targetProfile;
+
+      if (profile) {
+        openRealMatch(profile);
+      }
+
+      return;
+    }
+
+    const closeRealMatch =
+      event.target.closest(
+        '[data-close-real-match]'
+      );
+
+    if (closeRealMatch) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#matchModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+
+      if (state.targetProfile) {
+        openRealUser(
+          state.targetProfile
+        );
+      }
+
+      return;
+    }
+
+    const manageSessions =
+      event.target.closest(
+        '#manageSessions'
+      );
+
+    if (manageSessions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openSessionsManager();
+      return;
+    }
+
+    const closeSessions =
+      event.target.closest(
+        '[data-close-sessions]'
+      );
+
+    if (closeSessions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#sessionsModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+      return;
+    }
+
+    const signOutOthers =
+      event.target.closest(
+        '#signOutOtherSessions'
+      );
+
+    if (signOutOthers) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      signOutOtherSessions();
+      return;
+    }
+
     const conversationOptions =
       event.target.closest(
         '[data-real-conversation-options]'
@@ -9816,15 +10775,17 @@
     }
 
 
-    const livingChoice = event.target.closest('[data-living-choice]');
-    const livingWeight = event.target.closest('[data-living-weight]');
+    const livingChoice =
+      event.target.closest('[data-living-choice]');
+
     if (livingChoice) {
-      const [category, option] = livingChoice.dataset.livingChoice.split(':');
-      state.living[category] = { ...(state.living[category] || {}), option: Number(option) };
-    }
-    if (livingWeight) {
-      const [category, weight] = livingWeight.dataset.livingWeight.split(':');
-      state.living[category] = { ...(state.living[category] || {}), weight: Number(weight) };
+      const [category, option] =
+        livingChoice.dataset.livingChoice.split(':');
+
+      state.living[category] = {
+        ...(state.living[category] || {}),
+        option: Number(option)
+      };
     }
 
     const listing = event.target.closest('[data-listing-id]');
@@ -14443,6 +15404,17 @@
           ? 'foto nueva seleccionada'
           : 'fotos nuevas seleccionadas'}`
       : '';
+  });
+
+
+  document.addEventListener('change', event => {
+    if (event.target?.id !== 'savedSort') {
+      return;
+    }
+
+    sortSavedItems(
+      event.target.value
+    );
   });
 
 

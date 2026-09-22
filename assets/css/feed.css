@@ -12470,3 +12470,223 @@
   }
 }
 
+
+/* =========================================================
+   SESSION SECURITY
+   ========================================================= */
+
+#sessionsModal {
+  z-index: 5000 !important;
+}
+
+.sessions-shell {
+  position: relative;
+  width: min(520px, calc(100vw - 40px));
+  padding: 32px;
+  background: #fff;
+  border-radius: 24px;
+}
+
+.sessions-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.sessions-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  letter-spacing: .12em;
+}
+
+.sessions-shell h2 {
+  margin: 0 0 10px;
+}
+
+.sessions-shell > p {
+  margin: 0 0 24px;
+  line-height: 1.55;
+}
+
+.sessions-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 16px;
+}
+
+.sessions-current > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .06);
+}
+
+.sessions-current div {
+  display: grid;
+  gap: 3px;
+}
+
+.sessions-current small {
+  opacity: .6;
+}
+
+.sessions-signout-others {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(0, 0, 0, .16);
+  background: transparent;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sessions-signout-others:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+@media (max-width: 640px) {
+  .sessions-shell {
+    width: calc(100vw - 24px);
+    padding: 26px 18px 20px;
+    border-radius: 20px;
+  }
+
+  .sessions-signout-others {
+    min-height: 52px;
+  }
+}
+
+
+/* =========================================================
+   REAL MATCH
+   ========================================================= */
+
+.real-user-match {
+  border: 1px solid rgba(0, 0, 0, .14);
+  background: transparent;
+  border-radius: 999px;
+  padding: 12px 18px;
+  cursor: pointer;
+}
+
+.real-match-loading {
+  padding: 60px 24px;
+  text-align: center;
+  opacity: .6;
+}
+
+.real-match-hero {
+  padding: 52px 36px 30px;
+  border-bottom: 1px solid rgba(0, 0, 0, .08);
+}
+
+.real-match-hero small {
+  display: block;
+  margin-bottom: 12px;
+  letter-spacing: .12em;
+}
+
+.real-match-hero strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: clamp(48px, 8vw, 78px);
+  line-height: .95;
+}
+
+.real-match-hero h2 {
+  margin: 0 0 10px;
+}
+
+.real-match-hero p {
+  margin: 0;
+  max-width: 620px;
+  line-height: 1.55;
+}
+
+.real-match-factors {
+  display: grid;
+  gap: 0;
+  padding: 12px 36px;
+}
+
+.real-match-factors article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .08);
+}
+
+.real-match-factors article > div {
+  display: grid;
+  gap: 5px;
+}
+
+.real-match-factors article span {
+  opacity: .65;
+}
+
+.real-match-factors article > strong {
+  font-size: 22px;
+}
+
+.real-match-note,
+.real-match-method {
+  margin: 20px 36px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, .035);
+}
+
+.real-match-note small {
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: .1em;
+}
+
+.real-match-note p,
+.real-match-method p {
+  margin: 5px 0 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .real-user-match {
+    width: 100%;
+  }
+
+  .real-match-hero {
+    padding: 50px 20px 24px;
+  }
+
+  .real-match-factors {
+    padding: 8px 20px;
+  }
+
+  .real-match-factors article {
+    gap: 14px;
+    padding: 17px 0;
+  }
+
+  .real-match-factors article > strong {
+    font-size: 19px;
+  }
+
+  .real-match-note,
+  .real-match-method {
+    margin: 16px 20px;
+  }
+}
+
