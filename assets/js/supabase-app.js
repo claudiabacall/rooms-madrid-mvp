@@ -502,6 +502,7 @@
     if (completionAction) {
       if (!missing) {
         completionAction.hidden = true;
+        delete completionAction.dataset.profileCompletionAction;
       } else {
         completionAction.hidden = false;
 
@@ -513,6 +514,11 @@
 
         completionAction.textContent =
           actionLabels[missing] || 'Completar perfil →';
+
+        completionAction.dataset.profileCompletionAction =
+          missing === 'fecha de entrada'
+            ? 'search'
+            : 'profile';
       }
     }
 
@@ -761,9 +767,21 @@
   function updateAccountView() {
     const email = state.user?.email || '';
 
-    const emailNode = document.querySelector('#settingsAccountEmail');
+    const emailNode =
+      document.querySelector('#settingsAccountEmail');
+
     if (emailNode) {
       emailNode.textContent = email || 'Sin email';
+    }
+
+    const emailStatus =
+      document.querySelector('#settingsEmailStatus');
+
+    if (emailStatus) {
+      emailStatus.textContent =
+        state.user?.email_confirmed_at
+          ? 'Verificado'
+          : 'Pendiente de verificar';
     }
   }
 
@@ -4744,12 +4762,29 @@
     const active = type || document.querySelector('[data-own-activity].active')?.dataset.ownActivity || 'posts';
     const ownListings = [...state.listings.values()].filter(item => item.owner_id === state.user.id);
     const ownPosts = [...state.posts.values()].filter(item => item.author_id === state.user.id);
-    const counts = { posts: ownPosts.length, listings: ownListings.length, shared: 0, reviews: 0 };
-    const tabNames = { posts: 'Publicaciones', listings: 'Anuncios', shared: 'Compartidos', reviews: 'Reseñas' };
-    document.querySelectorAll('[data-own-activity]').forEach(tab => {
-      tab.textContent = `${tabNames[tab.dataset.ownActivity]} (${counts[tab.dataset.ownActivity] || 0})`;
-      tab.classList.toggle('active', tab.dataset.ownActivity === active);
-    });
+    const counts = {
+      posts: ownPosts.length,
+      listings: ownListings.length
+    };
+
+    const tabNames = {
+      posts: 'Publicaciones',
+      listings: 'Anuncios'
+    };
+
+    document
+      .querySelectorAll('[data-own-activity]')
+      .forEach(tab => {
+        const type = tab.dataset.ownActivity;
+
+        tab.textContent =
+          `${tabNames[type]} (${counts[type] || 0})`;
+
+        tab.classList.toggle(
+          'active',
+          type === active
+        );
+      });
     renderOwnActivity(active, ownListings, ownPosts);
   }
 
@@ -4771,11 +4806,14 @@
       target.innerHTML = `<div class="own-real-activity-list">${ownPosts.map(post => `<article class="own-real-post"><small>${relativeTime(post.created_at)}</small><p>${escapeHtml(post.body)}</p></article>`).join('')}</div>`;
       return;
     }
-    const labels = { posts: 'publicaciones', listings: 'anuncios', shared: 'elementos compartidos', reviews: 'reseñas' };
+    const labels = {
+      posts: 'publicaciones',
+      listings: 'anuncios'
+    };
     target.innerHTML = `<small>TODAVÍA VACÍO</small><p>Aún no tienes ${labels[type] || 'actividad'}.</p><span>Cuando empieces a usar Rooms aparecerá aquí.</span>`;
   }
 
-  const publishTotals = { room: 4, apartment: 3, mate: 2, external: 3, post: 2 };
+  const publishTotals = { room: 3, apartment: 3, mate: 2, external: 3, post: 2 };
 
   function currentPublishType() {
     const label = document.querySelector('#publishFlowKind')?.textContent || '';
@@ -8048,6 +8086,7 @@
     state.blockedUsers.add(target.id);
     state.blockTarget = null;
 
+    updateBlockedUsersCount();
     updateConnectButtons();
 
     await loadRealInbox();
@@ -8944,6 +8983,44 @@
         '#savedSort'
       )?.value || 'recent'
     );
+
+    const activeSavedFilter =
+      document.querySelector(
+        '#savedView [data-saved-filter].active'
+      );
+
+    const activeSavedType =
+      activeSavedFilter?.dataset.savedFilter || 'all';
+
+    const renderedSavedCards =
+      document.querySelectorAll(
+        '#savedView [data-saved-type]'
+      );
+
+    renderedSavedCards.forEach(card => {
+      card.hidden =
+        activeSavedType !== 'all' &&
+        card.dataset.savedType !== activeSavedType;
+    });
+
+    const visibleSavedCount =
+      activeSavedType === 'all'
+        ? renderedSavedCards.length
+        : [...renderedSavedCards].filter(
+            card => card.dataset.savedType === activeSavedType
+          ).length;
+
+    const savedTitle =
+      document.querySelector('#savedResultsTitle');
+
+    if (savedTitle) {
+      savedTitle.textContent =
+        `${visibleSavedCount} ${
+          visibleSavedCount === 1
+            ? 'elemento'
+            : 'elementos'
+        }`;
+    }
   }
 
   function sortSavedItems(mode = 'recent') {
@@ -11705,10 +11782,15 @@
     if (publishContinue) {
       const snapshot = capturePublishStep();
       const finalAction = /Publicar|Compartir/.test(publishContinue.textContent);
-      if (snapshot && snapshot.step === 0 && ['room', 'apartment'].includes(snapshot.type) && (!snapshot.values[0] || !snapshot.values[1])) {
+      if (
+        snapshot &&
+        snapshot.step === 0 &&
+        ['room', 'apartment'].includes(snapshot.type) &&
+        (!snapshot.values[0] || !snapshot.meta?.exactAddress)
+      ) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        notify('Añade la zona y el precio para continuar');
+        notify('Añade el precio y la dirección exacta para continuar');
         return;
       }
       if (finalAction && snapshot) {
@@ -11998,7 +12080,11 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target.closest('#editOwnProfile')) {
+    if (
+      event.target.closest(
+        '#editOwnProfile,[data-open-profile-editor]'
+      )
+    ) {
       openProfileEditor();
       return;
     }
@@ -12454,6 +12540,30 @@
 
     return modal;
   }
+
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-open-search-preferences]')) {
+      event.preventDefault();
+      openSearchPreferencesEditor();
+      return;
+    }
+
+    const completionAction =
+      event.target.closest('[data-profile-completion-action]');
+
+    if (completionAction) {
+      event.preventDefault();
+
+      if (
+        completionAction.dataset.profileCompletionAction === 'search'
+      ) {
+        openSearchPreferencesEditor();
+      } else {
+        openProfileEditor();
+      }
+    }
+  });
+
 
   function openSearchPreferencesEditor() {
     if (!state.profile) return;
@@ -13214,203 +13324,6 @@
   });
 
   renderAccountSettings();
-
-
-  function ensureLanguageModal() {
-    let modal = document.querySelector('#languageModal');
-    if (modal) return modal;
-
-    modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'languageModal';
-    modal.setAttribute('aria-hidden', 'true');
-
-    modal.innerHTML = `
-      <div class="backdrop" data-close-language></div>
-      <article class="detail language-modal-shell">
-        <header>
-          <div>
-            <small>IDIOMA</small>
-            <h2>Idioma de Rooms</h2>
-            <p>Selecciona el idioma que prefieres usar.</p>
-          </div>
-          <button type="button" data-close-language aria-label="Cerrar">×</button>
-        </header>
-
-        <div class="language-options">
-          <button type="button" data-language-option="es">
-            <span>Español</span>
-            <i></i>
-          </button>
-
-          <button type="button" data-language-option="en">
-            <span>English</span>
-            <i></i>
-          </button>
-        </div>
-      </article>
-    `;
-
-    document.body.appendChild(modal);
-    return modal;
-  }
-
-  function renderLanguageSetting() {
-    const language = state.preferences?.answers?.language || 'es';
-    const label = language === 'en' ? 'English' : 'Español';
-
-    const node = document.querySelector('#settingsLanguage');
-    if (node) node.textContent = label;
-  }
-
-  async function saveLanguage(language) {
-    const answers = {
-      ...(state.preferences?.answers || {}),
-      language
-    };
-
-    const { error } = await db
-      .from('onboarding_preferences')
-      .upsert({
-        user_id: state.user.id,
-        answers
-      });
-
-    if (error) {
-      console.error('Rooms: error guardando idioma', error);
-      notify('No se pudo guardar el idioma');
-      return;
-    }
-
-    state.preferences = {
-      ...(state.preferences || {}),
-      answers
-    };
-
-    renderLanguageSetting();
-
-    const modal = document.querySelector('#languageModal');
-    if (modal) {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-
-    document.body.style.overflow = '';
-
-    notify(language === 'en' ? 'Language updated' : 'Idioma actualizado');
-  }
-
-  document.addEventListener('click', event => {
-    if (event.target.closest('#changeLanguage')) {
-      const modal = ensureLanguageModal();
-      const current = state.preferences?.answers?.language || 'es';
-
-      modal.querySelectorAll('[data-language-option]').forEach(button => {
-        const active = button.dataset.languageOption === current;
-        button.classList.toggle('active', active);
-
-        const icon = button.querySelector('i');
-        if (icon) icon.textContent = active ? '✓' : '';
-      });
-
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      return;
-    }
-
-    const languageButton = event.target.closest('[data-language-option]');
-    if (languageButton) {
-      saveLanguage(languageButton.dataset.languageOption);
-      return;
-    }
-
-    if (event.target.closest('[data-close-language]')) {
-      const modal = document.querySelector('#languageModal');
-      if (modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-      document.body.style.overflow = '';
-    }
-  });
-
-  renderLanguageSetting();
-
-
-  function renderContactSettings() {
-    const contact = state.preferences?.answers?.contact || {
-      connections: 'anyone',
-      listingContact: 'request'
-    };
-
-    document.querySelectorAll('[data-contact-group]').forEach(group => {
-      const key = group.dataset.contactGroup;
-      const selected = contact[key];
-
-      group.querySelectorAll('[data-contact-value]').forEach(button => {
-        const active = button.dataset.contactValue === selected;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    });
-  }
-
-  document.addEventListener('click', event => {
-    const option = event.target.closest(
-      '[data-contact-group] [data-contact-value]'
-    );
-
-    if (option) {
-      const group = option.closest('[data-contact-group]');
-
-      group.querySelectorAll('[data-contact-value]').forEach(button => {
-        const active = button === option;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-
-      return;
-    }
-
-    if (event.target.closest('#saveContactSettings')) {
-      const contact = {};
-
-      document.querySelectorAll('[data-contact-group]').forEach(group => {
-        const key = group.dataset.contactGroup;
-        const selected = group.querySelector('[data-contact-value].active');
-
-        contact[key] = selected?.dataset.contactValue || null;
-      });
-
-      const answers = {
-        ...(state.preferences?.answers || {}),
-        contact
-      };
-
-      db.from('onboarding_preferences')
-        .upsert({
-          user_id: state.user.id,
-          answers
-        })
-        .then(({ error }) => {
-          if (error) {
-            console.error('Rooms: error guardando contacto', error);
-            notify('No se pudo guardar la configuración de contacto');
-            return;
-          }
-
-          state.preferences = {
-            ...(state.preferences || {}),
-            answers
-          };
-
-          notify('Preferencias de contacto actualizadas');
-        });
-    }
-  });
-
-  setTimeout(renderContactSettings, 0);
 
 
   function sortExploreListings(listings) {

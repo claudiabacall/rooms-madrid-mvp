@@ -181,7 +181,7 @@
   <header class="feed-header app-shell" hidden>
     <a class="brand" href="#">rooms<span>.</span></a>
     <div class="feed-header-actions">
-      <button type="button" aria-label="Buscar" data-toast="La búsqueda estará disponible muy pronto"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg></button>
+      <button type="button" aria-label="Buscar · Próximamente" title="Buscar · Próximamente" disabled aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg></button>
       <button type="button" id="openNotifications" aria-label="Notificaciones"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 6 2.5 6 2.5 7.5H4C4 15 6.5 15 6.5 9Z"></path><path d="M10 20h4"></path></svg><i></i></button>
       <button type="button" id="openChats" aria-label="Chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 4v-15Z"></path></svg></button>
       <button class="feed-avatar" id="openOwnProfile" type="button" aria-label="Abrir mi perfil">CV</button>
@@ -201,7 +201,7 @@
         <button type="button" data-feed-filter="person">Personas</button>
         <button type="button" data-feed-filter="community">Comunidades</button>
       </div>
-      <button class="feed-filter-button" id="feedFilters" type="button">Filtros <span aria-hidden="true">⌄</span></button>
+
     </section>
 
     <section class="personal-feed" id="personalFeed" aria-live="polite"></section>
@@ -360,8 +360,8 @@
   <main class="community-main" id="communityView" hidden></main>
 
   <main class="own-profile-main" id="ownProfileView" hidden>
-    <section class="own-profile-hero"><div class="own-avatar"><span>CV</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>VERIFICADA ✓</small><h1>Claudia</h1><p>Me encanta descubrir sitios nuevos, cocinar y tener una casa tranquila y cuidada.</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Busco habitación</span><span>Busco compañeros</span><button type="button" data-toast="Añade o cambia tu estado actual">＋</button></div></section>
-    <section class="profile-completion"><div class="completion-ring"><b>78%</b><span>COMPLETO</span></div><div><small>MEJORA TUS MATCHES</small><h2>Añade tu fecha de entrada</h2><p>Es un dato imprescindible para recomendarte viviendas realmente disponibles.</p></div><button type="button" data-toast="Abriendo fecha de entrada">Añadir fecha →</button></section>
+    <section class="own-profile-hero"><div class="own-avatar"><span>R</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>PERFIL</small><h1>Mi perfil</h1><p>Cargando información del perfil…</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Cargando búsqueda…</span><button type="button" data-open-search-preferences aria-label="Editar búsqueda actual">＋</button></div></section>
+    <section class="profile-completion"><div class="completion-ring"><b>0%</b><span>COMPLETO</span></div><div><small>PERFIL</small><h2>Calculando tu perfil</h2><p>Estamos revisando la información que ya has añadido.</p></div><button type="button" data-profile-completion-action hidden>Completar perfil →</button></section>
 
     <section class="current-home-feature" data-open-current-home>
   <div class="current-home-accent"></div>
@@ -392,7 +392,7 @@
 
     <aside class="rooms-plus-preview"><div><small>PRÓXIMAMENTE</small><h2>Rooms+</h2><p>Más herramientas para buscar, comparar y organizarte. Las funciones esenciales seguirán abiertas para todos.</p></div><span class="rooms-plus-status">EN DESARROLLO</span><span>Pagar compra alcance, no confianza.</span></aside>
     <nav class="own-profile-actions"><button type="button" data-open-saved><span>♡</span><b>Guardados</b><small>Tu selección</small></button><button type="button" id="editHomePreferences"><span>⌁</span><b>Preferencias</b><small>Vivienda ideal</small></button><button type="button" data-open-trust><span>✓</span><b>Confianza</b><small>Tu perfil fiable</small></button><button type="button" data-open-settings><span>⚙</span><b>Ajustes</b><small>Privacidad y cuenta</small></button></nav>
-    <div class="own-profile-layout"><div class="own-profile-content"><section><div class="manage-section-title"><h2>Sobre mí</h2><button type="button" data-toast="Editando Sobre mí">Editar</button></div><p>Trabajo en marketing, disfruto mucho cocinando y busco una casa tranquila por Chamberí o Moncloa.</p><div class="profile-interest-chips"><span>Cocina</span><span>Viajes</span><span>Planes tranquilos</span><span>Música</span></div></section><section><div class="manage-section-title"><h2>Cómo vivo</h2><button type="button" data-toast="Editando hábitos de convivencia">Editar</button></div><div class="lifestyle-grid"><span><small>Limpieza</small><b>Muy ordenada</b></span><span><small>Horarios</small><b>Horario normal</b></span><span><small>Ruido</small><b>Muy tranquila</b></span><span><small>Visitas</small><b>Con aviso</b></span><span><small>Teletrabajo</small><b>A veces</b></span><span><small>Fumar</small><b>No</b></span></div></section><section><div class="manage-section-title"><h2>Qué busco</h2><button type="button" data-toast="Editando qué buscas">Editar</button></div><div class="looking-grid"><span><small>TIPO</small><b>Habitación · Compañeros</b></span><span><small>ZONAS</small><b>Chamberí · Moncloa</b></span><span><small>PRESUPUESTO</small><b>600–1.000 €</b></span><span><small>FECHA</small><b>Pendiente</b></span><span><small>DURACIÓN</small><b>Más de 1 año</b></span></div></section><section><div class="manage-section-title"><h2>Actividad</h2></div><div class="own-activity-tabs"><button class="active" type="button" data-own-activity="posts">Publicaciones</button><button type="button" data-own-activity="listings">Anuncios</button><button type="button" data-own-activity="shared">Compartidos</button><button type="button" data-own-activity="reviews">Reseñas</button></div><article class="own-activity-preview" id="ownActivityPreview"><small>CARGANDO</small><p>Estamos preparando tu actividad.</p></article></section></div><aside class="profile-management profile-public-preview">
+    <div class="own-profile-layout"><div class="own-profile-content"><section><div class="manage-section-title"><h2>Sobre mí</h2><button type="button" data-open-profile-editor>Editar</button></div><p>Cargando información…</p><div class="profile-interest-chips"><span>Cargando intereses…</span></div></section><section><div class="manage-section-title"><h2>Cómo vivo</h2><button type="button">Editar</button></div><div class="lifestyle-grid"><span><small>CONVIVENCIA</small><b>Cargando datos…</b></span></div></section><section><div class="manage-section-title"><h2>Qué busco</h2><button type="button">Editar</button></div><div class="looking-grid"><span><small>TIPO</small><b>Sin definir</b></span><span><small>ZONAS</small><b>Sin definir</b></span><span><small>PRESUPUESTO</small><b>Sin definir</b></span><span><small>FECHA</small><b>Sin definir</b></span><span><small>DURACIÓN</small><b>Sin definir</b></span></div></section><section><div class="manage-section-title"><h2>Actividad</h2></div><div class="own-activity-tabs"><button class="active" type="button" data-own-activity="posts">Publicaciones</button><button type="button" data-own-activity="listings">Anuncios</button><button type="button" disabled aria-disabled="true" title="Compartidos · Próximamente">Compartidos · Próximamente</button><button type="button" disabled aria-disabled="true" title="Reseñas · Próximamente">Reseñas · Próximamente</button></div><article class="own-activity-preview" id="ownActivityPreview"><small>CARGANDO</small><p>Estamos preparando tu actividad.</p></article></section></div><aside class="profile-management profile-public-preview">
   <small>VISTA PÚBLICA</small>
 
   <h2>Así te ven los demás</h2>
@@ -433,7 +433,7 @@
         <small>EMAIL</small>
         <b id="settingsAccountEmail">Cargando…</b>
       </div>
-      <span class="account-status">Verificado</span>
+      <span class="account-status" id="settingsEmailStatus">Comprobando…</span>
     </div>
 
     <button type="button" id="changePassword" class="account-setting-row account-setting-button">
@@ -449,7 +449,7 @@
         <small>IDIOMA</small>
         <b>Español</b>
       </div>
-      <span class="account-muted">Actual</span>
+      <span class="account-muted">Próximamente</span>
     </div>
 
   </div>
@@ -520,45 +520,30 @@
   <header class="contact-settings-header">
     <small>CONTACTO</small>
     <h2>Cómo pueden contactarte</h2>
-    <p>Decide quién puede acercarse a ti y cómo quieres recibir contactos desde tus anuncios.</p>
+    <p>Próximamente podrás decidir quién puede enviarte solicitudes y cómo quieres recibir contactos desde tus anuncios.</p>
   </header>
 
   <div class="contact-setting-card">
     <div class="contact-setting-copy">
-      <small>CONEXIONES</small>
-      <h3>Quién puede solicitar conectar</h3>
-      <p>Controla quién puede enviarte una solicitud de conexión.</p>
-    </div>
-
-    <div class="contact-segmented" data-contact-group="connections">
-      <button type="button" data-contact-value="anyone">Cualquiera</button>
-      <button type="button" data-contact-value="verified">Solo perfiles verificados</button>
+      <small>PRÓXIMAMENTE</small>
+      <h3>Preferencias de contacto</h3>
+      <p>Estas opciones se activarán cuando Rooms pueda aplicar estas reglas de forma real en conexiones y anuncios.</p>
     </div>
   </div>
-
-  <div class="contact-setting-card">
-    <div class="contact-setting-copy">
-      <small>ANUNCIOS</small>
-      <h3>Cómo pueden escribirte</h3>
-      <p>Define el comportamiento por defecto en tus anuncios.</p>
-    </div>
-
-    <div class="contact-segmented" data-contact-group="listingContact">
-      <button type="button" data-contact-value="direct">Chat directo</button>
-      <button type="button" data-contact-value="request">Solicitud primero</button>
-    </div>
-
-    <p class="contact-note">
-      Más adelante podrás sobrescribir esta preferencia en cada anuncio.
-    </p>
-  </div>
-
-  <button type="button" class="cta" id="saveContactSettings">
-    Guardar contacto
-  </button>
 </section>
-    <section data-settings-panel="notifications" hidden><h2>Notificaciones</h2><div class="toggle-list"><label><span><b>Matches</b><small>Nuevas opciones con alto encaje</small></span><input type="checkbox" checked></label><label><span><b>Mensajes</b><small>Chats y solicitudes de conexión</small></span><input type="checkbox" checked></label><label><span><b>Hogar</b><small>Pisos, votos e invitaciones</small></span><input type="checkbox" checked></label><label><span><b>Comunidades</b><small>Solo destacados y respuestas</small></span><input type="checkbox" checked></label><label><span><b>Anuncios</b><small>Interesados y disponibilidad</small></span><input type="checkbox" checked></label><label><span><b>Recomendaciones</b><small>Resumen personalizado semanal</small></span><input type="checkbox"></label></div></section>
-    <section data-settings-panel="security" hidden><h2>Seguridad</h2><p class="settings-intro">Tus reportes son privados. Rooms nunca muestra acusaciones públicamente.</p><div class="setting-list"><button type="button" id="blockedUsers"><span><small>USUARIOS BLOQUEADOS</small><b id="blockedUsersCount">0 personas</b></span><i>Ver</i></button><button type="button" id="myReports"><span><small>MIS REPORTES</small><b id="reportsStatus">Sin incidencias abiertas</b></span><i>Ver</i></button><button type="button" id="manageSessions"><span><small>SESIONES</small><b>Gestionar acceso</b></span><i>Gestionar</i></button></div><aside class="risk-note"><b>Controles de seguridad</b><p>Puedes gestionar usuarios bloqueados, consultar tus reportes y cerrar las demás sesiones abiertas de tu cuenta.</p></aside></section>
+<section data-settings-panel="notifications" hidden>
+  <h2>Notificaciones</h2>
+  <p class="settings-intro">Próximamente podrás elegir qué avisos quieres recibir y por qué canal.</p>
+  <div class="toggle-list">
+    <label><span><b>Matches</b><small>Nuevas opciones con alto encaje</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+    <label><span><b>Mensajes</b><small>Chats y solicitudes de conexión</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+    <label><span><b>Hogar</b><small>Pisos, votos e invitaciones</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+    <label><span><b>Comunidades</b><small>Destacados y respuestas</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+    <label><span><b>Anuncios</b><small>Interesados y disponibilidad</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+    <label><span><b>Recomendaciones</b><small>Resumen personalizado semanal</small></span><input type="checkbox" disabled aria-disabled="true"></label>
+  </div>
+</section>
+    <section data-settings-panel="security" hidden><h2>Seguridad</h2><p class="settings-intro">Tus reportes son privados. Rooms nunca muestra acusaciones públicamente.</p><div class="setting-list"><button type="button" id="blockedUsers"><span><small>USUARIOS BLOQUEADOS</small><b id="blockedUsersCount">0 personas</b></span><i>Ver</i></button><button type="button" id="myReports"><span><small>MIS REPORTES</small><b id="reportsStatus">Consultar reportes</b></span><i>Ver</i></button><button type="button" id="manageSessions"><span><small>SESIONES</small><b>Gestionar acceso</b></span><i>Gestionar</i></button></div><aside class="risk-note"><b>Controles de seguridad</b><p>Puedes gestionar usuarios bloqueados, consultar tus reportes y cerrar las demás sesiones abiertas de tu cuenta.</p></aside></section>
   </div></div></main>
 
   <main class="trust-main" id="trustView" hidden>
@@ -691,9 +676,8 @@
   <b>Compartir un piso</b>
   <small>Pega un enlace de Idealista, Fotocasa u otra fuente · Próximamente</small>
   <span>PRÓX.</span>
-</button><button type="button" data-publish-type="post"><b>Crear publicación</b><small>Pregunta, recomienda o comparte una experiencia</small><span>→</span></button></div><p class="safe">✓ Puedes guardar el borrador y continuar después</p></article></div>
-  <div class="modal" id="publishFlowModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail publish-flow-shell"><header><button type="button" id="publishFlowBack" aria-label="Volver">←</button><div><small id="publishFlowKind">OFRECER HABITACIÓN</small><div class="publish-progress"><span id="publishProgressBar"></span></div></div><button type="button" data-close aria-label="Cerrar">×</button></header><div class="publish-flow-content" id="publishFlowContent"></div><footer><button type="button" id="savePublishDraft">Guardar borrador</button><button type="button" id="publishFlowContinue">Continuar →</button></footer></article></div>
-  <div class="modal" id="feedFilterModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">AFINA TU FEED</p><h2>Filtros</h2><div class="feed-modal-options"><button type="button" aria-pressed="true">Madrid</button><button type="button" aria-pressed="false">Hasta 1.000 €</button><button type="button" aria-pressed="false">Entrada en septiembre</button><button type="button" aria-pressed="false">92% match o más</button></div><button class="cta" type="button" data-toast="Filtros aplicados">Aplicar filtros</button></article></div>
+</button><button type="button" data-publish-type="post"><b>Crear publicación</b><small>Pregunta, recomienda o comparte una experiencia</small><span>→</span></button></div><p class="safe">Tus datos se conservan mientras completas esta publicación.</p></article></div>
+  <div class="modal" id="publishFlowModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="detail publish-flow-shell"><header><button type="button" id="publishFlowBack" aria-label="Volver">←</button><div><small id="publishFlowKind">OFRECER HABITACIÓN</small><div class="publish-progress"><span id="publishProgressBar"></span></div></div><button type="button" data-close aria-label="Cerrar">×</button></header><div class="publish-flow-content" id="publishFlowContent"></div><footer><button type="button" id="savePublishDraft" disabled aria-disabled="true">Guardar borrador · Próximamente</button><button type="button" id="publishFlowContinue">Continuar →</button></footer></article></div>
   <div class="modal" id="exploreFilterModal" aria-hidden="true">
   <div class="backdrop" data-close></div>
 
