@@ -142,29 +142,28 @@
         <h1>Haz tu perfil<br>más fiable</h1>
         <p class="onboarding-help">No es obligatorio, pero ayuda a generar confianza dentro de Rooms.</p>
         <div class="verification-panel" id="verificationPanel" aria-label="Estado de verificación">
-          <div class="verification-item verified" data-verification="email"><span class="verification-icon" aria-hidden="true">✓</span><span><b>Email verificado</b><small>Tu correo ya está confirmado</small></span><em>LISTO</em></div>
-          <div class="verification-item" data-verification="phone"><span class="verification-icon" aria-hidden="true">2</span><span><b>Teléfono verificado</b><small>Confirmación rápida por código</small></span><em>PENDIENTE</em></div>
-          <div class="verification-item" data-verification="photo"><span class="verification-icon" aria-hidden="true">3</span><span><b>Foto real</b><small>Comprobamos que tu foto es clara</small></span><em>PENDIENTE</em></div>
-          <div class="verification-item optional" data-verification="selfie"><span class="verification-icon" aria-hidden="true">4</span><span><b>Selfie rápida</b><small>Opcional · refuerza la confianza</small></span><em>OPCIONAL</em></div>
+          <div class="verification-item" data-verification="email"><span class="verification-icon" aria-hidden="true">1</span><span><b>Email</b><small>Comprobando estado…</small></span><em>…</em></div>
+          <div class="verification-item optional" data-verification="phone"><span class="verification-icon" aria-hidden="true">2</span><span><b>Teléfono</b><small>La verificación por código estará disponible próximamente.</small></span><em>PRÓX.</em></div>
+          <div class="verification-item optional" data-verification="photo"><span class="verification-icon" aria-hidden="true">3</span><span><b>Verificación de foto</b><small>La comprobación de identidad mediante foto estará disponible próximamente.</small></span><em>PRÓX.</em></div>
+          <div class="verification-item optional" data-verification="selfie"><span class="verification-icon" aria-hidden="true">4</span><span><b>Selfie de verificación</b><small>Función opcional en preparación.</small></span><em>PRÓX.</em></div>
         </div>
-        <div class="verified-profile" id="verifiedProfile" hidden><span aria-hidden="true">✓</span><div><b>Perfil verificado</b><small>Tu perfil ya transmite más confianza.</small></div></div>
         <p class="verification-note">Sin documentos ni procesos pesados.</p>
       </div>
       <div class="onboarding-step" id="onboardingStep10" hidden>
         <div class="ready-heading"><span aria-hidden="true">✦</span><h1>Tu Rooms<br>está listo</h1></div>
         <p class="onboarding-help">Ya sabemos suficiente para empezar a enseñarte sitios y personas que encajan contigo.</p>
-        <div class="match-previews" aria-label="Tus primeros matches">
+        <div class="match-previews" aria-label="Qué encontrarás en Rooms">
           <article class="match-preview home-match">
-            <img src="assets/images/chamberi-villanueva.jpg" alt="Habitación luminosa en Chamberí">
-            <div><span>92% MATCH</span><b>Habitación en Chamberí</b><small>850 € / mes · Disponible 1 sep</small></div>
+            <img src="assets/images/chamberi-villanueva.jpg" alt="Ejemplo visual de una vivienda en Rooms">
+            <div><span>VIVIENDAS</span><b>Encuentra un lugar que encaje contigo</b><small>Podrás comparar zona, precio, disponibilidad y convivencia.</small></div>
           </article>
           <article class="match-preview person-match">
-            <div class="preview-avatar" aria-hidden="true">M</div>
-            <div><span>88% MATCH</span><b>Marta busca piso</b><small>Septiembre · Chamberí y Centro</small></div>
+            <div class="preview-avatar" aria-hidden="true">R</div>
+            <div><span>PERSONAS</span><b>Conoce posibles compañeros</b><small>Rooms utilizará los datos reales de cada perfil para mostrar compatibilidad.</small></div>
           </article>
           <article class="match-preview community-match">
             <div class="community-mark" aria-hidden="true">#</div>
-            <div><span>COMUNIDAD RECOMENDADA</span><b>Vivir en Chamberí</b><small>2.4k personas · Consejos y planes</small></div>
+            <div><span>COMUNIDADES</span><b>Descubre grupos que te interesen</b><small>Las comunidades reales aparecerán cuando empieces a explorar Rooms.</small></div>
           </article>
         </div>
         <p class="learning-note">Cuanto más uses Rooms, mejor te conoceremos.</p>
@@ -363,7 +362,7 @@
     <section class="own-profile-hero"><div class="own-avatar"><span>R</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>PERFIL</small><h1>Mi perfil</h1><p>Cargando información del perfil…</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Cargando búsqueda…</span><button type="button" data-open-search-preferences aria-label="Editar búsqueda actual">＋</button></div></section>
     <section class="profile-completion"><div class="completion-ring"><b>0%</b><span>COMPLETO</span></div><div><small>PERFIL</small><h2>Calculando tu perfil</h2><p>Estamos revisando la información que ya has añadido.</p></div><button type="button" data-profile-completion-action hidden>Completar perfil →</button></section>
 
-    <section class="current-home-feature" data-open-current-home>
+    <section class="current-home-feature">
   <div class="current-home-accent"></div>
 
   <div class="current-home-inner">

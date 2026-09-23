@@ -24,7 +24,6 @@
     chatTarget: null,
     conversationPreferences: new Map(),
     channel: null,
-    currentListingId: null,
     living: {},
     profiles: new Map(),
     incomingRequests: new Map(),
@@ -275,7 +274,6 @@
     state.blockTarget = null;
     state.blockedUsers = new Set();
     state.targetVisibility = null;
-    state.currentListingId = null;
     state.currentCollectionId = null;
 
     /*
@@ -782,6 +780,52 @@
         state.user?.email_confirmed_at
           ? 'Verificado'
           : 'Pendiente de verificar';
+    }
+
+    const onboardingEmail =
+      document.querySelector('[data-verification="email"]');
+
+    if (onboardingEmail) {
+      const verified =
+        Boolean(state.user?.email_confirmed_at);
+
+      onboardingEmail.classList.toggle(
+        'verified',
+        verified
+      );
+
+      const icon =
+        onboardingEmail.querySelector('.verification-icon');
+
+      const title =
+        onboardingEmail.querySelector('b');
+
+      const copy =
+        onboardingEmail.querySelector('small');
+
+      const status =
+        onboardingEmail.querySelector('em');
+
+      if (icon) {
+        icon.textContent = verified ? '✓' : '1';
+      }
+
+      if (title) {
+        title.textContent =
+          verified ? 'Email verificado' : 'Email';
+      }
+
+      if (copy) {
+        copy.textContent =
+          verified
+            ? 'Tu correo está confirmado.'
+            : 'Tu correo todavía no está confirmado.';
+      }
+
+      if (status) {
+        status.textContent =
+          verified ? 'LISTO' : 'PENDIENTE';
+      }
     }
   }
 
@@ -1376,7 +1420,6 @@
     // el estado real de conexión de cada usuario.
     updateConnectButtons();
 
-    clearDemoOnlyViews();
     refreshOwnActivity();
     await loadHousehold();
     await loadMemberCommunities();
@@ -1407,6 +1450,20 @@
         <p>Los perfiles, viviendas y publicaciones aparecerán aquí cuando la comunidad los cree.</p>
         <button type="button" data-open-real-publish>Crear lo primero</button>
       </section>`;
+
+    const activeFeedFilter =
+      document.querySelector('[data-feed-filter].active');
+
+    const activeFeedType =
+      activeFeedFilter?.dataset.feedFilter || 'all';
+
+    document
+      .querySelectorAll('#personalFeed [data-feed-type]')
+      .forEach(card => {
+        card.hidden =
+          activeFeedType !== 'all' &&
+          card.dataset.feedType !== activeFeedType;
+      });
   }
 
   function renderListingCard(listing) {
@@ -4751,12 +4808,6 @@
     }
   }
 
-  function clearDemoOnlyViews() {
-
-    const collections = document.querySelector('#savedView .collection-grid');
-    if (collections) collections.innerHTML = '<div class="real-empty-state"><b>Todavía no tienes colecciones</b><p>Crea una cuando quieras organizar tus guardados.</p></div>';
-  }
-
   function refreshOwnActivity(type) {
     if (!state.user) return;
     const active = type || document.querySelector('[data-own-activity].active')?.dataset.ownActivity || 'posts';
@@ -6181,7 +6232,6 @@
       return index >= 0 ? decodeURIComponent(String(url).slice(index + marker.length)) : null;
     }).filter(Boolean);
     if (storagePaths.length) db.storage.from('listing-images').remove(storagePaths);
-    state.currentListingId = null;
     hideAllModals();
     await loadRealContent();
     await loadSavedItems();
@@ -9107,8 +9157,6 @@
 
 
   function openRealListingDetail(listing) {
-    state.currentListingId = listing.id;
-
     const detail = document.querySelector('#detailContent');
     if (!detail) return;
 
@@ -11051,12 +11099,6 @@
           .catch(() => notify('No se pudo copiar el enlace'));
       }
 
-      return;
-    }
-
-    if (event.target.closest('[data-open-current-home]')) {
-      event.preventDefault();
-      notify('Mi hogar estará disponible próximamente');
       return;
     }
 
@@ -14135,7 +14177,7 @@
           <span>⌂</span>
           <h3>Todavía no habéis añadido viviendas ni personas</h3>
           <p>
-            Más adelante podrás enviar viviendas desde Explore y Guardados.
+            Añade viviendas desde Explore o Guardados para valorarlas juntos.
           </p>
 
           <button type="button" data-household-go-explore>
@@ -15808,12 +15850,6 @@
         'listing',
         listing.id
       );
-
-      if (sendHomeButton.closest('#compareModal')) {
-        document
-          .querySelector('#compareModal [data-close]')
-          ?.click();
-      }
 
       return;
     }
