@@ -11631,6 +11631,42 @@
       return;
     }
 
+
+  /* HOME — keyboard access for real cards */
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+    const listingCard =
+      event.target.closest('[data-real-listing][tabindex="0"]');
+
+    if (listingCard) {
+      event.preventDefault();
+
+      const listing =
+        state.listings.get(listingCard.dataset.realListing);
+
+      if (listing) {
+        openRealListingDetail(listing);
+      }
+
+      return;
+    }
+
+    const userCard =
+      event.target.closest('[data-real-user][tabindex="0"]');
+
+    if (userCard) {
+      event.preventDefault();
+
+      const profile =
+        state.profiles.get(userCard.dataset.realUser);
+
+      if (profile) {
+        openRealUser(profile);
+      }
+    }
+  });
+
     const realListing = event.target.closest('[data-real-listing]');
     if (realListing) {
       if (
