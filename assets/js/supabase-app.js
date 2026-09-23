@@ -7111,15 +7111,6 @@
     if (target.dataset.saveId && target.dataset.saveKind) {
       return { item_type: target.dataset.saveKind, item_id: target.dataset.saveId };
     }
-    const propertyCard = target.closest('[data-listing-id]');
-    if (propertyCard) {
-      const id = propertyCard.dataset.listingId;
-      const listing = window.listings?.find?.(item => String(item.id) === String(id));
-      return { item_type: listing?.kind === 'Piso entero' ? 'apartment' : 'room', item_id: `listing-${id}` };
-    }
-    if (target.matches('[data-detail-save]') && state.currentListingId) {
-      return { item_type: 'room', item_id: `listing-${state.currentListingId}` };
-    }
     if (target.closest('[data-person-save]') && state.targetProfile) {
       return { item_type: 'person', item_id: state.targetProfile.id };
     }
@@ -11439,9 +11430,6 @@
         option: Number(option)
       };
     }
-
-    const listing = event.target.closest('[data-listing-id]');
-    if (listing) state.currentListingId = listing.dataset.listingId;
 
     const realCollection = event.target.closest('[data-real-collection]');
     if (realCollection) {
