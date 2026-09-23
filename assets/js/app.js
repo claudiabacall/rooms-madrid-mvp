@@ -73,7 +73,7 @@ renderOnboardingZones();
 renderLivingCategories();
 setOnboardingBudget(600,1000);
 function open(el){el.classList.add('open');el.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}function closeAll(){document.querySelectorAll('.modal').forEach(m=>{m.classList.remove('open');m.setAttribute('aria-hidden','true')});document.body.style.overflow=''}function ping(text){toast.textContent=text;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
-const feed=document.querySelector('#personalFeed'),feedMain=document.querySelector('.feed-main'),publishModal=document.querySelector('#publishModal'),publishFlowModal=document.querySelector('#publishFlowModal'),userProfileModal=document.querySelector('#userProfileModal'),exploreView=document.querySelector('#exploreView'),communitiesView=document.querySelector('#communitiesView'),householdView=document.querySelector('#householdView'),communityView=document.querySelector('#communityView'),ownProfileView=document.querySelector('#ownProfileView'),savedView=document.querySelector('#savedView'),settingsView=document.querySelector('#settingsView'),trustView=document.querySelector('#trustView'),exploreFilterModal=document.querySelector('#exploreFilterModal'),chatInboxModal=document.querySelector('#chatInboxModal'),conversationModal=document.querySelector('#conversationModal'),notificationsModal=document.querySelector('#notificationsModal'),collectionModal=document.querySelector('#collectionModal');let personConnected=false,communityJoined=false,publishType='',publishStep=0;
+const feed=document.querySelector('#personalFeed'),feedMain=document.querySelector('.feed-main'),publishModal=document.querySelector('#publishModal'),publishFlowModal=document.querySelector('#publishFlowModal'),exploreView=document.querySelector('#exploreView'),communitiesView=document.querySelector('#communitiesView'),householdView=document.querySelector('#householdView'),communityView=document.querySelector('#communityView'),ownProfileView=document.querySelector('#ownProfileView'),savedView=document.querySelector('#savedView'),settingsView=document.querySelector('#settingsView'),trustView=document.querySelector('#trustView'),exploreFilterModal=document.querySelector('#exploreFilterModal'),chatInboxModal=document.querySelector('#chatInboxModal'),conversationModal=document.querySelector('#conversationModal'),notificationsModal=document.querySelector('#notificationsModal'),collectionModal=document.querySelector('#collectionModal');let publishType='',publishStep=0;
 const publishFlows={
  room:{label:'OFRECER HABITACIÓN',steps:[
   ()=>`<p class="eyebrow">LO IMPRESCINDIBLE</p><h2>Empecemos por lo básico</h2><p class="flow-intro">Con esto ya podemos empezar a calcular el match.</p><div class="publish-form-grid"><label>Zona<input placeholder="Barrio o zona"></label><label>Precio mensual<div class="input-suffix"><input type="number" placeholder="Precio"><span>€</span></div></label><label>Disponible desde<input type="date" ></label><label>Duración<select><option>6–12 meses</option><option>3–6 meses</option><option>Más de 1 año</option><option>Flexible</option></select></label></div><button class="photo-drop" type="button"><span>＋</span><b>Añadir fotos</b><small>Hasta 10 imágenes · Puedes hacerlo después</small></button>`,
@@ -163,8 +163,23 @@ function showMainView(view){
 document.querySelectorAll('[data-bottom-nav]').forEach(button=>button.addEventListener('click',()=>{showMainView(button.dataset.bottomNav)}));
 document.querySelector('#openChats').addEventListener('click',()=>open(chatInboxModal));
 document.querySelector('#openNotifications').addEventListener('click',()=>open(notificationsModal));
-document.querySelectorAll('[data-chat-filter]').forEach(button=>button.addEventListener('click',()=>{const filter=button.dataset.chatFilter;document.querySelectorAll('[data-chat-filter]').forEach(item=>item.classList.toggle('active',item===button));document.querySelectorAll('[data-chat-type]').forEach(item=>item.hidden=filter!=='all'&&item.dataset.chatType!==filter)}));
 document.querySelector('#conversationBack').addEventListener('click',()=>{conversationModal.classList.remove('open');conversationModal.setAttribute('aria-hidden','true');open(chatInboxModal)});
+
+document.querySelector('#chatInboxSearch').addEventListener('input',event=>{
+  const query=event.target.value.trim().toLocaleLowerCase('es');
+  const list=document.querySelector('#chatInboxModal .conversation-list');
+  const items=[...document.querySelectorAll('#chatInboxModal [data-real-chat]')];
+
+  items.forEach(item=>{
+    item.hidden=query&&!item.textContent.toLocaleLowerCase('es').includes(query);
+  });
+
+  list?.querySelector('[data-chat-search-empty]')?.remove();
+
+  if(query&&items.length&&!items.some(item=>!item.hidden)){
+    list?.insertAdjacentHTML('beforeend','<div class="real-empty-state" data-chat-search-empty><b>No encontramos conversaciones</b><p>Prueba con otro nombre o palabra del último mensaje.</p></div>');
+  }
+});
 
 
 
@@ -207,4 +222,4 @@ document.querySelectorAll('[data-empty-action="filters"]').forEach(button=>butto
 document.querySelectorAll('[data-empty-action="communities"]').forEach(button=>button.addEventListener('click',()=>showMainView('communities')));
 const offlineBanner=document.createElement('div');offlineBanner.className='offline-banner';offlineBanner.hidden=true;offlineBanner.innerHTML='<b>Sin conexión</b><span>Algunas funciones no estarán disponibles hasta que recuperes internet.</span>';document.body.appendChild(offlineBanner);window.addEventListener('offline',()=>offlineBanner.hidden=false);window.addEventListener('online',()=>{offlineBanner.hidden=true;ping('Conexión recuperada')});
 
-document.addEventListener('click',event=>{const detailCarouselControl=event.target.closest('#detailModal [data-carousel-prev],#detailModal [data-carousel-next]'),toastTarget=event.target.closest('[data-toast]');if(detailCarouselControl){advanceCarousel(detailCarouselControl.closest('[data-carousel]'),detailCarouselControl.hasAttribute('data-carousel-next')?1:-1);return}if(event.target.closest('[data-close]'))closeAll();if(toastTarget){ping(toastTarget.dataset.toast);if(toastTarget.closest('#publishModal,.detail-fixed-cta'))closeAll()}});document.addEventListener('keydown',event=>{if(event.key==='Escape')closeAll()});
+document.addEventListener('click',event=>{const detailCarouselControl=event.target.closest('#detailModal [data-carousel-prev],#detailModal [data-carousel-next]');if(detailCarouselControl){advanceCarousel(detailCarouselControl.closest('[data-carousel]'),detailCarouselControl.hasAttribute('data-carousel-next')?1:-1);return}if(event.target.closest('[data-close]'))closeAll()});document.addEventListener('keydown',event=>{if(event.key==='Escape')closeAll()});

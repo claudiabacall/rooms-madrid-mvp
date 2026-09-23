@@ -706,10 +706,6 @@
       );
 
     if (recommendationButton) {
-      recommendationButton.removeAttribute(
-        'data-toast'
-      );
-
       recommendationButton.id =
         'trustRecommendations';
 
@@ -5312,7 +5308,6 @@
     if (!button) return;
     if (button.dataset.realUploader === 'true') return;
     button.dataset.realUploader = 'true';
-    button.removeAttribute('data-toast');
     const count = state.publishDraft.files?.length || 0;
     button.innerHTML = `<span>＋</span><b>${count ? `${count} ${count === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}` : 'Añadir fotos'}</b><small>Hasta 10 imágenes · JPG, PNG, WebP o HEIC</small>`;
     const input = document.createElement('input');
@@ -8548,13 +8543,47 @@
       const profile = profiles.get(id);
       const name = profile?.alias || profile?.name || 'Usuario de Rooms';
       const last = latestByUser.get(id);
-      return `<button type="button" data-real-chat="${id}" data-chat-type="person">
+      return `<button type="button" data-real-chat="${id}">
         <span class="home-chat-icon">${escapeHtml(initials(name))}</span>
         <div><b>${escapeHtml(name)}</b><p>${escapeHtml(last?.body || 'Ya podéis empezar a hablar.')}</p><small>CONEXIÓN ROOMS</small></div>
         <time>${last ? relativeTime(last.created_at) : ''}</time>
       </button>`;
     }).join('')
         : '<div class="real-empty-state"><b>Todavía no tienes conversaciones</b><p>Cuando aceptéis una conexión, el chat aparecerá aquí.</p></div>';
+
+    const inboxSearch =
+      document.querySelector('#chatInboxSearch');
+
+    const query =
+      inboxSearch?.value
+        .trim()
+        .toLocaleLowerCase('es') || '';
+
+    const renderedConversations =
+      [...list.querySelectorAll('[data-real-chat]')];
+
+    renderedConversations.forEach(item => {
+      item.hidden =
+        Boolean(query) &&
+        !item.textContent
+          .toLocaleLowerCase('es')
+          .includes(query);
+    });
+
+    list
+      .querySelector('[data-chat-search-empty]')
+      ?.remove();
+
+    if (
+      query &&
+      renderedConversations.length &&
+      !renderedConversations.some(item => !item.hidden)
+    ) {
+      list.insertAdjacentHTML(
+        'beforeend',
+        '<div class="real-empty-state" data-chat-search-empty><b>No encontramos conversaciones</b><p>Prueba con otro nombre o palabra del último mensaje.</p></div>'
+      );
+    }
   }
 
   function initials(name) {
