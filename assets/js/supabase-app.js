@@ -152,6 +152,89 @@
     return 'No hemos podido completar el acceso. Inténtalo de nuevo.';
   }
 
+  function normalizePreferencesRecord(preferences) {
+    if (!preferences?.answers) return preferences;
+
+    const answers = {
+      ...preferences.answers
+    };
+
+    const privacy =
+      answers.privacy || {};
+
+    const controls =
+      privacy.controls || {};
+
+    const validVisibility =
+      value =>
+        ['public', 'connections', 'private']
+          .includes(value);
+
+    const hasLegacyControls =
+      ['habits', 'searching', 'posts', 'communities']
+        .some(key => typeof controls[key] === 'boolean');
+
+    const modernControls =
+      hasLegacyControls
+        ? {
+            living:
+              controls.habits
+                ? 'public'
+                : 'private',
+            search:
+              controls.searching
+                ? 'public'
+                : 'private',
+            budget:
+              !controls.searching
+                ? 'private'
+                : privacy.level === 'balanced'
+                  ? 'connections'
+                  : privacy.level === 'private'
+                    ? 'private'
+                    : 'public',
+            activity:
+              controls.posts
+                ? 'public'
+                : 'private'
+          }
+        : {
+            living:
+              validVisibility(controls.living)
+                ? controls.living
+                : 'public',
+            search:
+              validVisibility(controls.search)
+                ? controls.search
+                : 'public',
+            budget:
+              validVisibility(controls.budget)
+                ? controls.budget
+                : 'public',
+            activity:
+              validVisibility(controls.activity)
+                ? controls.activity
+                : 'public'
+          };
+
+    answers.privacy = {
+      ...privacy,
+      level:
+        privacy.level === 'public'
+          ? 'open'
+          : ['open', 'balanced', 'private', 'custom']
+              .includes(privacy.level)
+            ? privacy.level
+            : 'balanced',
+      controls: modernControls
+    };
+
+    return {
+      ...preferences,
+      answers
+    };
+  }
+
   async function startSession(
     session,
     { forceHome = false } = {}
@@ -166,9 +249,17 @@
       db.from('onboarding_preferences').select('answers,updated_at').eq('user_id', state.user.id).maybeSingle()
     ]);
     state.profile = profile;
-    state.preferences = preferences;
-    if (profile) state.profiles.set(profile.id, profile);
-    updateOwnProfile(profile, preferences);
+    state.preferences =
+      normalizePreferencesRecord(preferences);
+
+    if (profile) {
+      state.profiles.set(profile.id, profile);
+    }
+
+    updateOwnProfile(
+      profile,
+      state.preferences
+    );
 
     await loadUserBlocks();
     await loadConversationPreferences();
@@ -428,7 +519,7 @@
       sport: 'Deporte', music: 'Música', cooking: 'Cocina', travel: 'Viajes', gym: 'Gym',
       gaming: 'Gaming', reading: 'Lectura', 'going-out': 'Salir', 'quiet-plans': 'Planes tranquilos', pets: 'Mascotas'
     };
-    const aboutSection = document.querySelector('#ownProfileView .own-profile-content > section:nth-child(1)');
+    const aboutSection = document.querySelector('#ownProfileView [data-own-profile-about]');
     if (aboutSection) {
       const bio = aboutSection.querySelector(':scope > p');
       if (bio) bio.textContent = profile.bio || 'Aún no has añadido información sobre ti.';
@@ -709,10 +800,21 @@
       recommendationButton.id =
         'trustRecommendations';
 
+      const profileComplete =
+        completion >= 100;
+
       recommendationButton.textContent =
-        completion < 100
-          ? 'Completar perfil →'
-          : 'Perfil completo ✓';
+        profileComplete
+          ? 'Perfil completo ✓'
+          : 'Completar perfil →';
+
+      recommendationButton.disabled =
+        profileComplete;
+
+      recommendationButton.setAttribute(
+        'aria-disabled',
+        profileComplete ? 'true' : 'false'
+      );
     }
 
     const reviews =
@@ -5354,7 +5456,7 @@
     }
     const values = state.publishDraft.steps[0]?.values || [];
     const features = state.publishDraft.steps[1]?.selected || [];
-    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[0] || '—')} €/mes</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[1] || 'Fecha sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
+    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[0] || '—')} €/mes</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[1] || 'Sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
   }
 
   async function geocodeListingAddress(address) {
@@ -6243,7 +6345,7 @@
     const seeking = labelSeeking(profile.seeking?.[0]);
     const moveDate = profile.move_in_date
       ? new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(`${profile.move_in_date}T00:00:00`))
-      : 'Próximamente';
+      : 'Sin definir';
 
     document.querySelectorAll('[data-user-card]').forEach(card => {
       card.dataset.userId = profile.id;
@@ -7150,7 +7252,25 @@
         interests: collectPressed('[data-interest]', 'interest'),
         traits: collectPressed('[data-self-description]', 'selfDescription')
       },
-      privacy: { level: privacy?.dataset.privacyLevel || 'balanced', controls }
+      privacy: {
+        level:
+          privacy?.dataset.privacyLevel === 'public'
+            ? 'open'
+            : privacy?.dataset.privacyLevel || 'balanced',
+        controls: {
+          living: controls.habits ? 'public' : 'private',
+          search: controls.searching ? 'public' : 'private',
+          budget:
+            !controls.searching
+              ? 'private'
+              : privacy?.dataset.privacyLevel === 'balanced'
+                ? 'connections'
+                : privacy?.dataset.privacyLevel === 'private'
+                  ? 'private'
+                  : 'public',
+          activity: controls.posts ? 'public' : 'private'
+        }
+      }
     };
   }
 
@@ -10044,7 +10164,7 @@
               `${profile.move_in_date}T00:00:00`
             )
           )
-        : 'Flexible';
+        : 'Sin definir';
 
     const imageBox =
       modal.querySelector('.profile-hero');
@@ -12373,7 +12493,7 @@
   }
 
   document.addEventListener('click', event => {
-    const livingEdit = event.target.closest('#ownProfileView .own-profile-content > section:nth-child(2) .manage-section-title button');
+    const livingEdit = event.target.closest('[data-open-living-editor]');
 
     if (livingEdit) {
       event.preventDefault();
@@ -12679,16 +12799,6 @@
   }
 
   document.addEventListener('click', event => {
-    const searchEdit = event.target.closest(
-      '#ownProfileView .own-profile-content > section:nth-child(3) .manage-section-title button'
-    );
-
-    if (searchEdit) {
-      event.preventDefault();
-      openSearchPreferencesEditor();
-      return;
-    }
-
     if (event.target.closest('[data-close-search-preferences]')) {
       const modal = document.querySelector('#searchPreferencesModal');
 
@@ -12893,7 +13003,7 @@
       : `<span>${escapeHtml(initials || 'R')}</span>`;
 
     modal.querySelector('#ownPublicVerification').textContent =
-      state.user?.email_confirmed_at ? 'VERIFICADO ✓' : 'PERFIL';
+      state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'PERFIL';
 
     modal.querySelector('#ownPublicName').textContent =
       profile.age ? `${name}, ${profile.age}` : name;
@@ -13255,20 +13365,82 @@
     });
   }
 
+  const profilePrivacyPresets = {
+    open: {
+      living: 'public',
+      search: 'public',
+      budget: 'public',
+      activity: 'public'
+    },
+    balanced: {
+      living: 'public',
+      search: 'public',
+      budget: 'connections',
+      activity: 'public'
+    },
+    private: {
+      living: 'private',
+      search: 'private',
+      budget: 'private',
+      activity: 'private'
+    }
+  };
+
+  function applyProfilePrivacyControls(controls) {
+    document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+      const key = row.dataset.profilePrivacyRow;
+      const value = controls[key] || 'public';
+
+      row.querySelectorAll('[data-privacy-value]').forEach(button => {
+        const active = button.dataset.privacyValue === value;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  function detectProfilePrivacyLevel() {
+    const current = {};
+
+    document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+      current[row.dataset.profilePrivacyRow] =
+        row.querySelector('[data-privacy-value].active')
+          ?.dataset.privacyValue || 'public';
+    });
+
+    return Object.entries(profilePrivacyPresets).find(([, preset]) =>
+      Object.keys(preset).every(key => preset[key] === current[key])
+    )?.[0] || 'custom';
+  }
+
+  function renderProfilePrivacyLevel(level) {
+    document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
+      const active = button.dataset.profilePrivacyLevel === level;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
   document.addEventListener('click', event => {
     const levelButton = event.target.closest('[data-profile-privacy-level]');
+
     if (levelButton) {
-      document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
-        button.classList.toggle('active', button === levelButton);
-        button.setAttribute(
-          'aria-pressed',
-          button === levelButton ? 'true' : 'false'
-        );
-      });
+      const level = levelButton.dataset.profilePrivacyLevel;
+      const preset = profilePrivacyPresets[level];
+
+      renderProfilePrivacyLevel(level);
+
+      if (preset) {
+        applyProfilePrivacyControls(preset);
+      }
+
       return;
     }
 
-    const privacyButton = event.target.closest('[data-profile-privacy-row] [data-privacy-value]');
+    const privacyButton = event.target.closest(
+      '[data-profile-privacy-row] [data-privacy-value]'
+    );
+
     if (privacyButton) {
       const row = privacyButton.closest('[data-profile-privacy-row]');
 
@@ -13279,13 +13451,17 @@
           button === privacyButton ? 'true' : 'false'
         );
       });
+
+      renderProfilePrivacyLevel(
+        detectProfilePrivacyLevel()
+      );
+
       return;
     }
 
     if (event.target.closest('#saveProfilePrivacy')) {
       const level =
-        document.querySelector('[data-profile-privacy-level].active')
-          ?.dataset.profilePrivacyLevel || 'balanced';
+        detectProfilePrivacyLevel();
 
       const controls = {};
 
@@ -14012,7 +14188,7 @@
           </label>
 
           <p class="create-household-hint">
-            Puedes cambiar el nombre más adelante.
+            Elige un nombre para identificar el grupo.
           </p>
 
           <button type="submit" class="cta">

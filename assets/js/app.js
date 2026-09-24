@@ -36,7 +36,42 @@ document.querySelector('#onboardingMoveDate').addEventListener('change',updateOn
 document.querySelector('#livingCategories').addEventListener('click',event=>{const header=event.target.closest('[data-living-header]'),choice=event.target.closest('[data-living-choice]'),weight=event.target.closest('[data-living-weight]');if(header){activeLivingCategory=Number(header.dataset.livingHeader);renderLivingCategories();return}if(choice){const [category,option]=choice.dataset.livingChoice.split(':').map(Number);livingPreferences.set(category,option);renderLivingCategories();return}if(weight){const [category,option]=weight.dataset.livingWeight.split(':').map(Number);livingWeights.set(category,option);renderLivingCategories()}});
 document.querySelector('#profileName').addEventListener('input',updateOnboardingContinue);
 document.querySelector('#profilePhotoInput').addEventListener('change',event=>{const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.addEventListener('load',()=>{const image=document.querySelector('#profilePhotoImage');image.src=reader.result;image.hidden=false;document.querySelector('#profilePhotoPlus').hidden=true;document.querySelector('#profilePhotoText').textContent='Cambiar foto'});reader.readAsDataURL(file)});
-document.querySelectorAll('[data-privacy-level]').forEach(option=>option.addEventListener('click',()=>document.querySelectorAll('[data-privacy-level]').forEach(button=>button.setAttribute('aria-checked',String(button===option)))));
+document.querySelectorAll('[data-privacy-level]').forEach(option=>option.addEventListener('click',()=>{
+  document.querySelectorAll('[data-privacy-level]').forEach(button=>{
+    button.setAttribute('aria-checked',String(button===option));
+  });
+
+  const presets={
+    public:{
+      habits:true,
+      searching:true,
+      posts:true,
+      communities:true
+    },
+    balanced:{
+      habits:true,
+      searching:true,
+      posts:true,
+      communities:false
+    },
+    private:{
+      habits:false,
+      searching:false,
+      posts:false,
+      communities:false
+    }
+  };
+
+  const preset=presets[option.dataset.privacyLevel];
+  if(!preset)return;
+
+  document.querySelectorAll('[data-privacy-control]').forEach(control=>{
+    control.setAttribute(
+      'aria-checked',
+      String(Boolean(preset[control.dataset.privacyControl]))
+    );
+  });
+}));
 document.querySelectorAll('[data-privacy-control]').forEach(control=>control.addEventListener('click',()=>control.setAttribute('aria-checked',String(control.getAttribute('aria-checked')!=='true'))));
 document.querySelector('#onboardingZoneSearch').addEventListener('input',event=>renderOnboardingZones(event.target.value));
 onboardingBack.addEventListener('click',()=>showOnboardingStep(onboardingStep-1));
