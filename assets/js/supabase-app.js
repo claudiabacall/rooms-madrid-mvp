@@ -143,6 +143,164 @@
     });
   }
 
+  function ensurePasswordRecoveryModal() {
+    let modal =
+      document.querySelector('#passwordRecoveryModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'passwordRecoveryModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop"></div>
+
+      <article class="publish detail">
+        <p class="eyebrow">SEGURIDAD</p>
+        <h2>Crea una nueva contraseña</h2>
+
+        <p>
+          Introduce una contraseña nueva para tu cuenta de Rooms.
+        </p>
+
+        <form id="passwordRecoveryForm">
+          <label>
+            Nueva contraseña
+            <input
+              id="recoveryPassword"
+              type="password"
+              minlength="6"
+              required
+              autocomplete="new-password"
+            >
+          </label>
+
+          <label>
+            Repetir contraseña
+            <input
+              id="recoveryPasswordConfirm"
+              type="password"
+              minlength="6"
+              required
+              autocomplete="new-password"
+            >
+          </label>
+
+          <p
+            class="auth-message"
+            id="passwordRecoveryMessage"
+            role="status"
+          ></p>
+
+          <button
+            class="cta"
+            type="submit"
+            id="passwordRecoverySubmit"
+          >
+            Guardar nueva contraseña
+          </button>
+        </form>
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal
+      .querySelector('#passwordRecoveryForm')
+      .addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const password =
+          modal.querySelector('#recoveryPassword').value;
+
+        const confirmation =
+          modal.querySelector('#recoveryPasswordConfirm').value;
+
+        const message =
+          modal.querySelector('#passwordRecoveryMessage');
+
+        const submit =
+          modal.querySelector('#passwordRecoverySubmit');
+
+        message.textContent = '';
+        message.className = 'auth-message';
+
+        if (password.length < 6) {
+          message.textContent =
+            'La contraseña debe tener al menos 6 caracteres.';
+          return;
+        }
+
+        if (password !== confirmation) {
+          message.textContent =
+            'Las contraseñas no coinciden.';
+          return;
+        }
+
+        submit.disabled = true;
+        submit.textContent = 'Guardando…';
+
+        const { error } =
+          await db.auth.updateUser({
+            password
+          });
+
+        submit.disabled = false;
+        submit.textContent =
+          'Guardar nueva contraseña';
+
+        if (error) {
+          console.error(
+            'Rooms: error actualizando contraseña',
+            error
+          );
+
+          message.textContent =
+            'No hemos podido cambiar la contraseña. Inténtalo de nuevo.';
+          return;
+        }
+
+        message.className =
+          'auth-message success';
+
+        message.textContent =
+          'Contraseña actualizada correctamente.';
+
+        setTimeout(() => {
+          modal.classList.remove('open');
+          modal.setAttribute(
+            'aria-hidden',
+            'true'
+          );
+
+          document.body.style.overflow = '';
+
+          notify(
+            'Contraseña actualizada'
+          );
+        }, 700);
+      });
+
+    return modal;
+  }
+
+
+  function openPasswordRecoveryModal() {
+    const modal =
+      ensurePasswordRecoveryModal();
+
+    showModal(modal);
+
+    setTimeout(() => {
+      modal
+        .querySelector('#recoveryPassword')
+        ?.focus();
+    }, 50);
+  }
+
+
   function translateAuthError(message) {
     const text = String(message || '').toLowerCase();
     if (text.includes('invalid login')) return 'Email o contraseña incorrectos.';
@@ -1017,9 +1175,9 @@
     }
 
     /*
-     * El match revela indirectamente hábitos de convivencia.
-     * Hasta que tengamos el matching real, no lo enseñamos
-     * cuando esos datos no son visibles.
+     * La compatibilidad puede revelar indirectamente hábitos
+     * de convivencia y preferencias de búsqueda.
+     * La ocultamos cuando esos datos no son visibles.
      */
     const matchBlock = modal.querySelector('.user-match-block');
 
@@ -1527,7 +1685,45 @@
     await loadIncomingConnections();
     await loadCommunityPostInteractions();
     await handleIncomingHouseholdInvite();
+    handleIncomingListingLink();
   }
+
+  function handleIncomingListingLink() {
+    const params =
+      new URLSearchParams(window.location.search);
+
+    const listingId =
+      params.get('listing');
+
+    if (!listingId) return;
+
+    const listing =
+      state.listings?.get(listingId);
+
+    params.delete('listing');
+
+    const nextSearch =
+      params.toString();
+
+    const nextUrl =
+      `${window.location.pathname}${
+        nextSearch ? `?${nextSearch}` : ''
+      }${window.location.hash || ''}`;
+
+    window.history.replaceState(
+      {},
+      '',
+      nextUrl
+    );
+
+    if (!listing) {
+      notify('Esta vivienda ya no está disponible');
+      return;
+    }
+
+    openRealListingDetail(listing);
+  }
+
 
   function renderRealFeed(listings, profiles, posts, communities) {
     const feed = document.querySelector('#personalFeed');
@@ -1593,15 +1789,18 @@
           : 'Habitación';
 
     const zone =
-      listing.zone || 'Madrid';
+      listing.zone || null;
 
     const title =
       listing.title ||
-      `${kind} en ${zone}`;
+      (zone
+        ? `${kind} en ${zone}`
+        : kind);
 
     const price =
-      Number(listing.price || 0)
-        .toLocaleString('es-ES');
+      listing.price != null
+        ? Number(listing.price).toLocaleString('es-ES')
+        : null;
 
     const available =
       listing.available_from
@@ -1611,7 +1810,7 @@
           }).format(
             new Date(`${listing.available_from}T00:00:00`)
           )
-        : 'Flexible';
+        : null;
 
     const facts = [
       listing.rooms
@@ -1723,13 +1922,23 @@
             </div>
 
             <div class="rooms-home-property-price">
-              <b>${price} €</b>
-              <span>/ mes</span>
+              ${
+                price
+                  ? `
+                    <b>${price} €</b>
+                    <span>/ mes</span>
+                  `
+                  : '<b>Precio sin definir</b>'
+              }
             </div>
           </div>
 
           <div class="rooms-home-property-availability">
-            Disponible ${escapeHtml(available)}
+            ${
+              available
+                ? `Disponible ${escapeHtml(available)}`
+                : 'Disponibilidad sin definir'
+            }
           </div>
 
           ${
@@ -1793,7 +2002,7 @@
     }
 
     const name = profile.alias || profile.name || 'Usuario de Rooms';
-    const zone = profile.zones?.[0] || 'Madrid';
+    const zone = profile.zones?.[0] || null;
     const seeking = labelSeeking(profile.seeking?.[0]);
     const traits = (profile.traits || []).slice(0, 3);
     const traitLabels = { tidy: 'Ordenado', social: 'Sociable', calm: 'Tranquilo', independent: 'Independiente', cook: 'Cocinillas', early: 'Madrugador', night: 'Nocturno' };
@@ -1802,9 +2011,9 @@
         ${profile.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">` : `<div class="real-person-placeholder">${escapeHtml(initials(name))}</div>`}
         <div class="person-card-tools"><button type="button" class="${state.savedItems?.has(`person:${profile.id}`) ? 'saved' : ''}" data-person-save data-save-kind="person" data-save-id="${profile.id}" aria-label="${state.savedItems?.has(`person:${profile.id}`) ? 'Eliminar perfil de Guardados' : 'Guardar perfil'}">${state.savedItems?.has(`person:${profile.id}`) ? '♥' : '♡'}</button></div>
       </div>
-      <div class="person-card-body"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p class="person-searching">${escapeHtml(seeking)} · ${escapeHtml(zone)}</p>
-        <div class="person-traits">${traits.length ? traits.map(value => `<span>${escapeHtml(traitLabels[value] || value)}</span>`).join('') : '<span>Perfil recién creado</span>'}</div>
-        <p>${escapeHtml(profile.bio || 'Todavía no ha añadido una bio.')}</p>
+      <div class="person-card-body"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p class="person-searching">${escapeHtml(seeking)} · ${escapeHtml(zone || 'Zona sin definir')}</p>
+        <div class="person-traits">${traits.length ? traits.map(value => `<span>${escapeHtml(traitLabels[value] || value)}</span>`).join('') : '<span>Sin preferencias de convivencia</span>'}</div>
+        <p>${escapeHtml(profile.bio || 'Bio sin completar')}</p>
         <div class="person-actions"><button type="button" data-connect data-user-id="${profile.id}">${escapeHtml(connectionButtonLabel(profile.id))}</button></div>
       </div>
     </article>`;
@@ -2045,10 +2254,13 @@
                       </b>
 
                       <p>
-                        ${Number(
-                          linkedListing.price || 0
-                        ).toLocaleString('es-ES')}
-                        € / mes
+                        ${
+                          linkedListing.price != null
+                            ? `${Number(
+                                linkedListing.price
+                              ).toLocaleString('es-ES')} € / mes`
+                            : 'Precio sin definir'
+                        }
                       </p>
                     </div>
 
@@ -2450,15 +2662,19 @@
                   <b>
                     ${escapeHtml(
                       linkedListing.title ||
-                      linkedListing.zone
+                      linkedListing.zone ||
+                      'Vivienda'
                     )}
                   </b>
 
                   <p>
-                    ${Number(
-                      linkedListing.price || 0
-                    ).toLocaleString('es-ES')}
-                    € / mes
+                    ${
+                      linkedListing.price != null
+                        ? `${Number(
+                            linkedListing.price
+                          ).toLocaleString('es-ES')} € / mes`
+                        : 'Precio sin definir'
+                    }
                   </p>
                 </div>
 
@@ -4470,7 +4686,11 @@
       : 'Habitación';
 
     const photo = item.photos?.[0] || '';
-    const title = item.title || `${item.zone || 'Madrid'} · ${kind}`;
+    const title =
+      item.title ||
+      (item.zone
+        ? `${item.zone} · ${kind}`
+        : kind);
 
     const specs = [
       item.rooms ? `${item.rooms} hab` : null,
@@ -4507,11 +4727,17 @@
       <div class="real-map-card-copy">
         <small>${escapeHtml(kind)}</small>
 
-        <h2>${escapeHtml(item.zone || 'Madrid')}</h2>
+        <h2>${escapeHtml(item.zone || 'Zona sin definir')}</h2>
 
         <p class="real-map-card-price">
-          <b>${Number(item.price || 0).toLocaleString('es-ES')} €</b>
-          <span>/ mes</span>
+          ${
+            item.price != null
+              ? `
+                <b>${Number(item.price).toLocaleString('es-ES')} €</b>
+                <span>/ mes</span>
+              `
+              : '<b>Precio sin definir</b>'
+          }
         </p>
 
         ${
@@ -4604,7 +4830,9 @@
       const latitude = Number(item.latitude);
       const longitude = Number(item.longitude);
       const price =
-        `${Number(item.price || 0).toLocaleString('es-ES')} €`;
+        item.price != null
+          ? `${Number(item.price).toLocaleString('es-ES')} €`
+          : 'Sin precio';
 
       const icon = window.L.divIcon({
         className:
@@ -4808,13 +5036,19 @@
                   <div class="explore-property-body">
                     <div class="explore-property-top">
                       <div>
-                        <small>${escapeHtml(item.zone || 'Madrid')}</small>
+                        <small>${escapeHtml(item.zone || 'Zona sin definir')}</small>
                         <h2>${escapeHtml(title)}</h2>
                       </div>
 
                       <p class="explore-property-price">
-                        <b>${Number(item.price || 0).toLocaleString('es-ES')} €</b>
-                        <span>/ mes</span>
+                        ${
+                          item.price != null
+                            ? `
+                              <b>${Number(item.price).toLocaleString('es-ES')} €</b>
+                              <span>/ mes</span>
+                            `
+                            : '<b>Precio sin definir</b>'
+                        }
                       </p>
                     </div>
 
@@ -4947,7 +5181,11 @@
         const photo = listing.photos?.[0];
         return `<article class="own-real-listing" data-real-listing="${listing.id}">
           ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(listing.title)}">` : '<div class="own-listing-placeholder">rooms.</div>'}
-          <div><small>${escapeHtml(kind)}</small><h3>${escapeHtml(listing.zone)} · ${Number(listing.price).toLocaleString('es-ES')} €/mes</h3><p>${escapeHtml(listing.description || 'Sin descripción')}</p><button type="button" data-edit-listing="${listing.id}">Editar anuncio</button></div>
+          <div><small>${escapeHtml(kind)}</small><h3>${
+            listing.price != null
+              ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+              : 'Precio sin definir'
+          } · ${escapeHtml(listing.zone || 'Zona sin definir')}</h3><p>${escapeHtml(listing.description || 'Sin descripción')}</p><button type="button" data-edit-listing="${listing.id}">Editar anuncio</button></div>
         </article>`;
       }).join('')}</div>`;
       return;
@@ -5209,8 +5447,12 @@
 
                     ${ownListings.map(listing => `
                       <option value="${escapeHtml(listing.id)}">
-                        ${escapeHtml(listing.title || listing.zone)}
-                        · ${Number(listing.price || 0).toLocaleString('es-ES')} €
+                        ${escapeHtml(listing.title || listing.zone || 'Vivienda')}
+                        · ${
+                          listing.price != null
+                            ? `${Number(listing.price).toLocaleString('es-ES')} €`
+                            : 'Precio sin definir'
+                        }
                       </option>
                     `).join('')}
                   </select>
@@ -6342,7 +6584,7 @@
   function applyTargetProfile(profile) {
     const name = profile.alias || profile.name || 'Usuario de Rooms';
     const age = profile.age ? `, ${profile.age}` : '';
-    const zone = profile.zones?.[0] || 'Madrid';
+    const zone = profile.zones?.[0] || 'Zona sin definir';
     const seeking = labelSeeking(profile.seeking?.[0]);
     const moveDate = profile.move_in_date
       ? new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(`${profile.move_in_date}T00:00:00`))
@@ -6980,7 +7222,7 @@
     const zone =
       profile.zones?.length
         ? profile.zones.join(' · ')
-        : 'Madrid';
+        : 'Zona sin definir';
 
     const seeking =
       profile.seeking?.length
@@ -8881,8 +9123,16 @@
       const listing = state.listings.get(saved.item_id);
       if (!listing) return null;
 
+      const priceLabel =
+        listing.price != null
+          ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+          : 'Precio sin definir';
+
+      const zoneLabel =
+        listing.zone || 'Zona sin definir';
+
       return {
-        title: `${Number(listing.price).toLocaleString('es-ES')} €/mes · ${listing.zone}`,
+        title: `${priceLabel} · ${zoneLabel}`,
         subtitle: listing.kind === 'apartment' ? 'Piso entero' : 'Habitación',
         mark: '⌂',
         image: Array.isArray(listing.photos) && listing.photos.length ? listing.photos[0] : null
@@ -8896,7 +9146,7 @@
       const name = person.alias || person.name || 'Usuario de Rooms';
       return {
         title: name,
-        subtitle: person.zones?.[0] || 'Madrid',
+        subtitle: person.zones?.[0] || 'Zona sin definir',
         mark: initials(name)
       };
     }
@@ -9150,11 +9400,15 @@
       if (listing) {
         const type = listing.kind === 'apartment' ? 'flat' : 'room';
         counts[type]++;
-        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}" data-saved-created="${escapeHtml(item.created_at || '')}" data-saved-price="${Number(listing.price || 0)}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}" data-saved-created="${escapeHtml(item.created_at || '')}" data-saved-price="${Number(listing.price || 0)}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${
+  listing.price != null
+    ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+    : 'Precio sin definir'
+} · ${escapeHtml(listing.zone || 'Zona sin definir')}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
       } else if (person && person.id !== state.user.id) {
         counts.person++;
         const name = person.alias || person.name || 'Usuario de Rooms';
-        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Zona sin definir')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
       } else if (post) {
         counts.post++;
         cards.push(`<article class="saved-card saved-post" data-saved-type="post" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
@@ -9317,14 +9571,18 @@
           ? 'Fuente externa'
           : 'Habitación';
 
-    const zone = listing.zone || 'Madrid';
+    const zone = listing.zone || null;
 
     const title =
       listing.title ||
-      `${kind} en ${zone}`;
+      (zone
+        ? `${kind} en ${zone}`
+        : kind);
 
     const price =
-      Number(listing.price || 0).toLocaleString('es-ES');
+      listing.price != null
+        ? Number(listing.price).toLocaleString('es-ES')
+        : null;
 
     const date =
       listing.available_from
@@ -9334,7 +9592,7 @@
           }).format(
             new Date(`${listing.available_from}T00:00:00`)
           )
-        : 'Flexible';
+        : null;
 
     const photos =
       Array.isArray(listing.photos)
@@ -9461,8 +9719,8 @@
 
 
           <div class="rooms-property-availability">
-            <span>Disponible</span>
-            <b>${escapeHtml(date)}</b>
+            <span>Disponibilidad</span>
+            <b>${date ? escapeHtml(date) : 'Sin definir'}</b>
           </div>
 
 
@@ -10266,7 +10524,7 @@
 
             <div>
               <small>DURACIÓN</small>
-              <b>${escapeHtml(profile.duration || 'Flexible')}</b>
+              <b>${escapeHtml(profile.duration || 'Sin definir')}</b>
             </div>
 
           </div>
@@ -12095,6 +12353,25 @@
   injectAuthGate();
 
   db.auth.onAuthStateChange((event, session) => {
+    if (
+      event === 'PASSWORD_RECOVERY' &&
+      session
+    ) {
+      manualAuthNavigationPending = false;
+
+      startSession(
+        session,
+        { forceHome: false }
+      );
+
+      setTimeout(
+        openPasswordRecoveryModal,
+        0
+      );
+
+      return;
+    }
+
     if (session) {
       const forceHome =
         event === 'SIGNED_IN' &&
@@ -15517,7 +15794,7 @@
                 day: 'numeric',
                 month: 'short'
               })
-          : 'Fecha flexible';
+          : null;
 
       return `
         <article class="real-household-candidate">
@@ -15546,21 +15823,33 @@
             <h3>
               ${escapeHtml(
                 listing.title ||
-                `${listing.zone || 'Madrid'} · ${kindLabel}`
+                listing.zone
+                  ? `${listing.zone} · ${kindLabel}`
+                  : kindLabel
               )}
             </h3>
 
             <p>
-              <b>
-                ${Number(listing.price || 0)
-                  .toLocaleString('es-ES')} €
-              </b>
-              / mes
+              ${
+                listing.price != null
+                  ? `
+                    <b>
+                      ${Number(listing.price)
+                        .toLocaleString('es-ES')} €
+                    </b>
+                    / mes
+                  `
+                  : '<b>Precio sin definir</b>'
+              }
             </p>
 
             <span>
-              ${escapeHtml(listing.zone || 'Madrid')}
-              · Disponible ${escapeHtml(available)}
+              ${escapeHtml(listing.zone || 'Zona sin definir')}
+              · ${
+                available
+                  ? `Disponible ${escapeHtml(available)}`
+                  : 'Disponibilidad sin definir'
+              }
             </span>
 
             <div class="real-household-candidate-meta">
