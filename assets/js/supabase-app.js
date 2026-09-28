@@ -414,6 +414,7 @@
     state.household = null;
     state.households = [];
     state.householdMembers = [];
+    state.householdMembersError = false;
     state.householdCandidates = [];
     state.householdPersonCandidates = [];
     state.householdCandidateVotes = [];
@@ -1148,7 +1149,7 @@
               <span>
                 <b>Pública</b>
                 <small>
-                  Cualquiera puede encontrarla y solicitar unirse.
+                  Cualquiera puede encontrarla y unirse.
                 </small>
               </span>
             </label>
@@ -1158,12 +1159,14 @@
                 type="radio"
                 name="communityVisibility"
                 value="private"
+                disabled
+                aria-disabled="true"
               >
 
               <span>
-                <b>Privada</b>
+                <b>Privada · Próximamente</b>
                 <small>
-                  Visible solo para personas con acceso.
+                  Disponible cuando activemos invitaciones y acceso privado.
                 </small>
               </span>
             </label>
@@ -2389,20 +2392,6 @@
             </span>
           </div>
 
-          ${
-            post.author_id === state.user?.id
-              ? `
-                <button
-                  type="button"
-                  data-own-community-post="${escapeHtml(post.id)}"
-                  aria-label="Opciones"
-                >
-                  •••
-                </button>
-              `
-              : ''
-          }
-
         </header>
 
         ${
@@ -2888,15 +2877,25 @@
                     ADMIN
                   </span>
                 `
-                : `
-                  <button
-                    type="button"
-                    class="${isMember ? 'joined' : ''}"
-                    data-toggle-community-membership="${escapeHtml(community.id)}"
-                  >
-                    ${isMember ? 'Salir de la comunidad' : 'Unirme'}
-                  </button>
-                `
+                : community.visibility === 'private' && !isMember
+                  ? `
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                    >
+                      Acceso privado
+                    </button>
+                  `
+                  : `
+                    <button
+                      type="button"
+                      class="${isMember ? 'joined' : ''}"
+                      data-toggle-community-membership="${escapeHtml(community.id)}"
+                    >
+                      ${isMember ? 'Salir de la comunidad' : 'Unirme'}
+                    </button>
+                  `
             }
 
           </div>
@@ -2966,7 +2965,7 @@
               <button
                 class="community-publish"
                 type="button"
-                data-community-publish-placeholder
+                data-community-publish
               >
                 ＋ Publicar
               </button>
@@ -3051,7 +3050,7 @@
                 ? `
                   <button
                     type="button"
-                    data-manage-community-placeholder
+                    data-manage-community
                   >
                     Gestionar comunidad
                   </button>
@@ -3333,12 +3332,14 @@
                       type="radio"
                       name="manageCommunityVisibility"
                       value="private"
+                      disabled
+                      aria-disabled="true"
                     >
 
                     <span>
-                      <b>Privada</b>
+                      <b>Privada · Próximamente</b>
                       <small>
-                        Solo accesible para personas autorizadas.
+                        Disponible cuando activemos invitaciones y acceso privado.
                       </small>
                     </span>
                   </label>
@@ -11489,7 +11490,7 @@
 
     if (
       event.target.closest(
-        '[data-community-publish-placeholder]'
+        '[data-community-publish]'
       )
     ) {
       event.preventDefault();
@@ -11531,7 +11532,7 @@
 
     if (
       event.target.closest(
-        '[data-manage-community-placeholder]'
+        '[data-manage-community]'
       )
     ) {
       event.preventDefault();
@@ -14316,61 +14317,183 @@
     const view = document.querySelector('#householdView');
     if (!view || !household) return;
 
-    const ownerName =
-      state.profile?.alias ||
-      state.profile?.name ||
-      'Tú';
+    const visibleMembers = Array.isArray(members)
+      ? members
+      : [];
+
+    const membersUnavailable =
+      state.householdMembersError === true;
+
+    const isOwner =
+      household.owner_id === state.user?.id;
+
+    const memberCount = visibleMembers.length;
+
+    const memberAvatars = visibleMembers
+      .slice(0, 5)
+      .map(member => {
+        const isMe =
+          member.user_id === state.user?.id;
+
+        const name =
+          member.alias ||
+          member.name ||
+          (isMe ? 'Tú' : 'Usuario de Rooms');
+
+        return member.avatar_url
+          ? `
+            <img
+              class="member-you"
+              src="${escapeHtml(member.avatar_url)}"
+              alt="${escapeHtml(name)}"
+            >
+          `
+          : `
+            <span class="member-you">
+              ${escapeHtml(initials(name))}
+            </span>
+          `;
+      })
+      .join('');
+
+    const memberCards = visibleMembers
+      .map(member => {
+        const isMe =
+          member.user_id === state.user?.id;
+
+        const name =
+          member.alias ||
+          member.name ||
+          (isMe ? 'Tú' : 'Usuario de Rooms');
+
+        const roleLabel =
+          member.role === 'owner'
+            ? 'Propietario'
+            : member.role === 'admin'
+              ? 'Admin'
+              : 'Miembro';
+
+        return `
+          <article class="real-household-person">
+
+            <div class="real-household-person-avatar">
+              ${
+                member.avatar_url
+                  ? `
+                    <img
+                      src="${escapeHtml(member.avatar_url)}"
+                      alt="${escapeHtml(name)}"
+                    >
+                  `
+                  : escapeHtml(initials(name))
+              }
+            </div>
+
+            <div>
+              <b>${escapeHtml(name)}</b>
+              <span>${escapeHtml(roleLabel)}</span>
+            </div>
+
+            ${
+              isMe
+                ? '<small>Tú</small>'
+                : ''
+            }
+
+          </article>
+        `;
+      })
+      .join('');
 
     view.innerHTML = `
       <header class="real-household-hero">
-        <div class="real-household-kicker">GRUPO DE BÚSQUEDA</div>
+        <div class="real-household-kicker">
+          GRUPO DE BÚSQUEDA
+        </div>
 
         <div class="real-household-title">
           <div>
-            <h1>${escapeHtml(household.name)}</h1>
+            <h1>
+              ${escapeHtml(household.name)}
+            </h1>
+
             <p>
-              Grupo privado ·
-              ${members.length || 1}
-              ${(members.length || 1) === 1 ? 'miembro' : 'miembros'}
+              ${
+                membersUnavailable
+                  ? 'No se pudieron cargar los miembros'
+                  : `Grupo privado · ${memberCount} ${
+                      memberCount === 1 ? 'miembro' : 'miembros'
+                    }`
+              }
             </p>
           </div>
 
-          <button type="button" id="inviteRealHousehold">
-            Invitar +
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHousehold"
+                >
+                  Invitar +
+                </button>
+              `
+              : ''
+          }
         </div>
 
         <div class="real-household-members">
-          <span class="member-you">
-            ${escapeHtml(initials(ownerName))}
-          </span>
+          ${memberAvatars}
 
-          <button type="button" id="inviteRealHouseholdSmall">
-            ＋
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHouseholdSmall"
+                >
+                  ＋
+                </button>
+              `
+              : ''
+          }
         </div>
       </header>
 
       <nav class="real-household-tabs">
-        <button class="active" type="button" data-real-household-tab="candidates">
+
+        <button
+          class="active"
+          type="button"
+          data-real-household-tab="candidates"
+        >
           Candidatos
         </button>
 
-        <button type="button" data-real-household-tab="members">
+        <button
+          type="button"
+          data-real-household-tab="members"
+        >
           Miembros
-          <i>${members.length || 1}</i>
+          <i>${membersUnavailable ? '—' : memberCount}</i>
         </button>
 
-        <button type="button" data-real-household-tab="chat" disabled>
+        <button
+          type="button"
+          data-real-household-tab="chat"
+          disabled
+        >
           Chat
           <small>Próximamente</small>
         </button>
+
       </nav>
 
       <section
         class="real-household-panel active"
         data-real-household-panel="candidates"
       >
+
         <div class="real-household-section-heading">
           <div>
             <small>VIVIENDAS Y PERSONAS</small>
@@ -14380,15 +14503,23 @@
 
         <div class="real-household-empty-section">
           <span>⌂</span>
-          <h3>Todavía no habéis añadido viviendas ni personas</h3>
+
+          <h3>
+            Todavía no habéis añadido viviendas ni personas
+          </h3>
+
           <p>
             Añade viviendas desde Explore o Guardados para valorarlas juntos.
           </p>
 
-          <button type="button" data-household-go-explore>
+          <button
+            type="button"
+            data-household-go-explore
+          >
             Explorar viviendas y personas →
           </button>
         </div>
+
       </section>
 
       <section
@@ -14396,29 +14527,39 @@
         data-real-household-panel="members"
         hidden
       >
+
         <div class="real-household-section-heading">
           <div>
             <small>PERSONAS</small>
             <h2>Miembros del Hogar</h2>
           </div>
 
-          <button type="button" id="inviteRealHouseholdMembers">
-            Invitar persona
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHouseholdMembers"
+                >
+                  Invitar persona
+                </button>
+              `
+              : ''
+          }
         </div>
 
-        <article class="real-household-person">
-          <div class="real-household-person-avatar">
-            ${escapeHtml(initials(ownerName))}
-          </div>
+        ${
+          membersUnavailable
+            ? `
+              <div class="real-household-empty-section">
+                <p>
+                  No hemos podido cargar los miembros de este grupo.
+                </p>
+              </div>
+            `
+            : memberCards
+        }
 
-          <div>
-            <b>${escapeHtml(ownerName)}</b>
-            <span>Administradora</span>
-          </div>
-
-          <small>Tú</small>
-        </article>
       </section>
     `;
   }
@@ -14502,6 +14643,7 @@
     if (!state.households.length) {
       state.household = null;
       state.householdMembers = [];
+      state.householdMembersError = false;
       state.householdCandidates = [];
       state.householdPersonCandidates = [];
       state.householdCandidateVotes = [];
@@ -14523,11 +14665,10 @@
     state.household = household;
 
     const { data: members, error: membersError } = await db
-      .from('household_members')
-      .select('*')
-      .eq('household_id', household.id)
-      .eq('status', 'accepted')
-      .order('joined_at', { ascending: true });
+      .rpc(
+        'get_household_members',
+        { _household_id: household.id }
+      );
 
     if (membersError) {
       console.error(
@@ -14536,7 +14677,11 @@
       );
     }
 
-    state.householdMembers = members || [];
+    state.householdMembersError =
+      Boolean(membersError);
+
+    state.householdMembers =
+      membersError ? [] : (members || []);
 
     renderRealHousehold(
       state.household,
@@ -14624,6 +14769,11 @@
       return;
     }
 
+    if (state.household.owner_id !== state.user?.id) {
+      notify('Solo el propietario del Hogar puede invitar personas');
+      return;
+    }
+
     const modal = ensureHouseholdInviteModal();
 
     modal.classList.add('open');
@@ -14633,6 +14783,11 @@
 
   async function generateHouseholdInvitation() {
     if (!state.user || !state.household) return;
+
+    if (state.household.owner_id !== state.user.id) {
+      notify('Solo el propietario del Hogar puede invitar personas');
+      return;
+    }
 
     const button =
       document.querySelector('#generateHouseholdInvite');
@@ -15923,6 +16078,30 @@
         'Rooms: error creando miembro propietario',
         memberError
       );
+
+      const { error: rollbackError } = await db
+        .from('households')
+        .delete()
+        .eq('id', householdId)
+        .eq('owner_id', state.user.id);
+
+      if (rollbackError) {
+        console.error(
+          'Rooms: error revirtiendo Hogar incompleto',
+          rollbackError
+        );
+      }
+
+      submit.disabled = false;
+      submit.textContent = 'Crear grupo';
+
+      notify(
+        rollbackError
+          ? 'No se pudo completar la creación del Hogar'
+          : 'No se pudo crear el Hogar'
+      );
+
+      return;
     }
 
     state.household = household;
