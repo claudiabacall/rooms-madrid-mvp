@@ -1877,12 +1877,36 @@
         !state.blockedUsers?.has(profile.id)
       );
 
-    const cards = [
-      ...listings.map(renderListingCard),
-      ...visibleProfiles.map(renderPersonCard),
-      ...communities.map(renderCommunityCard),
-      ...posts.map(renderPostCard)
-    ];
+    const items = [
+      ...listings.map(item => ({
+        type: 'listing',
+        created_at: item.created_at,
+        html: renderListingCard(item)
+      })),
+      ...visibleProfiles.map(item => ({
+        type: 'profile',
+        created_at: item.created_at,
+        html: renderPersonCard(item)
+      })),
+      ...communities.map(item => ({
+        type: 'community',
+        created_at: item.created_at,
+        html: renderCommunityCard(item)
+      })),
+      ...posts.map(item => ({
+        type: 'post',
+        created_at: item.created_at,
+        html: renderPostCard(item)
+      }))
+    ]
+      .filter(item => item.html)
+      .sort((a, b) =>
+        new Date(b.created_at || 0) -
+        new Date(a.created_at || 0)
+      );
+
+    const cards = items.map(item => item.html);
+
     feed.innerHTML = cards.length ? cards.join('') : `
       <section class="real-feed-empty">
         <span>✦</span><h2>Todavía no hay contenido en Rooms</h2>
