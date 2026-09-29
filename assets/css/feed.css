@@ -13563,3 +13563,427 @@ body.rooms-booting main {
     padding:5px 6px;
   }
 }
+
+
+/* =========================================================
+   ROOMS — AUTH GATE
+   Login / registro / recuperación
+   ========================================================= */
+
+.auth-gate{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  overflow:auto;
+  padding:48px 20px;
+  background:#f3f3ee;
+}
+
+.auth-gate[hidden]{
+  display:none !important;
+}
+
+.auth-panel{
+  width:min(780px,100%);
+  min-height:min(900px,calc(100dvh - 96px));
+  margin:0 auto;
+  padding:72px 82px 64px;
+  border:1px solid #d3d3ca;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(0,0,0,.08);
+}
+
+.auth-brand{
+  display:inline-block;
+  margin-bottom:82px;
+  color:var(--ink);
+  font-family:'DM Sans',sans-serif;
+  font-size:34px;
+  font-weight:900;
+  letter-spacing:-.07em;
+  line-height:1;
+}
+
+.auth-brand span{
+  color:var(--acid);
+}
+
+.auth-panel > h1{
+  max-width:620px;
+  margin:0;
+  font-family:'DM Sans',sans-serif;
+  font-size:clamp(54px,6vw,82px);
+  font-weight:800;
+  letter-spacing:-.065em;
+  line-height:.96;
+}
+
+.auth-panel > p:not(.auth-legal){
+  max-width:610px;
+  margin:24px 0 54px;
+  color:#696963;
+  font-size:22px;
+  line-height:1.45;
+}
+
+.auth-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  margin-bottom:38px;
+  border-bottom:1px solid #cecec5;
+}
+
+.auth-tabs button{
+  position:relative;
+  min-height:56px;
+  border:0;
+  background:transparent;
+  color:#7a7a75;
+  font:700 18px 'DM Sans',sans-serif;
+  cursor:pointer;
+}
+
+.auth-tabs button.active{
+  color:var(--ink);
+}
+
+.auth-tabs button.active::after{
+  content:'';
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:4px;
+  background:var(--ink);
+}
+
+.auth-form{
+  display:grid;
+  gap:0;
+}
+
+.auth-form label{
+  display:grid;
+  gap:12px;
+  margin-bottom:28px;
+  color:#555550;
+  font-size:15px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.auth-form input{
+  width:100%;
+  min-height:72px;
+  padding:0 22px;
+  border:1px solid #c9c9c0;
+  border-radius:0;
+  background:#fff;
+  color:var(--ink);
+  font:600 18px 'DM Sans',sans-serif;
+  outline:none;
+}
+
+.auth-form input:focus{
+  border-color:var(--ink);
+  box-shadow:0 0 0 2px var(--acid);
+}
+
+.auth-forgot{
+  justify-self:end;
+  margin:-12px 0 30px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#555550;
+  font:700 14px 'DM Sans',sans-serif;
+  text-decoration:underline;
+  text-underline-offset:4px;
+  cursor:pointer;
+}
+
+.auth-forgot:hover{
+  color:var(--ink);
+}
+
+.auth-forgot:disabled{
+  opacity:.55;
+  cursor:wait;
+}
+
+.auth-submit{
+  min-height:72px;
+  border:1px solid var(--acid);
+  border-radius:0;
+  background:var(--acid);
+  color:var(--ink);
+  font:800 19px 'DM Sans',sans-serif;
+  cursor:pointer;
+}
+
+.auth-submit:hover{
+  filter:brightness(.97);
+}
+
+.auth-submit:disabled{
+  opacity:.6;
+  cursor:wait;
+}
+
+.auth-message{
+  min-height:24px;
+  margin:16px 0 0;
+  color:#a12d24;
+  font-size:14px;
+  line-height:1.45;
+}
+
+.auth-message.success{
+  color:#3e6a36;
+}
+
+.auth-legal{
+  margin:52px 0 0;
+  color:#65655f;
+  font-size:14px;
+  line-height:1.55;
+}
+
+
+@media(max-width:700px){
+
+  .auth-gate{
+    padding:0;
+    background:#fff;
+  }
+
+  .auth-panel{
+    width:100%;
+    min-height:100dvh;
+    padding:42px 24px 40px;
+    border:0;
+    box-shadow:none;
+  }
+
+  .auth-brand{
+    margin-bottom:56px;
+    font-size:30px;
+  }
+
+  .auth-panel > h1{
+    max-width:100%;
+    font-size:clamp(46px,14vw,64px);
+    line-height:.95;
+  }
+
+  .auth-panel > p:not(.auth-legal){
+    margin:22px 0 42px;
+    font-size:18px;
+  }
+
+  .auth-tabs{
+    margin-bottom:32px;
+  }
+
+  .auth-tabs button{
+    min-height:52px;
+    font-size:16px;
+  }
+
+  .auth-form label{
+    margin-bottom:24px;
+  }
+
+  .auth-form input{
+    min-height:64px;
+    padding:0 18px;
+    font-size:17px;
+  }
+
+  .auth-forgot{
+    justify-self:start;
+    margin:-8px 0 26px;
+  }
+
+  .auth-submit{
+    min-height:64px;
+    font-size:18px;
+  }
+
+  .auth-legal{
+    margin-top:42px;
+    font-size:13px;
+  }
+}
+
+/* =========================================================
+   ROOMS — RESET PASSWORD
+   ========================================================= */
+
+.auth-reset-shell{
+  width:100%;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:48px 24px;
+  background:var(--sand, #ecebe6);
+}
+
+.auth-reset-card{
+  width:min(100%, 680px);
+  background:#f7f7f4;
+  border:1px solid rgba(0,0,0,.12);
+  padding:56px 56px 40px;
+}
+
+.auth-reset-eyebrow{
+  display:block;
+  margin-bottom:20px;
+  font-size:14px;
+  line-height:1;
+  letter-spacing:.14em;
+  font-weight:700;
+  text-transform:uppercase;
+}
+
+.auth-reset-card h1{
+  margin:0 0 24px;
+  font-size:72px;
+  line-height:.95;
+  letter-spacing:-.04em;
+  font-weight:800;
+}
+
+.auth-reset-intro{
+  margin:0 0 32px;
+  font-size:20px;
+  line-height:1.45;
+  color:rgba(0,0,0,.82);
+  max-width:540px;
+}
+
+.auth-reset-form{
+  display:grid;
+  gap:20px;
+}
+
+.auth-reset-field{
+  display:grid;
+  gap:10px;
+}
+
+.auth-reset-field label{
+  font-size:16px;
+  line-height:1.2;
+  font-weight:700;
+  color:#1a1a1a;
+}
+
+.auth-reset-field input{
+  width:100%;
+  min-height:60px;
+  padding:0 18px;
+  border:1px solid rgba(0,0,0,.22);
+  background:#f7f7f4;
+  font-size:18px;
+  color:#111;
+  outline:none;
+  box-sizing:border-box;
+}
+
+.auth-reset-field input:focus{
+  border-color:#111;
+  box-shadow:0 0 0 2px #d6f52d;
+}
+
+.auth-reset-helper{
+  margin-top:-4px;
+  font-size:14px;
+  line-height:1.45;
+  color:rgba(0,0,0,.58);
+}
+
+.auth-reset-submit{
+  width:100%;
+  min-height:64px;
+  border:0;
+  background:#d8f52f;
+  color:#111;
+  font-size:20px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.auth-reset-submit:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+.auth-reset-message{
+  min-height:24px;
+  font-size:15px;
+  line-height:1.4;
+}
+
+.auth-reset-message.error{
+  color:#c93422;
+}
+
+.auth-reset-message.success{
+  color:#18794e;
+}
+
+.auth-reset-legal{
+  margin-top:28px;
+  font-size:14px;
+  line-height:1.6;
+  color:rgba(0,0,0,.62);
+}
+
+@media (max-width:767px){
+  .auth-reset-shell{
+    padding:24px 16px;
+    align-items:flex-start;
+  }
+
+  .auth-reset-card{
+    padding:28px 20px 24px;
+  }
+
+  .auth-reset-eyebrow{
+    margin-bottom:14px;
+    font-size:12px;
+  }
+
+  .auth-reset-card h1{
+    margin-bottom:18px;
+    font-size:44px;
+    line-height:.96;
+  }
+
+  .auth-reset-intro{
+    margin-bottom:24px;
+    font-size:17px;
+  }
+
+  .auth-reset-form{
+    gap:16px;
+  }
+
+  .auth-reset-field input{
+    min-height:56px;
+    font-size:16px;
+  }
+
+  .auth-reset-submit{
+    min-height:58px;
+    font-size:18px;
+  }
+
+  .auth-reset-legal{
+    margin-top:22px;
+    font-size:13px;
+  }
+}

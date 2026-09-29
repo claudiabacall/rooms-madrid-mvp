@@ -50,7 +50,7 @@
           <input id="onboardingBudgetMaxRange" type="range" min="300" max="4000" step="50" value="1000" aria-label="Ajustar presupuesto máximo">
         </div>
         <button class="budget-over" id="budgetOver4000" type="button" aria-pressed="false">Más de 4.000 €</button>
-        <p class="budget-support"><span aria-hidden="true">✦</span> Rooms podrá enseñarte alguna opción ligeramente por encima si encaja muchísimo contigo.</p>
+        <p class="budget-support"><span aria-hidden="true">✦</span> Indica el rango mensual que quieres tener como referencia.</p>
       </div>
       <div class="onboarding-step" id="onboardingStep4" hidden>
         <h1>¿Cuándo te<br>quieres mudar?</h1>
@@ -70,7 +70,7 @@
         </div>
       </div>
       <div class="onboarding-step" id="onboardingStep5" hidden>
-        <h1>¿Qué hace que un sitio<br>encaje contigo?</h1>
+        <h1>¿Qué buscas<br>en una vivienda?</h1>
         <p class="onboarding-help">Marca todo lo que te importe.</p>
         <div class="home-feature-options" role="group" aria-label="Preferencias de vivienda">
           <button type="button" aria-pressed="false" data-home-feature="furnished">Amueblado</button>
@@ -86,11 +86,11 @@
           <button type="button" aria-pressed="false" data-home-feature="air">Aire acondicionado</button>
           <button type="button" aria-pressed="false" data-home-feature="storage">Mucho almacenamiento</button>
         </div>
-        <p class="preference-microcopy">Cuanto más nos cuentes, mejores serán tus recomendaciones.</p>
+        <p class="preference-microcopy">Puedes ajustar estas preferencias cuando quieras.</p>
       </div>
       <div class="onboarding-step" id="onboardingStep6" hidden>
         <h1>¿Cómo te gusta<br>vivir en casa?</h1>
-        <p class="onboarding-help">Esto nos ayuda a encontrar personas y hogares que encajen contigo.</p>
+        <p class="onboarding-help">Esto nos ayuda a calcular tu compatibilidad con otras personas.</p>
         <div class="living-categories" id="livingCategories"></div>
       </div>
       <div class="onboarding-step" id="onboardingStep7" hidden>
@@ -119,14 +119,14 @@
             <button type="button" aria-pressed="false" data-self-description="tidy">Ordenado</button><button type="button" aria-pressed="false" data-self-description="social">Sociable</button><button type="button" aria-pressed="false" data-self-description="calm">Tranquilo</button><button type="button" aria-pressed="false" data-self-description="independent">Independiente</button><button type="button" aria-pressed="false" data-self-description="cook">Cocinillas</button><button type="button" aria-pressed="false" data-self-description="early">Madrugador</button><button type="button" aria-pressed="false" data-self-description="night">Nocturno</button>
           </div>
         </div>
-        <p class="profile-note">Esto humaniza tu perfil, pero pesa menos que tus hábitos de convivencia.</p>
+        <p class="profile-note">Esto ayuda a que otras personas conozcan mejor tu perfil.</p>
       </div>
       <div class="onboarding-step" id="onboardingStep8" hidden>
         <h1>Tú decides<br>qué compartes</h1>
-        <p class="onboarding-help">Rooms te recomienda una configuración, pero puedes cambiarla cuando quieras.</p>
+        <p class="onboarding-help">Elige el nivel de privacidad que prefieras. Puedes cambiarlo cuando quieras.</p>
         <div class="privacy-levels" role="radiogroup" aria-label="Nivel de privacidad">
           <button type="button" role="radio" aria-checked="false" data-privacy-level="public"><b>Público</b><span>Más fácil que otros te descubran.</span></button>
-          <button class="recommended" type="button" role="radio" aria-checked="true" data-privacy-level="balanced"><small>RECOMENDADO</small><b>Equilibrado</b><span>Perfil visible e información sensible limitada.</span></button>
+          <button type="button" role="radio" aria-checked="true" data-privacy-level="balanced"><b>Equilibrado</b><span>Perfil visible e información sensible limitada.</span></button>
           <button type="button" role="radio" aria-checked="false" data-privacy-level="private"><b>Privado</b><span>Mayor control sobre quién puede verte.</span></button>
         </div>
         <div class="privacy-controls">
@@ -139,7 +139,7 @@
         <p class="privacy-note"><span aria-hidden="true">⌁</span> Nunca mostraremos por defecto datos como tus viviendas anteriores concretas.</p>
       </div>
       <div class="onboarding-step" id="onboardingStep9" hidden>
-        <h1>Haz tu perfil<br>más fiable</h1>
+        <h1>Añade señales<br>de confianza</h1>
         <p class="onboarding-help">No es obligatorio, pero ayuda a generar confianza dentro de Rooms.</p>
         <div class="verification-panel" id="verificationPanel" aria-label="Estado de verificación">
           <div class="verification-item" data-verification="email"><span class="verification-icon" aria-hidden="true">1</span><span><b>Email</b><small>Comprobando estado…</small></span><em>…</em></div>
@@ -151,11 +151,11 @@
       </div>
       <div class="onboarding-step" id="onboardingStep10" hidden>
         <div class="ready-heading"><span aria-hidden="true">✦</span><h1>Tu Rooms<br>está listo</h1></div>
-        <p class="onboarding-help">Ya sabemos suficiente para empezar a enseñarte sitios y personas que encajan contigo.</p>
+        <p class="onboarding-help">Ya tenemos lo necesario para empezar a mostrarte viviendas y personas en Rooms.</p>
         <div class="match-previews" aria-label="Qué encontrarás en Rooms">
           <article class="match-preview home-match">
             <img src="assets/images/chamberi-villanueva.jpg" alt="Ejemplo visual de una vivienda en Rooms">
-            <div><span>VIVIENDAS</span><b>Encuentra un lugar que encaje contigo</b><small>Revisa zona, precio, disponibilidad y características de convivencia.</small></div>
+            <div><span>VIVIENDAS</span><b>Explora viviendas según lo que buscas</b><small>Revisa zona, precio, disponibilidad y características de convivencia.</small></div>
           </article>
           <article class="match-preview person-match">
             <div class="preview-avatar" aria-hidden="true">R</div>
@@ -166,7 +166,7 @@
             <div><span>COMUNIDADES</span><b>Descubre grupos que te interesen</b><small>Las comunidades reales aparecerán cuando empieces a explorar Rooms.</small></div>
           </article>
         </div>
-        <p class="learning-note">Cuanto más uses Rooms, mejor te conoceremos.</p>
+        <p class="learning-note">Puedes actualizar tus preferencias cuando quieras.</p>
       </div>
     </div>
     <footer class="onboarding-footer">
@@ -359,7 +359,7 @@
   <main class="community-main" id="communityView" hidden></main>
 
   <main class="own-profile-main" id="ownProfileView" hidden>
-    <section class="own-profile-hero"><div class="own-avatar"><span>R</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>PERFIL</small><h1>Mi perfil</h1><p>Cargando información del perfil…</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Cargando búsqueda…</span><button type="button" data-open-search-preferences aria-label="Editar búsqueda actual">＋</button></div></section>
+    <section class="own-profile-hero"><div class="own-avatar"><span>R</span><button type="button" id="changeProfilePhoto" aria-label="Cambiar foto"><span>Foto</span><b>＋</b></button><input id="ownProfilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></div><div class="own-profile-heading"><div><small>PERFIL</small><h1>Mi perfil</h1><p>Cargando información del perfil…</p></div><button type="button" id="editOwnProfile">Editar perfil</button></div><div class="current-status"><span>Cargando búsqueda…</span><button type="button" data-open-search-preferences aria-label="Editar búsqueda actual">＋</button></div></section>
     <section class="profile-completion"><div class="completion-ring"><b>0%</b><span>COMPLETO</span></div><div><small>PERFIL</small><h2>Calculando tu perfil</h2><p>Estamos revisando la información que ya has añadido.</p></div><button type="button" data-profile-completion-action hidden>Completar perfil →</button></section>
 
     <section class="current-home-feature">
@@ -666,7 +666,7 @@
       </div>
     </article>
   </div>
-  <div class="modal" id="publishModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail create-menu"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">CREAR EN ROOMS</p><h2>¿Qué quieres hacer?</h2><div class="choices"><button type="button" data-publish-type="room"><b>Ofrecer habitación</b><small>Encuentra a la persona que encaja con vuestro hogar</small><span>→</span></button><button type="button" data-publish-type="flat"><b>Publicar piso</b><small>Enseña la vivienda y recibe personas interesadas</small><span>→</span></button><button type="button" data-publish-type="mate"><b>Buscar compañero</b><small>Rooms creará tu card social automáticamente</small><span>→</span></button><button
+  <div class="modal" id="publishModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail create-menu"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">CREAR EN ROOMS</p><h2>¿Qué quieres hacer?</h2><div class="choices"><button type="button" data-publish-type="room"><b>Ofrecer habitación</b><small>Publica una habitación y conecta con personas interesadas</small><span>→</span></button><button type="button" data-publish-type="flat"><b>Publicar piso</b><small>Enseña la vivienda y recibe personas interesadas</small><span>→</span></button><button type="button" data-publish-type="mate"><b>Buscar compañero</b><small>Actualiza tu perfil para indicar que buscas compañeros</small><span>→</span></button><button
   type="button"
   class="coming-soon-choice"
   disabled
@@ -843,7 +843,7 @@
   <small>Las notificaciones actuales muestran actividad real de conexiones y mensajes.</small>
 </div></article></div>
   <div class="modal" id="reportModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail report-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">SEGURIDAD</p><h2>¿Qué quieres reportar?</h2><p class="report-target" id="reportTarget">Sobre este contenido</p><div class="report-reasons" role="radiogroup" aria-label="Motivo del reporte"><button type="button" role="radio" aria-checked="false">Fraude / posible estafa</button><button type="button" role="radio" aria-checked="false">Información falsa</button><button type="button" role="radio" aria-checked="false">Comportamiento inapropiado</button><button type="button" role="radio" aria-checked="false">Spam</button><button type="button" role="radio" aria-checked="false">Contenido fuera de temática</button><button type="button" role="radio" aria-checked="false">Acoso</button><button type="button" role="radio" aria-checked="false">Otro</button></div><label class="report-details">Añade contexto, si quieres<textarea id="reportDetails" rows="3" placeholder="No incluyas datos personales sensibles"></textarea></label><p class="report-privacy">Tu identidad no se mostrará a la persona reportada.</p><button class="cta" type="button" id="submitReport" disabled>Enviar reporte</button></article></div>
-  <div class="modal" id="blockModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail block-shell"><button class="close" data-close aria-label="Cerrar">×</button><span class="block-mark">⊘</span><h2>¿Bloquear a este usuario?</h2><p>No podrá contactarte, dejaréis de ver vuestro contenido y Rooms evitará recomendaros mutuamente.</p><button class="danger-cta" type="button" id="confirmBlock">Bloquear usuario</button><button class="secondary-wide" type="button" data-close>Cancelar</button></article></div>
+  <div class="modal" id="blockModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail block-shell"><button class="close" data-close aria-label="Cerrar">×</button><span class="block-mark">⊘</span><h2>¿Bloquear a este usuario?</h2><p>No podrá contactarte y dejaréis de ver vuestro contenido.</p><button class="danger-cta" type="button" id="confirmBlock">Bloquear usuario</button><button class="secondary-wide" type="button" data-close>Cancelar</button></article></div>
   <div class="modal" id="collectionModal" aria-hidden="true"><div class="backdrop" data-close></div><article class="publish detail collection-shell"><button class="close" data-close aria-label="Cerrar">×</button><p class="eyebrow">NUEVA COLECCIÓN</p><h2>Organiza tus guardados</h2><label>Nombre<input id="collectionName" placeholder="Ej. Pisos favoritos"></label><p class="collection-privacy-note">Las colecciones son privadas. Compartirlas estará disponible próximamente.</p><button class="cta" type="button" id="saveCollection">Crear colección</button></article></div>
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

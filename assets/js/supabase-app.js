@@ -87,10 +87,19 @@
             <input id="authEmail" type="email" required autocomplete="email">
           </label>
           <label>Contraseña
-            <input id="authPassword" type="password" minlength="6" required autocomplete="current-password">
+            <input id="authPassword" type="password" required autocomplete="current-password">
           </label>
+
+          <button
+            class="auth-forgot"
+            id="authForgotPassword"
+            type="button"
+          >
+            ¿Has olvidado tu contraseña?
+          </button>
+
           <button class="auth-submit" id="authSubmit" type="submit">Entrar</button>
-          <p class="auth-message" id="authMessage" role="status"></p>
+          <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </form>
         <p class="auth-legal">Tus datos se guardan de forma privada. Rooms nunca comparte tu email ni tu contraseña con otros usuarios.</p>
       </article>`;
@@ -102,10 +111,116 @@
       gate.querySelectorAll('[data-auth-mode]').forEach(item => item.classList.toggle('active', item === button));
       document.querySelector('#authNameField').hidden = mode !== 'signup';
       document.querySelector('#authName').required = mode === 'signup';
-      document.querySelector('#authPassword').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-      document.querySelector('#authSubmit').textContent = mode === 'signup' ? 'Crear mi cuenta' : 'Entrar';
+
+      const passwordInput =
+        document.querySelector('#authPassword');
+
+      passwordInput.autocomplete =
+        mode === 'signup'
+          ? 'new-password'
+          : 'current-password';
+
+      if (mode === 'signup') {
+        passwordInput.setAttribute('minlength', '6');
+      } else {
+        passwordInput.removeAttribute('minlength');
+      }
+
+      document.querySelector('#authForgotPassword').hidden =
+        mode !== 'login';
+
+      document.querySelector('#authSubmit').textContent =
+        mode === 'signup'
+          ? 'Crear mi cuenta'
+          : 'Entrar';
+
       document.querySelector('#authMessage').textContent = '';
     }));
+
+    document.querySelector('#authForgotPassword').addEventListener('click', async () => {
+      const emailInput =
+        document.querySelector('#authEmail');
+
+      const message =
+        document.querySelector('#authMessage');
+
+      const button =
+        document.querySelector('#authForgotPassword');
+
+      const email =
+        emailInput.value.trim();
+
+      message.className = 'auth-reset-message';
+      message.textContent = '';
+
+      if (!email) {
+        message.textContent =
+          'Introduce tu email para enviarte el enlace de recuperación.';
+        emailInput.focus();
+        return;
+      }
+
+      if (!emailInput.checkValidity()) {
+        message.textContent =
+          'Comprueba que el email esté bien escrito.';
+        emailInput.focus();
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Enviando enlace…';
+
+      const { error } =
+        await db.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo: window.location.origin
+          }
+        );
+
+      button.disabled = false;
+      button.textContent =
+        '¿Has olvidado tu contraseña?';
+
+      if (error) {
+        console.error(
+          'Rooms: error enviando recuperación de contraseña',
+          error
+        );
+
+        const errorText =
+          String(error.message || '').toLowerCase();
+
+        const waitMatch =
+          errorText.match(/after\s+(\d+)\s+seconds?/);
+
+        if (
+          error.status === 429 ||
+          errorText.includes('security purposes')
+        ) {
+          const seconds =
+            waitMatch?.[1] || 'unos';
+
+          message.className =
+            'auth-message';
+
+          message.textContent =
+            `Ya hemos enviado un enlace recientemente. Espera ${seconds} segundos antes de solicitar otro.`;
+          return;
+        }
+
+        message.textContent =
+          'No hemos podido enviar el enlace. Inténtalo de nuevo.';
+        return;
+      }
+
+      message.className =
+        'auth-message success';
+
+      message.textContent =
+        'Te hemos enviado un enlace para crear una nueva contraseña. Revisa tu bandeja de entrada.';
+    });
+
 
     document.querySelector('#roomsAuthForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -157,52 +272,76 @@
     modal.innerHTML = `
       <div class="backdrop"></div>
 
-      <article class="publish detail">
-        <p class="eyebrow">SEGURIDAD</p>
-        <h2>Crea una nueva contraseña</h2>
+      <section class="auth-reset-shell">
+        <article class="auth-reset-card">
+          <small class="auth-reset-eyebrow">
+            SEGURIDAD
+          </small>
 
-        <p>
-          Introduce una contraseña nueva para tu cuenta de Rooms.
-        </p>
+          <h1>
+            Crea una nueva contraseña
+          </h1>
 
-        <form id="passwordRecoveryForm">
-          <label>
-            Nueva contraseña
-            <input
-              id="recoveryPassword"
-              type="password"
-              minlength="6"
-              required
-              autocomplete="new-password"
-            >
-          </label>
+          <p class="auth-reset-intro">
+            Introduce una contraseña nueva para tu cuenta de Rooms.
+          </p>
 
-          <label>
-            Repetir contraseña
-            <input
-              id="recoveryPasswordConfirm"
-              type="password"
-              minlength="6"
-              required
-              autocomplete="new-password"
-            >
-          </label>
-
-          <p
-            class="auth-message"
-            id="passwordRecoveryMessage"
-            role="status"
-          ></p>
-
-          <button
-            class="cta"
-            type="submit"
-            id="passwordRecoverySubmit"
+          <form
+            id="passwordRecoveryForm"
+            class="auth-reset-form"
+            novalidate
           >
-            Guardar nueva contraseña
-          </button>
-        </form>
-      </article>
+            <div class="auth-reset-field">
+              <label for="recoveryPassword">
+                Nueva contraseña
+              </label>
+
+              <input
+                id="recoveryPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Escribe tu nueva contraseña"
+              >
+            </div>
+
+            <div class="auth-reset-field">
+              <label for="recoveryPasswordConfirm">
+                Repetir contraseña
+              </label>
+
+              <input
+                id="recoveryPasswordConfirm"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Repite la contraseña"
+              >
+            </div>
+
+            <p class="auth-reset-helper">
+              Debe tener al menos 6 caracteres.
+            </p>
+
+            <p
+              class="auth-reset-message"
+              id="passwordRecoveryMessage"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+            <button
+              class="auth-reset-submit"
+              type="submit"
+              id="passwordRecoverySubmit"
+            >
+              Guardar nueva contraseña
+            </button>
+          </form>
+
+          <p class="auth-reset-legal">
+            Tu contraseña se actualiza de forma segura y privada.
+          </p>
+        </article>
+      </section>
     `;
 
     document.body.appendChild(modal);
@@ -230,12 +369,14 @@
         if (password.length < 6) {
           message.textContent =
             'La contraseña debe tener al menos 6 caracteres.';
+          message.classList.add('error');
           return;
         }
 
         if (password !== confirmation) {
           message.textContent =
             'Las contraseñas no coinciden.';
+          message.classList.add('error');
           return;
         }
 
@@ -259,11 +400,12 @@
 
           message.textContent =
             'No hemos podido cambiar la contraseña. Inténtalo de nuevo.';
+          message.classList.add('error');
           return;
         }
 
         message.className =
-          'auth-message success';
+          'auth-reset-message success';
 
         message.textContent =
           'Contraseña actualizada correctamente.';
@@ -661,7 +803,7 @@
     if (ownBio) ownBio.textContent = profile.bio || 'Aún no has añadido una bio.';
 
     const trustBadge = document.querySelector('#ownProfileView .own-profile-heading small');
-    if (trustBadge) trustBadge.textContent = state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'PERFIL NUEVO';
+    if (trustBadge) trustBadge.textContent = state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'EMAIL SIN VERIFICAR';
 
     const seekingLabels = {
       room: 'Busco habitación', home: 'Busco piso entero', mates: 'Busco compañeros'
@@ -739,8 +881,8 @@
 
     if (completionCopy) {
       completionCopy.textContent = missing
-        ? 'Completar este dato ayudará a mejorar tus recomendaciones.'
-        : 'Ya tenemos los datos principales para personalizar tus matches.';
+        ? 'Completar este dato hará que tu perfil tenga más información.'
+        : 'Ya tienes añadida la información principal de tu perfil.';
     }
 
     const completionAction = document.querySelector(
@@ -923,7 +1065,7 @@
         <article>
           <span>${completion}%</span>
           <div>
-            <b>Perfil completado</b>
+            <b>Completitud del perfil</b>
             <small>
               ${
                 profileComplete
@@ -2124,7 +2266,6 @@
       <article
         class="feed-card home-editorial-post home-editorial-post--${config.className}"
         data-feed-type="post"
-        data-real-post="${escapeHtml(post.id)}"
       >
 
         <div class="home-post-accent">
@@ -5477,7 +5618,6 @@
         <div
           id="communityPostExtraFields"
           class="community-post-extra-fields"
-          data-community-post-type="${escapeHtml(type)}"
         >
           ${fields}
         </div>
@@ -6617,13 +6757,37 @@
   }
 
   function labelSeeking(value) {
-    return ({ room: 'Busca habitación', home: 'Busca piso', mates: 'Busca compañeros' })[value] || 'Busca vivienda';
+    return (
+      {
+        room: 'Busca habitación',
+        home: 'Busca piso',
+        mates: 'Busca compañeros'
+      }[value] || 'Sin definir'
+    );
   }
 
   function formatBudget(profile) {
-    if (!profile.budget_min && !profile.budget_max) return 'Por definir';
-    if (!profile.budget_max) return `Desde ${profile.budget_min || 0} €`;
-    return `${profile.budget_min || 0}–${profile.budget_max} €`;
+    const hasMin =
+      profile?.budget_min != null &&
+      profile.budget_min !== '';
+
+    const hasMax =
+      profile?.budget_max != null &&
+      profile.budget_max !== '';
+
+    if (!hasMin && !hasMax) {
+      return 'Sin definir';
+    }
+
+    if (hasMin && hasMax) {
+      return `${profile.budget_min}–${profile.budget_max} €`;
+    }
+
+    if (hasMin) {
+      return `Desde ${profile.budget_min} €`;
+    }
+
+    return `Hasta ${profile.budget_max} €`;
   }
 
   function getConnectionForUser(userId) {
@@ -11044,7 +11208,6 @@
     return `
       <div
         class="chat-message ${mine ? 'mine' : 'other'}"
-        data-message-id="${escapeHtml(message.id)}"
       >
         ${
           mine
@@ -12352,6 +12515,48 @@
 
   injectAuthGate();
 
+  function readAuthUrlError() {
+    const hash =
+      window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : '';
+
+    if (!hash) return null;
+
+    const params =
+      new URLSearchParams(hash);
+
+    const error =
+      params.get('error');
+
+    const code =
+      params.get('error_code');
+
+    const description =
+      params.get('error_description');
+
+    if (!error && !code) {
+      return null;
+    }
+
+    const result = {
+      error,
+      code,
+      description
+    };
+
+    window.history.replaceState(
+      {},
+      '',
+      `${window.location.pathname}${window.location.search}`
+    );
+
+    return result;
+  }
+
+  const startupAuthUrlError =
+    readAuthUrlError();
+
   db.auth.onAuthStateChange((event, session) => {
     if (
       event === 'PASSWORD_RECOVERY' &&
@@ -12386,11 +12591,20 @@
     }
   });
 
-  db.auth.getSession().then(({ data }) => {
+  db.auth.getSession().then(async ({ data }) => {
+    const expiredAuthLink =
+      startupAuthUrlError?.code === 'otp_expired';
+
     if (data.session) {
-      startSession(data.session, {
+      await startSession(data.session, {
         forceHome: false
       });
+
+      if (expiredAuthLink) {
+        notify(
+          'El enlace de recuperación ha caducado. Tu sesión actual sigue activa.'
+        );
+      }
 
       return;
     }
@@ -12400,6 +12614,19 @@
 
     if (authGate) {
       authGate.hidden = false;
+    }
+
+    if (expiredAuthLink) {
+      const message =
+        document.querySelector('#authMessage');
+
+      if (message) {
+        message.className =
+          'auth-message';
+
+        message.textContent =
+          'Este enlace de recuperación ha caducado. Solicita uno nuevo para cambiar tu contraseña.';
+      }
     }
 
     document.body.classList.remove(
@@ -12625,11 +12852,11 @@
 
   document.addEventListener('click', event => {
     if (event.target.closest('#changeProfilePhoto')) {
-      document.querySelector('#profilePhotoInput')?.click();
+      document.querySelector('#ownProfilePhotoInput')?.click();
     }
   });
 
-  document.querySelector('#profilePhotoInput')?.addEventListener('change', event => {
+  document.querySelector('#ownProfilePhotoInput')?.addEventListener('change', event => {
     const file = event.target.files?.[0];
     if (file) uploadProfilePhoto(file);
     event.target.value = '';
@@ -12671,7 +12898,7 @@
         <form id="livingEditorForm">
           <div class="living-editor-groups">
             ${groups.map((group, index) => `
-              <section class="living-editor-group" data-living-editor-group="${index}">
+              <section class="living-editor-group">
                 <small>${group[0]}</small>
                 <div>
                   ${group[1].map((option, optionIndex) => `
@@ -12807,7 +13034,7 @@
           <div>
             <small>TU BÚSQUEDA</small>
             <h2>Qué busco</h2>
-            <p>Rooms utiliza estos datos para enseñarte viviendas y personas que realmente encajan contigo.</p>
+            <p>Estos datos definen lo que estás buscando y se usan en tu perfil y filtros.</p>
           </div>
           <button type="button" data-close-search-preferences aria-label="Cerrar">×</button>
         </header>
@@ -13483,7 +13710,7 @@
           <div>
             <small>PREFERENCIAS</small>
             <h2>Tu vivienda ideal</h2>
-            <p>Selecciona lo que valoras. Rooms lo usará para ordenar mejor tus recomendaciones.</p>
+            <p>Selecciona las características que valoras en una vivienda.</p>
           </div>
           <button type="button" data-close-home-preferences aria-label="Cerrar">×</button>
         </header>
@@ -14578,7 +14805,7 @@
 
             <div class="search-group-card-footer">
               <span>
-                ${active ? 'Grupo activo' : 'Búsqueda compartida'}
+                ${active ? 'Grupo actual' : 'Búsqueda compartida'}
               </span>
 
               <b>Entrar →</b>
@@ -16098,7 +16325,6 @@
     return `
       <div
         class="household-vote-controls"
-        data-vote-candidate="${escapeHtml(candidateId)}"
       >
         ${options.map(([value, emoji, label]) => `
           <button
