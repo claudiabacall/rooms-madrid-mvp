@@ -5,9 +5,14 @@
   "description": "MVP interactivo de Rooms para encontrar vivienda y compañeros compatibles en Madrid.",
   "scripts": {
     "start": "node server.mjs",
-    "dev": "node server.mjs"
+    "dev": "node server.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.3",
+    "leaflet": "^1.9.4"
   }
 }

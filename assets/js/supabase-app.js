@@ -16,11 +16,14 @@
     profile: null,
     preferences: null,
     targetProfile: null,
+    reportTarget: null,
+    blockTarget: null,
+    blockedUsers: new Set(),
     connection: null,
     connectionsByUser: new Map(),
     chatTarget: null,
+    conversationPreferences: new Map(),
     channel: null,
-    currentListingId: null,
     living: {},
     profiles: new Map(),
     incomingRequests: new Map(),
@@ -60,10 +63,13 @@
     document.body.style.overflow = '';
   }
 
+  let manualAuthNavigationPending = false;
+
   function injectAuthGate() {
     const gate = document.createElement('section');
     gate.className = 'auth-gate';
     gate.id = 'authGate';
+    gate.hidden = true;
     gate.innerHTML = `
       <article class="auth-panel">
         <span class="auth-brand">rooms<span>.</span></span>
@@ -81,10 +87,19 @@
             <input id="authEmail" type="email" required autocomplete="email">
           </label>
           <label>Contraseña
-            <input id="authPassword" type="password" minlength="6" required autocomplete="current-password">
+            <input id="authPassword" type="password" required autocomplete="current-password">
           </label>
+
+          <button
+            class="auth-forgot"
+            id="authForgotPassword"
+            type="button"
+          >
+            ¿Has olvidado tu contraseña?
+          </button>
+
           <button class="auth-submit" id="authSubmit" type="submit">Entrar</button>
-          <p class="auth-message" id="authMessage" role="status"></p>
+          <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </form>
         <p class="auth-legal">Tus datos se guardan de forma privada. Rooms nunca comparte tu email ni tu contraseña con otros usuarios.</p>
       </article>`;
@@ -96,10 +111,116 @@
       gate.querySelectorAll('[data-auth-mode]').forEach(item => item.classList.toggle('active', item === button));
       document.querySelector('#authNameField').hidden = mode !== 'signup';
       document.querySelector('#authName').required = mode === 'signup';
-      document.querySelector('#authPassword').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-      document.querySelector('#authSubmit').textContent = mode === 'signup' ? 'Crear mi cuenta' : 'Entrar';
+
+      const passwordInput =
+        document.querySelector('#authPassword');
+
+      passwordInput.autocomplete =
+        mode === 'signup'
+          ? 'new-password'
+          : 'current-password';
+
+      if (mode === 'signup') {
+        passwordInput.setAttribute('minlength', '6');
+      } else {
+        passwordInput.removeAttribute('minlength');
+      }
+
+      document.querySelector('#authForgotPassword').hidden =
+        mode !== 'login';
+
+      document.querySelector('#authSubmit').textContent =
+        mode === 'signup'
+          ? 'Crear mi cuenta'
+          : 'Entrar';
+
       document.querySelector('#authMessage').textContent = '';
     }));
+
+    document.querySelector('#authForgotPassword').addEventListener('click', async () => {
+      const emailInput =
+        document.querySelector('#authEmail');
+
+      const message =
+        document.querySelector('#authMessage');
+
+      const button =
+        document.querySelector('#authForgotPassword');
+
+      const email =
+        emailInput.value.trim();
+
+      message.className = 'auth-reset-message';
+      message.textContent = '';
+
+      if (!email) {
+        message.textContent =
+          'Introduce tu email para enviarte el enlace de recuperación.';
+        emailInput.focus();
+        return;
+      }
+
+      if (!emailInput.checkValidity()) {
+        message.textContent =
+          'Comprueba que el email esté bien escrito.';
+        emailInput.focus();
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Enviando enlace…';
+
+      const { error } =
+        await db.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo: window.location.origin
+          }
+        );
+
+      button.disabled = false;
+      button.textContent =
+        '¿Has olvidado tu contraseña?';
+
+      if (error) {
+        console.error(
+          'Rooms: error enviando recuperación de contraseña',
+          error
+        );
+
+        const errorText =
+          String(error.message || '').toLowerCase();
+
+        const waitMatch =
+          errorText.match(/after\s+(\d+)\s+seconds?/);
+
+        if (
+          error.status === 429 ||
+          errorText.includes('security purposes')
+        ) {
+          const seconds =
+            waitMatch?.[1] || 'unos';
+
+          message.className =
+            'auth-message';
+
+          message.textContent =
+            `Ya hemos enviado un enlace recientemente. Espera ${seconds} segundos antes de solicitar otro.`;
+          return;
+        }
+
+        message.textContent =
+          'No hemos podido enviar el enlace. Inténtalo de nuevo.';
+        return;
+      }
+
+      message.className =
+        'auth-message success';
+
+      message.textContent =
+        'Te hemos enviado un enlace para crear una nueva contraseña. Revisa tu bandeja de entrada.';
+    });
+
 
     document.querySelector('#roomsAuthForm').addEventListener('submit', async event => {
       event.preventDefault();
@@ -112,16 +233,22 @@
       message.className = 'auth-message';
       message.textContent = mode === 'signup' ? 'Creando tu cuenta…' : 'Entrando…';
 
+      manualAuthNavigationPending = true;
+
       const result = mode === 'signup'
         ? await db.auth.signUp({ email, password, options: { data: { name, alias: name } } })
         : await db.auth.signInWithPassword({ email, password });
 
       submit.disabled = false;
+
       if (result.error) {
+        manualAuthNavigationPending = false;
         message.textContent = translateAuthError(result.error.message);
         return;
       }
+
       if (mode === 'signup' && !result.data.session) {
+        manualAuthNavigationPending = false;
         message.className = 'auth-message success';
         message.textContent = 'Cuenta creada. Revisa tu email y confirma el enlace para entrar.';
         return;
@@ -130,6 +257,191 @@
       message.textContent = 'Cuenta lista. Entrando en Rooms…';
     });
   }
+
+  function ensurePasswordRecoveryModal() {
+    let modal =
+      document.querySelector('#passwordRecoveryModal');
+
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'passwordRecoveryModal';
+    modal.setAttribute('aria-hidden', 'true');
+
+    modal.innerHTML = `
+      <div class="backdrop"></div>
+
+      <section class="auth-reset-shell">
+        <article class="auth-reset-card">
+          <small class="auth-reset-eyebrow">
+            SEGURIDAD
+          </small>
+
+          <h1>
+            Crea una nueva contraseña
+          </h1>
+
+          <p class="auth-reset-intro">
+            Introduce una contraseña nueva para tu cuenta de Rooms.
+          </p>
+
+          <form
+            id="passwordRecoveryForm"
+            class="auth-reset-form"
+            novalidate
+          >
+            <div class="auth-reset-field">
+              <label for="recoveryPassword">
+                Nueva contraseña
+              </label>
+
+              <input
+                id="recoveryPassword"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Escribe tu nueva contraseña"
+              >
+            </div>
+
+            <div class="auth-reset-field">
+              <label for="recoveryPasswordConfirm">
+                Repetir contraseña
+              </label>
+
+              <input
+                id="recoveryPasswordConfirm"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Repite la contraseña"
+              >
+            </div>
+
+            <p class="auth-reset-helper">
+              Debe tener al menos 6 caracteres.
+            </p>
+
+            <p
+              class="auth-reset-message"
+              id="passwordRecoveryMessage"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+            <button
+              class="auth-reset-submit"
+              type="submit"
+              id="passwordRecoverySubmit"
+            >
+              Guardar nueva contraseña
+            </button>
+          </form>
+
+          <p class="auth-reset-legal">
+            Tu contraseña se actualiza de forma segura y privada.
+          </p>
+        </article>
+      </section>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal
+      .querySelector('#passwordRecoveryForm')
+      .addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const password =
+          modal.querySelector('#recoveryPassword').value;
+
+        const confirmation =
+          modal.querySelector('#recoveryPasswordConfirm').value;
+
+        const message =
+          modal.querySelector('#passwordRecoveryMessage');
+
+        const submit =
+          modal.querySelector('#passwordRecoverySubmit');
+
+        message.textContent = '';
+        message.className = 'auth-message';
+
+        if (password.length < 6) {
+          message.textContent =
+            'La contraseña debe tener al menos 6 caracteres.';
+          message.classList.add('error');
+          return;
+        }
+
+        if (password !== confirmation) {
+          message.textContent =
+            'Las contraseñas no coinciden.';
+          message.classList.add('error');
+          return;
+        }
+
+        submit.disabled = true;
+        submit.textContent = 'Guardando…';
+
+        const { error } =
+          await db.auth.updateUser({
+            password
+          });
+
+        submit.disabled = false;
+        submit.textContent =
+          'Guardar nueva contraseña';
+
+        if (error) {
+          console.error(
+            'Rooms: error actualizando contraseña',
+            error
+          );
+
+          message.textContent =
+            'No hemos podido cambiar la contraseña. Inténtalo de nuevo.';
+          message.classList.add('error');
+          return;
+        }
+
+        message.className =
+          'auth-reset-message success';
+
+        message.textContent =
+          'Contraseña actualizada correctamente.';
+
+        setTimeout(() => {
+          modal.classList.remove('open');
+          modal.setAttribute(
+            'aria-hidden',
+            'true'
+          );
+
+          document.body.style.overflow = '';
+
+          notify(
+            'Contraseña actualizada'
+          );
+        }, 700);
+      });
+
+    return modal;
+  }
+
+
+  function openPasswordRecoveryModal() {
+    const modal =
+      ensurePasswordRecoveryModal();
+
+    showModal(modal);
+
+    setTimeout(() => {
+      modal
+        .querySelector('#recoveryPassword')
+        ?.focus();
+    }, 50);
+  }
+
 
   function translateAuthError(message) {
     const text = String(message || '').toLowerCase();
@@ -140,45 +452,324 @@
     return 'No hemos podido completar el acceso. Inténtalo de nuevo.';
   }
 
-  async function startSession(session) {
+  function normalizePreferencesRecord(preferences) {
+    if (!preferences?.answers) return preferences;
+
+    const answers = {
+      ...preferences.answers
+    };
+
+    const privacy =
+      answers.privacy || {};
+
+    const controls =
+      privacy.controls || {};
+
+    const validVisibility =
+      value =>
+        ['public', 'connections', 'private']
+          .includes(value);
+
+    const hasLegacyControls =
+      ['habits', 'searching', 'posts', 'communities']
+        .some(key => typeof controls[key] === 'boolean');
+
+    const modernControls =
+      hasLegacyControls
+        ? {
+            living:
+              controls.habits
+                ? 'public'
+                : 'private',
+            search:
+              controls.searching
+                ? 'public'
+                : 'private',
+            budget:
+              !controls.searching
+                ? 'private'
+                : privacy.level === 'balanced'
+                  ? 'connections'
+                  : privacy.level === 'private'
+                    ? 'private'
+                    : 'public',
+            activity:
+              controls.posts
+                ? 'public'
+                : 'private'
+          }
+        : {
+            living:
+              validVisibility(controls.living)
+                ? controls.living
+                : 'public',
+            search:
+              validVisibility(controls.search)
+                ? controls.search
+                : 'public',
+            budget:
+              validVisibility(controls.budget)
+                ? controls.budget
+                : 'public',
+            activity:
+              validVisibility(controls.activity)
+                ? controls.activity
+                : 'public'
+          };
+
+    answers.privacy = {
+      ...privacy,
+      level:
+        privacy.level === 'public'
+          ? 'open'
+          : ['open', 'balanced', 'private', 'custom']
+              .includes(privacy.level)
+            ? privacy.level
+            : 'balanced',
+      controls: modernControls
+    };
+
+    return {
+      ...preferences,
+      answers
+    };
+  }
+
+  async function startSession(
+    session,
+    { forceHome = false } = {}
+  ) {
     state.user = session.user;
-    document.querySelector('#authGate').hidden = true;
+
+    const authGate =
+      document.querySelector('#authGate');
 
     const [{ data: profile }, { data: preferences }] = await Promise.all([
       db.from('profiles').select('*').eq('id', state.user.id).maybeSingle(),
       db.from('onboarding_preferences').select('answers,updated_at').eq('user_id', state.user.id).maybeSingle()
     ]);
     state.profile = profile;
-    state.preferences = preferences;
-    if (profile) state.profiles.set(profile.id, profile);
-    updateOwnProfile(profile, preferences);
+    state.preferences =
+      normalizePreferencesRecord(preferences);
 
-    if (profile?.onboarding_completed && !document.body.classList.contains('app-visible')) {
-      if (typeof window.openPersonalizedFeed === 'function') window.openPersonalizedFeed();
+    if (profile) {
+      state.profiles.set(profile.id, profile);
     }
 
-    await loadOtherProfile();
-    await loadRealContent();
-    await Promise.all([
-      loadSavedItems(),
-      loadSavedCollections(),
-      loadIncomingConnections(),
-      loadRealNotifications(),
-      loadRealInbox()
-    ]);
+    updateOwnProfile(
+      profile,
+      state.preferences
+    );
+
+    await loadUserBlocks();
+    await loadConversationPreferences();
+
+    /*
+      Una cuenta con onboarding completado nunca debe
+      volver a mostrar el onboarding al restaurar sesión.
+
+      - Login manual: Home.
+      - Refresh/restauración: última vista válida.
+      - Sin vista guardada: Home.
+    */
+    if (profile?.onboarding_completed) {
+      const allowedViews = new Set([
+        'home',
+        'explore',
+        'communities',
+        'household',
+        'profile',
+        'saved',
+        'settings',
+        'trust'
+      ]);
+
+      let restoredView = 'home';
+
+      if (!forceHome) {
+        try {
+          const savedView =
+            sessionStorage.getItem(
+              'rooms:last-main-view'
+            );
+
+          if (allowedViews.has(savedView)) {
+            restoredView = savedView;
+          }
+        } catch (error) {
+          console.warn(
+            'Rooms: no se pudo restaurar la vista anterior.',
+            error
+          );
+        }
+      }
+
+      if (
+        typeof window.openPersonalizedFeed ===
+        'function'
+      ) {
+        window.openPersonalizedFeed(
+          forceHome ? 'home' : restoredView,
+          { animate: false }
+        );
+      } else if (
+        typeof window.showMainView ===
+        'function'
+      ) {
+        window.showMainView(
+          forceHome ? 'home' : restoredView
+        );
+      }
+    }
+
+    if (authGate) {
+      authGate.hidden = true;
+    }
+
+    try {
+      await loadOtherProfile();
+      await loadRealContent();
+
+      await Promise.all([
+        loadSavedItems(),
+        loadSavedCollections(),
+        loadRealNotifications(),
+        loadRealInbox()
+      ]);
+    } finally {
+      document.body.classList.remove(
+        'rooms-booting'
+      );
+    }
+
     subscribeToMessages();
     showLiveStatus();
   }
 
   function endSession() {
+    /*
+      Cerrar cualquier suscripción realtime de la sesión anterior.
+    */
+    if (state.channel) {
+      db.removeChannel(state.channel);
+    }
+
+    /*
+      Identidad y navegación.
+    */
     state.user = null;
     state.profile = null;
     state.preferences = null;
     state.targetProfile = null;
+    state.reportTarget = null;
+    state.blockTarget = null;
+    state.blockedUsers = new Set();
+    state.targetVisibility = null;
+    state.currentCollectionId = null;
+
+    /*
+      Conexiones y chat.
+    */
     state.connection = null;
+    state.connectionsByUser = new Map();
+    state.incomingRequests = new Map();
     state.chatTarget = null;
-    if (state.channel) db.removeChannel(state.channel);
-    document.querySelector('#authGate').hidden = false;
+    state.conversationPreferences = new Map();
+    state.channel = null;
+
+    /*
+      Contenido cargado.
+    */
+    state.profiles = new Map();
+    state.listings = new Map();
+    state.posts = new Map();
+    state.communities = new Map();
+
+    /*
+      Interacciones con publicaciones.
+    */
+    state.postLikes = new Map();
+    state.postComments = new Map();
+    state.userPostLikes = new Set();
+
+    /*
+      Guardados.
+    */
+    state.savedItems = new Set();
+    state.savedCollections = new Map();
+
+    /*
+      Comunidades.
+    */
+    state.activeCommunity = null;
+    state.activeCommunityMembers = [];
+    state.activeCommunityMembership = null;
+    state.communityMemberships = [];
+    state.communityMemberCounts = new Map();
+    state.communityPublishTarget = null;
+
+    /*
+      Grupos de búsqueda.
+    */
+    state.household = null;
+    state.households = [];
+    state.householdMembers = [];
+    state.householdMembersError = false;
+    state.householdCandidates = [];
+    state.householdPersonCandidates = [];
+    state.householdCandidateVotes = [];
+    state.pendingHouseholdInvite = null;
+    state.pendingGroupCandidate = null;
+
+    /*
+      Publicación y edición.
+    */
+    state.publishType = null;
+    state.publishDraft = {
+      steps: {},
+      files: []
+    };
+    state.editListingPhotos = [];
+    state.editListingOriginalPhotos = [];
+
+    /*
+      Datos temporales del onboarding/perfil.
+    */
+    state.living = {};
+
+    /*
+      Evitar que quede abierto un modal perteneciente
+      a la cuenta anterior.
+    */
+    hideAllModals();
+
+    /*
+      La próxima autenticación debe arrancar desde Home,
+      no desde la última subvista que quedó abierta.
+    */
+    try {
+      sessionStorage.removeItem(
+        'rooms:last-main-view'
+      );
+    } catch (error) {
+      console.warn(
+        'Rooms: no se pudo limpiar la vista anterior.',
+        error
+      );
+    }
+
+    document.body.classList.remove('app-visible');
+
+    const authGate =
+      document.querySelector('#authGate');
+
+    if (authGate) {
+      authGate.hidden = false;
+    }
+
+    document.body.classList.remove(
+      'rooms-booting'
+    );
   }
 
   function updateOwnProfile(profile, preferences = state.preferences) {
@@ -212,7 +803,7 @@
     if (ownBio) ownBio.textContent = profile.bio || 'Aún no has añadido una bio.';
 
     const trustBadge = document.querySelector('#ownProfileView .own-profile-heading small');
-    if (trustBadge) trustBadge.textContent = state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'PERFIL NUEVO';
+    if (trustBadge) trustBadge.textContent = state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'EMAIL SIN VERIFICAR';
 
     const seekingLabels = {
       room: 'Busco habitación', home: 'Busco piso entero', mates: 'Busco compañeros'
@@ -229,7 +820,7 @@
       sport: 'Deporte', music: 'Música', cooking: 'Cocina', travel: 'Viajes', gym: 'Gym',
       gaming: 'Gaming', reading: 'Lectura', 'going-out': 'Salir', 'quiet-plans': 'Planes tranquilos', pets: 'Mascotas'
     };
-    const aboutSection = document.querySelector('#ownProfileView .own-profile-content > section:nth-child(1)');
+    const aboutSection = document.querySelector('#ownProfileView [data-own-profile-about]');
     if (aboutSection) {
       const bio = aboutSection.querySelector(':scope > p');
       if (bio) bio.textContent = profile.bio || 'Aún no has añadido información sobre ti.';
@@ -290,8 +881,8 @@
 
     if (completionCopy) {
       completionCopy.textContent = missing
-        ? 'Completar este dato ayudará a mejorar tus recomendaciones.'
-        : 'Ya tenemos los datos principales para personalizar tus matches.';
+        ? 'Completar este dato hará que tu perfil tenga más información.'
+        : 'Ya tienes añadida la información principal de tu perfil.';
     }
 
     const completionAction = document.querySelector(
@@ -301,6 +892,7 @@
     if (completionAction) {
       if (!missing) {
         completionAction.hidden = true;
+        delete completionAction.dataset.profileCompletionAction;
       } else {
         completionAction.hidden = false;
 
@@ -312,6 +904,11 @@
 
         completionAction.textContent =
           actionLabels[missing] || 'Completar perfil →';
+
+        completionAction.dataset.profileCompletionAction =
+          missing === 'fecha de entrada'
+            ? 'search'
+            : 'profile';
       }
     }
 
@@ -325,8 +922,11 @@
   function updateTrustView() {
     const profile = state.profile || {};
 
-    const emailVerified = Boolean(state.user?.email_confirmed_at);
-    const hasPhoto = Boolean(profile.avatar_url);
+    const emailVerified =
+      Boolean(state.user?.email_confirmed_at);
+
+    const hasPhoto =
+      Boolean(profile.avatar_url);
 
     const completionFields = [
       profile.name || profile.alias,
@@ -339,103 +939,189 @@
       profile.duration,
       profile.interests?.length,
       state.preferences?.answers?.living &&
-        Object.keys(state.preferences.answers.living).length
+        Object.keys(
+          state.preferences.answers.living
+        ).length
     ];
 
     const completion =
       Math.round(
-        (completionFields.filter(Boolean).length / completionFields.length) * 100
+        (
+          completionFields.filter(Boolean).length /
+          completionFields.length
+        ) * 100
       ) || 0;
 
-    const verified = emailVerified;
-    const levelName = verified ? 'Verificado' : 'Nuevo';
+    const profileComplete =
+      completion >= 80;
 
-    const title = document.querySelector('#trustView .subpage-header h1');
-    const level = document.querySelector('#trustView .trust-level-card strong');
-    const copy = document.querySelector('#trustView .trust-level-card p');
+    const acceptedConnections =
+      [...state.connectionsByUser.values()]
+        .filter(connection =>
+          connection.status === 'accepted'
+        )
+        .length;
 
-    if (title) title.textContent = levelName;
-    if (level) level.textContent = levelName;
+    const hasConnections =
+      acceptedConnections > 0;
+
+    const signalCount = [
+      emailVerified,
+      hasPhoto,
+      profileComplete,
+      hasConnections
+    ].filter(Boolean).length;
+
+    const title =
+      document.querySelector(
+        '#trustView .subpage-header h1'
+      );
+
+    const level =
+      document.querySelector(
+        '#trustView .trust-level-card strong'
+      );
+
+    const copy =
+      document.querySelector(
+        '#trustView .trust-level-card p'
+      );
+
+    if (title) {
+      title.textContent =
+        'Señales de confianza';
+    }
+
+    if (level) {
+      level.textContent =
+        `${signalCount} de 4 señales`;
+    }
 
     if (copy) {
-      copy.textContent = emailVerified
-        ? 'Tu email está confirmado. Sigue completando tu perfil y creando relaciones reales para añadir más señales de confianza.'
-        : 'Confirma tu email para conseguir tu primera señal de confianza en Rooms.';
+      copy.textContent =
+        'Rooms muestra señales objetivas de tu actividad y perfil. No asignamos una nota personal ni un nivel de fiabilidad.';
     }
 
-    const levels = document.querySelectorAll(
-      '#trustView .trust-levels span'
-    );
+    const levels =
+      document.querySelector(
+        '#trustView .trust-levels'
+      );
 
-    if (levels[0]) {
-      levels[0].textContent = 'Nuevo ✓';
-      levels[0].className = 'done';
-    }
+    if (levels) {
+      levels.innerHTML = `
+        <span class="${emailVerified ? 'done' : ''}">
+          Email ${emailVerified ? '✓' : ''}
+        </span>
 
-    if (levels[1]) {
-      levels[1].textContent = emailVerified
-        ? 'Verificado ✓'
-        : 'Verificado';
-      levels[1].className = emailVerified ? 'current' : '';
-    }
+        <span class="${hasPhoto ? 'done' : ''}">
+          Foto ${hasPhoto ? '✓' : ''}
+        </span>
 
-    if (levels[2]) {
-      levels[2].textContent = 'Fiable';
-      levels[2].className = '';
-    }
+        <span class="${profileComplete ? 'done' : ''}">
+          Perfil ${profileComplete ? '✓' : ''}
+        </span>
 
-    if (levels[3]) {
-      levels[3].textContent = 'Muy fiable';
-      levels[3].className = '';
-    }
-
-    const signals = document.querySelectorAll(
-      '#trustView .trust-signals-grid article'
-    );
-
-    if (signals[0]) {
-      signals[0].innerHTML = `
-        <span>${emailVerified ? '✓' : '○'}</span>
-        <div>
-          <b>Email</b>
-          <small>${emailVerified ? 'Verificado' : 'Pendiente de verificar'}</small>
-        </div>
+        <span class="${hasConnections ? 'done' : ''}">
+          Conexiones ${hasConnections ? '✓' : ''}
+        </span>
       `;
     }
 
-    if (signals[1]) {
-      signals[1].innerHTML = `
-        <span>${hasPhoto ? '✓' : '○'}</span>
-        <div>
-          <b>Foto de perfil</b>
-          <small>${hasPhoto ? 'Añadida' : 'Pendiente'}</small>
-        </div>
+    const signals =
+      document.querySelector(
+        '#trustView .trust-signals-grid'
+      );
+
+    if (signals) {
+      signals.innerHTML = `
+        <article>
+          <span>${emailVerified ? '✓' : '○'}</span>
+          <div>
+            <b>Email</b>
+            <small>
+              ${
+                emailVerified
+                  ? 'Verificado'
+                  : 'Pendiente de verificar'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${hasPhoto ? '✓' : '○'}</span>
+          <div>
+            <b>Foto de perfil</b>
+            <small>
+              ${
+                hasPhoto
+                  ? 'Añadida'
+                  : 'Pendiente'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${completion}%</span>
+          <div>
+            <b>Completitud del perfil</b>
+            <small>
+              ${
+                profileComplete
+                  ? 'Información principal añadida'
+                  : 'Puedes añadir más información'
+              }
+            </small>
+          </div>
+        </article>
+
+        <article>
+          <span>${acceptedConnections}</span>
+          <div>
+            <b>Conexiones aceptadas</b>
+            <small>
+              ${
+                acceptedConnections === 1
+                  ? '1 conexión real'
+                  : `${acceptedConnections} conexiones reales`
+              }
+            </small>
+          </div>
+        </article>
       `;
     }
 
-    if (signals[2]) {
-      signals[2].innerHTML = `
-        <span>${completion}%</span>
-        <div>
-          <b>Perfil completo</b>
-          <small>${completion >= 80 ? 'Buen nivel de información' : 'Puedes añadir más información'}</small>
-        </div>
-      `;
-    }
-
-    const recommendationButton = document.querySelector(
-      '#trustView .trust-level-card button'
-    );
+    const recommendationButton =
+      document.querySelector(
+        '#trustView .trust-level-card button'
+      );
 
     if (recommendationButton) {
-      recommendationButton.removeAttribute('data-toast');
-      recommendationButton.id = 'trustRecommendations';
-      recommendationButton.textContent = completion < 100
-        ? 'Completar perfil →'
-        : 'Perfil completo ✓';
+      recommendationButton.id =
+        'trustRecommendations';
+
+      const profileComplete =
+        completion >= 100;
+
+      recommendationButton.textContent =
+        profileComplete
+          ? 'Perfil completo ✓'
+          : 'Completar perfil →';
+
+      recommendationButton.disabled =
+        profileComplete;
+
+      recommendationButton.setAttribute(
+        'aria-disabled',
+        profileComplete ? 'true' : 'false'
+      );
     }
 
-    const reviews = document.querySelector('#trustView .reviews-grid');
+    const reviews =
+      document.querySelector(
+        '#trustView .reviews-grid'
+      );
 
     if (reviews) {
       reviews.innerHTML = `
@@ -443,38 +1129,102 @@
           <header>
             <span>SIN RESEÑAS TODAVÍA</span>
           </header>
-          <h3>Las reseñas llegarán después de relaciones reales</h3>
+
+          <h3>
+            Todavía no hay reseñas reales
+          </h3>
+
           <p>
-            Cuando hayas conectado y convivido, alquilado o interactuado
-            mediante una relación verificable en Rooms, podrán aparecer aquí.
+            Cuando Rooms tenga un sistema de reseñas
+            verificadas, aparecerán aquí.
           </p>
         </article>
       `;
     }
 
-    const writeReview = document.querySelector(
-      '#trustView .reviews-heading button'
-    );
+    const writeReview =
+      document.querySelector(
+        '#trustView .reviews-heading button'
+      );
 
     if (writeReview) {
       writeReview.hidden = true;
     }
 
     document
-      .querySelectorAll('#ownProfileView [data-open-trust] small')
+      .querySelectorAll(
+        '#ownProfileView [data-open-trust] small'
+      )
       .forEach(item => {
-        item.textContent = emailVerified
-          ? 'Email verificado'
-          : 'Perfil nuevo';
+        item.textContent =
+          `${signalCount} de 4 señales`;
       });
   }
 
   function updateAccountView() {
     const email = state.user?.email || '';
 
-    const emailNode = document.querySelector('#settingsAccountEmail');
+    const emailNode =
+      document.querySelector('#settingsAccountEmail');
+
     if (emailNode) {
       emailNode.textContent = email || 'Sin email';
+    }
+
+    const emailStatus =
+      document.querySelector('#settingsEmailStatus');
+
+    if (emailStatus) {
+      emailStatus.textContent =
+        state.user?.email_confirmed_at
+          ? 'Verificado'
+          : 'Pendiente de verificar';
+    }
+
+    const onboardingEmail =
+      document.querySelector('[data-verification="email"]');
+
+    if (onboardingEmail) {
+      const verified =
+        Boolean(state.user?.email_confirmed_at);
+
+      onboardingEmail.classList.toggle(
+        'verified',
+        verified
+      );
+
+      const icon =
+        onboardingEmail.querySelector('.verification-icon');
+
+      const title =
+        onboardingEmail.querySelector('b');
+
+      const copy =
+        onboardingEmail.querySelector('small');
+
+      const status =
+        onboardingEmail.querySelector('em');
+
+      if (icon) {
+        icon.textContent = verified ? '✓' : '1';
+      }
+
+      if (title) {
+        title.textContent =
+          verified ? 'Email verificado' : 'Email';
+      }
+
+      if (copy) {
+        copy.textContent =
+          verified
+            ? 'Tu correo está confirmado.'
+            : 'Tu correo todavía no está confirmado.';
+      }
+
+      if (status) {
+        status.textContent =
+          verified ? 'LISTO' : 'PENDIENTE';
+      }
     }
   }
 
@@ -567,9 +1317,9 @@
     }
 
     /*
-     * El match revela indirectamente hábitos de convivencia.
-     * Hasta que tengamos el matching real, no lo enseñamos
-     * cuando esos datos no son visibles.
+     * La compatibilidad puede revelar indirectamente hábitos
+     * de convivencia y preferencias de búsqueda.
+     * La ocultamos cuando esos datos no son visibles.
      */
     const matchBlock = modal.querySelector('.user-match-block');
 
@@ -699,7 +1449,7 @@
               <span>
                 <b>Pública</b>
                 <small>
-                  Cualquiera puede encontrarla y solicitar unirse.
+                  Cualquiera puede encontrarla y unirse.
                 </small>
               </span>
             </label>
@@ -709,12 +1459,14 @@
                 type="radio"
                 name="communityVisibility"
                 value="private"
+                disabled
+                aria-disabled="true"
               >
 
               <span>
-                <b>Privada</b>
+                <b>Privada · Próximamente</b>
                 <small>
-                  Visible solo para personas con acceso.
+                  Disponible cuando activemos invitaciones y acceso privado.
                 </small>
               </span>
             </label>
@@ -995,11 +1747,46 @@
       db.from('posts').select('*').eq('status', 'published').order('created_at', { ascending: false }),
       db.from('communities').select('*').eq('status', 'active').order('created_at', { ascending: false })
     ]);
-    state.listings = new Map((listings || []).map(item => [item.id, item]));
-    state.posts = new Map((posts || []).map(item => [item.id, item]));
-    state.communities = new Map((communities || []).map(item => [item.id, item]));
-    (profiles || []).forEach(profile => state.profiles.set(profile.id, profile));
-    if (!state.targetProfile && profiles?.length) state.targetProfile = profiles[0];
+    const visibleListings =
+      (listings || []).filter(listing =>
+        !listing.owner_id ||
+        !state.blockedUsers?.has(listing.owner_id)
+      );
+
+    const visiblePosts =
+      (posts || []).filter(post =>
+        !post.author_id ||
+        !state.blockedUsers?.has(post.author_id)
+      );
+
+    state.listings = new Map(
+      visibleListings.map(item => [item.id, item])
+    );
+
+    state.posts = new Map(
+      visiblePosts.map(item => [item.id, item])
+    );
+
+    state.communities = new Map(
+      (communities || []).map(item => [item.id, item])
+    );
+
+    const visibleProfiles =
+      (profiles || []).filter(profile =>
+        !state.blockedUsers?.has(profile.id)
+      );
+
+    visibleProfiles.forEach(profile =>
+      state.profiles.set(profile.id, profile)
+    );
+
+    if (
+      !state.targetProfile &&
+      visibleProfiles.length
+    ) {
+      state.targetProfile =
+        visibleProfiles[0];
+    }
     const {
       data: communityMemberRows,
       error: communityMemberCountError
@@ -1034,21 +1821,65 @@
     // el estado real de conexión de cada usuario.
     updateConnectButtons();
 
-    clearDemoOnlyViews();
     refreshOwnActivity();
     await loadHousehold();
     await loadMemberCommunities();
     await loadIncomingConnections();
     await loadCommunityPostInteractions();
     await handleIncomingHouseholdInvite();
+    handleIncomingListingLink();
   }
+
+  function handleIncomingListingLink() {
+    const params =
+      new URLSearchParams(window.location.search);
+
+    const listingId =
+      params.get('listing');
+
+    if (!listingId) return;
+
+    const listing =
+      state.listings?.get(listingId);
+
+    params.delete('listing');
+
+    const nextSearch =
+      params.toString();
+
+    const nextUrl =
+      `${window.location.pathname}${
+        nextSearch ? `?${nextSearch}` : ''
+      }${window.location.hash || ''}`;
+
+    window.history.replaceState(
+      {},
+      '',
+      nextUrl
+    );
+
+    if (!listing) {
+      notify('Esta vivienda ya no está disponible');
+      return;
+    }
+
+    openRealListingDetail(listing);
+  }
+
 
   function renderRealFeed(listings, profiles, posts, communities) {
     const feed = document.querySelector('#personalFeed');
     if (!feed) return;
+
+    const visibleProfiles =
+      (profiles || []).filter(profile =>
+        profile?.id &&
+        !state.blockedUsers?.has(profile.id)
+      );
+
     const cards = [
       ...listings.map(renderListingCard),
-      ...profiles.map(renderPersonCard),
+      ...visibleProfiles.map(renderPersonCard),
       ...communities.map(renderCommunityCard),
       ...posts.map(renderPostCard)
     ];
@@ -1058,9 +1889,33 @@
         <p>Los perfiles, viviendas y publicaciones aparecerán aquí cuando la comunidad los cree.</p>
         <button type="button" data-open-real-publish>Crear lo primero</button>
       </section>`;
+
+    const activeFeedFilter =
+      document.querySelector('[data-feed-filter].active');
+
+    const activeFeedType =
+      activeFeedFilter?.dataset.feedFilter || 'all';
+
+    document
+      .querySelectorAll('#personalFeed [data-feed-type]')
+      .forEach(card => {
+        card.hidden =
+          activeFeedType !== 'all' &&
+          card.dataset.feedType !== activeFeedType;
+      });
   }
 
   function renderListingCard(listing) {
+    if (
+      !listing ||
+      (
+        listing.owner_id &&
+        state.blockedUsers?.has(listing.owner_id)
+      )
+    ) {
+      return '';
+    }
+
     const photos =
       Array.isArray(listing.photos)
         ? listing.photos
@@ -1076,15 +1931,18 @@
           : 'Habitación';
 
     const zone =
-      listing.zone || 'Madrid';
+      listing.zone || null;
 
     const title =
       listing.title ||
-      `${kind} en ${zone}`;
+      (zone
+        ? `${kind} en ${zone}`
+        : kind);
 
     const price =
-      Number(listing.price || 0)
-        .toLocaleString('es-ES');
+      listing.price != null
+        ? Number(listing.price).toLocaleString('es-ES')
+        : null;
 
     const available =
       listing.available_from
@@ -1094,7 +1952,7 @@
           }).format(
             new Date(`${listing.available_from}T00:00:00`)
           )
-        : 'Flexible';
+        : null;
 
     const facts = [
       listing.rooms
@@ -1206,13 +2064,23 @@
             </div>
 
             <div class="rooms-home-property-price">
-              <b>${price} €</b>
-              <span>/ mes</span>
+              ${
+                price
+                  ? `
+                    <b>${price} €</b>
+                    <span>/ mes</span>
+                  `
+                  : '<b>Precio sin definir</b>'
+              }
             </div>
           </div>
 
           <div class="rooms-home-property-availability">
-            Disponible ${escapeHtml(available)}
+            ${
+              available
+                ? `Disponible ${escapeHtml(available)}`
+                : 'Disponibilidad sin definir'
+            }
           </div>
 
           ${
@@ -1268,8 +2136,15 @@
   }
 
   function renderPersonCard(profile) {
+    if (
+      !profile ||
+      state.blockedUsers?.has(profile.id)
+    ) {
+      return '';
+    }
+
     const name = profile.alias || profile.name || 'Usuario de Rooms';
-    const zone = profile.zones?.[0] || 'Madrid';
+    const zone = profile.zones?.[0] || null;
     const seeking = labelSeeking(profile.seeking?.[0]);
     const traits = (profile.traits || []).slice(0, 3);
     const traitLabels = { tidy: 'Ordenado', social: 'Sociable', calm: 'Tranquilo', independent: 'Independiente', cook: 'Cocinillas', early: 'Madrugador', night: 'Nocturno' };
@@ -1278,15 +2153,25 @@
         ${profile.avatar_url ? `<img src="${escapeHtml(profile.avatar_url)}" alt="${escapeHtml(name)}">` : `<div class="real-person-placeholder">${escapeHtml(initials(name))}</div>`}
         <div class="person-card-tools"><button type="button" class="${state.savedItems?.has(`person:${profile.id}`) ? 'saved' : ''}" data-person-save data-save-kind="person" data-save-id="${profile.id}" aria-label="${state.savedItems?.has(`person:${profile.id}`) ? 'Eliminar perfil de Guardados' : 'Guardar perfil'}">${state.savedItems?.has(`person:${profile.id}`) ? '♥' : '♡'}</button></div>
       </div>
-      <div class="person-card-body"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p class="person-searching">${escapeHtml(seeking)} · ${escapeHtml(zone)}</p>
-        <div class="person-traits">${traits.length ? traits.map(value => `<span>${escapeHtml(traitLabels[value] || value)}</span>`).join('') : '<span>Perfil recién creado</span>'}</div>
-        <p>${escapeHtml(profile.bio || 'Todavía no ha añadido una bio.')}</p>
+      <div class="person-card-body"><h2>${escapeHtml(name)}${profile.age ? `, ${profile.age}` : ''}</h2><p class="person-searching">${escapeHtml(seeking)} · ${escapeHtml(zone || 'Zona sin definir')}</p>
+        <div class="person-traits">${traits.length ? traits.map(value => `<span>${escapeHtml(traitLabels[value] || value)}</span>`).join('') : '<span>Sin preferencias de convivencia</span>'}</div>
+        <p>${escapeHtml(profile.bio || 'Bio sin completar')}</p>
         <div class="person-actions"><button type="button" data-connect data-user-id="${profile.id}">${escapeHtml(connectionButtonLabel(profile.id))}</button></div>
       </div>
     </article>`;
   }
 
   function renderPostCard(post) {
+    if (
+      !post ||
+      (
+        post.author_id &&
+        state.blockedUsers?.has(post.author_id)
+      )
+    ) {
+      return '';
+    }
+
     const author =
       state.profiles.get(post.author_id);
 
@@ -1381,7 +2266,6 @@
       <article
         class="feed-card home-editorial-post home-editorial-post--${config.className}"
         data-feed-type="post"
-        data-real-post="${escapeHtml(post.id)}"
       >
 
         <div class="home-post-accent">
@@ -1511,10 +2395,13 @@
                       </b>
 
                       <p>
-                        ${Number(
-                          linkedListing.price || 0
-                        ).toLocaleString('es-ES')}
-                        € / mes
+                        ${
+                          linkedListing.price != null
+                            ? `${Number(
+                                linkedListing.price
+                              ).toLocaleString('es-ES')} € / mes`
+                            : 'Precio sin definir'
+                        }
                       </p>
                     </div>
 
@@ -1554,6 +2441,19 @@
 
           </div>
 
+
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="post"
+              data-report-id="${escapeHtml(post.id)}"
+              data-report-user="${escapeHtml(post.author_id || '')}"
+            >
+              Reportar publicación
+            </button>
+          </div>
 
           <footer class="home-post-actions">
 
@@ -1845,20 +2745,6 @@
             </span>
           </div>
 
-          ${
-            post.author_id === state.user?.id
-              ? `
-                <button
-                  type="button"
-                  data-own-community-post="${escapeHtml(post.id)}"
-                  aria-label="Opciones"
-                >
-                  •••
-                </button>
-              `
-              : ''
-          }
-
         </header>
 
         ${
@@ -1917,15 +2803,19 @@
                   <b>
                     ${escapeHtml(
                       linkedListing.title ||
-                      linkedListing.zone
+                      linkedListing.zone ||
+                      'Vivienda'
                     )}
                   </b>
 
                   <p>
-                    ${Number(
-                      linkedListing.price || 0
-                    ).toLocaleString('es-ES')}
-                    € / mes
+                    ${
+                      linkedListing.price != null
+                        ? `${Number(
+                            linkedListing.price
+                          ).toLocaleString('es-ES')} € / mes`
+                        : 'Precio sin definir'
+                    }
                   </p>
                 </div>
 
@@ -1961,6 +2851,19 @@
             `
             : ''
         }
+
+        <div class="real-report-row">
+          <button
+            type="button"
+            class="real-report-button"
+            data-real-report
+            data-report-type="post"
+            data-report-id="${escapeHtml(post.id)}"
+            data-report-user="${escapeHtml(post.author_id || '')}"
+          >
+            Reportar publicación
+          </button>
+        </div>
 
         <div class="community-post-actions">
 
@@ -2331,15 +3234,25 @@
                     ADMIN
                   </span>
                 `
-                : `
-                  <button
-                    type="button"
-                    class="${isMember ? 'joined' : ''}"
-                    data-toggle-community-membership="${escapeHtml(community.id)}"
-                  >
-                    ${isMember ? 'Miembro ✓' : 'Unirme'}
-                  </button>
-                `
+                : community.visibility === 'private' && !isMember
+                  ? `
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                    >
+                      Acceso privado
+                    </button>
+                  `
+                  : `
+                    <button
+                      type="button"
+                      class="${isMember ? 'joined' : ''}"
+                      data-toggle-community-membership="${escapeHtml(community.id)}"
+                    >
+                      ${isMember ? 'Salir de la comunidad' : 'Unirme'}
+                    </button>
+                  `
             }
 
           </div>
@@ -2409,7 +3322,7 @@
               <button
                 class="community-publish"
                 type="button"
-                data-community-publish-placeholder
+                data-community-publish
               >
                 ＋ Publicar
               </button>
@@ -2494,7 +3407,7 @@
                 ? `
                   <button
                     type="button"
-                    data-manage-community-placeholder
+                    data-manage-community
                   >
                     Gestionar comunidad
                   </button>
@@ -2776,12 +3689,14 @@
                       type="radio"
                       name="manageCommunityVisibility"
                       value="private"
+                      disabled
+                      aria-disabled="true"
                     >
 
                     <span>
-                      <b>Privada</b>
+                      <b>Privada · Próximamente</b>
                       <small>
-                        Solo accesible para personas autorizadas.
+                        Disponible cuando activemos invitaciones y acceso privado.
                       </small>
                     </span>
                   </label>
@@ -3879,7 +4794,8 @@
     let profiles = [...state.profiles.values()]
       .filter(profile =>
         profile.id &&
-        profile.id !== state.user?.id
+        profile.id !== state.user?.id &&
+        !state.blockedUsers?.has(profile.id)
       );
 
     if (query) {
@@ -3911,7 +4827,34 @@
       : 'Habitación';
 
     const photo = item.photos?.[0] || '';
-    const title = item.title || `${item.zone || 'Madrid'} · ${kind}`;
+    const title =
+      item.title ||
+      (item.zone
+        ? `${item.zone} · ${kind}`
+        : kind);
+
+    const specs = [
+      item.rooms ? `${item.rooms} hab` : null,
+      item.baths ? `${item.baths} baño${Number(item.baths) === 1 ? '' : 's'}` : null,
+      item.area ? `${item.area} m²` : null
+    ].filter(Boolean);
+
+    const featureChips = Array.isArray(item.features)
+      ? item.features.filter(Boolean).slice(0, 3)
+      : [];
+
+    let availableLabel = '';
+
+    if (item.available_from) {
+      const date = new Date(`${item.available_from}T12:00:00`);
+
+      if (!Number.isNaN(date.getTime())) {
+        availableLabel = date.toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'short'
+        });
+      }
+    }
 
     return `
       <div class="real-map-card-media">
@@ -3924,12 +4867,45 @@
 
       <div class="real-map-card-copy">
         <small>${escapeHtml(kind)}</small>
-        <h2>${escapeHtml(item.zone || 'Madrid')}</h2>
 
-        <p>
-          <b>${Number(item.price || 0).toLocaleString('es-ES')} €</b>
-          / mes
+        <h2>${escapeHtml(item.zone || 'Zona sin definir')}</h2>
+
+        <p class="real-map-card-price">
+          ${
+            item.price != null
+              ? `
+                <b>${Number(item.price).toLocaleString('es-ES')} €</b>
+                <span>/ mes</span>
+              `
+              : '<b>Precio sin definir</b>'
+          }
         </p>
+
+        ${
+          specs.length
+            ? `<p class="real-map-card-specs">
+                ${specs.map(escapeHtml).join(' · ')}
+              </p>`
+            : ''
+        }
+
+        ${
+          featureChips.length
+            ? `<div class="real-map-card-features">
+                ${featureChips.map(feature => `
+                  <span>${escapeHtml(feature)}</span>
+                `).join('')}
+              </div>`
+            : ''
+        }
+
+        ${
+          availableLabel
+            ? `<p class="real-map-card-availability">
+                Disponible ${escapeHtml(availableLabel)}
+              </p>`
+            : ''
+        }
 
         <button
           type="button"
@@ -3939,6 +4915,197 @@
         </button>
       </div>
     `;
+  }
+
+  let exploreLeafletMap = null;
+  let exploreLeafletMarkers = new Map();
+
+  function destroyExploreLeafletMap() {
+    if (exploreLeafletMap) {
+      exploreLeafletMap.remove();
+      exploreLeafletMap = null;
+    }
+
+    exploreLeafletMarkers.clear();
+  }
+
+  function initExploreLeafletMap(listings) {
+    const container = document.querySelector('#realExploreMap');
+
+    if (!container || !window.L) return;
+
+    destroyExploreLeafletMap();
+
+    const madridCenter = [40.4168, -3.7038];
+
+    exploreLeafletMap = window.L.map(container, {
+      zoomControl: true,
+      attributionControl: true
+    }).setView(madridCenter, 12);
+
+    window.L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    ).addTo(exploreLeafletMap);
+
+    const validListings = listings.filter(item => {
+      const latitude = Number(item.latitude);
+      const longitude = Number(item.longitude);
+
+      return (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180
+      );
+    });
+
+    const bounds = [];
+
+    validListings.forEach((item, index) => {
+      const latitude = Number(item.latitude);
+      const longitude = Number(item.longitude);
+      const price =
+        item.price != null
+          ? `${Number(item.price).toLocaleString('es-ES')} €`
+          : 'Sin precio';
+
+      const icon = window.L.divIcon({
+        className:
+          `rooms-map-price-marker${index === 0 ? ' active' : ''}`,
+        html: `<span>${escapeHtml(price)}</span>`,
+        iconSize: null,
+        iconAnchor: [0, 0]
+      });
+
+      const marker = window.L.marker(
+        [latitude, longitude],
+        {
+          icon,
+          title: item.title || item.zone || 'Vivienda'
+        }
+      ).addTo(exploreLeafletMap);
+
+      marker.on('click', () => {
+        const card = document.querySelector('#realMapCard');
+
+        if (card) {
+          card.innerHTML = renderRealMapCard(item);
+          card.dataset.mapSelected = item.id;
+        }
+
+        document
+          .querySelectorAll('.rooms-map-price-marker')
+          .forEach(element => {
+            element.classList.remove('active');
+          });
+
+        const markerElement = marker.getElement();
+        if (markerElement) {
+          markerElement.classList.add('active');
+        }
+      });
+
+      exploreLeafletMarkers.set(item.id, marker);
+      bounds.push([latitude, longitude]);
+    });
+
+    if (bounds.length > 1) {
+      exploreLeafletMap.fitBounds(bounds, {
+        padding: [55, 55],
+        maxZoom: 14
+      });
+    } else if (bounds.length === 1) {
+      exploreLeafletMap.setView(bounds[0], 14);
+    }
+
+    function updateVisibleMapListings() {
+      if (!exploreLeafletMap) return;
+
+      const mapBounds = exploreLeafletMap.getBounds();
+
+      const visibleListings = validListings.filter(item => {
+        return mapBounds.contains([
+          Number(item.latitude),
+          Number(item.longitude)
+        ]);
+      });
+
+      const count = document.querySelector('#mapVisibleCount');
+
+      if (count) {
+        count.textContent =
+          `${visibleListings.length} ${
+            visibleListings.length === 1
+              ? 'vivienda en esta zona'
+              : 'viviendas en esta zona'
+          }`;
+
+        count.hidden = false;
+      }
+
+      const card = document.querySelector('#realMapCard');
+
+      if (!visibleListings.length) {
+        if (card) {
+          card.hidden = true;
+          card.dataset.mapSelected = '';
+        }
+
+        document
+          .querySelectorAll('.rooms-map-price-marker')
+          .forEach(element => {
+            element.classList.remove('active');
+          });
+
+        return;
+      }
+
+      if (card) {
+        const selectedId = card.dataset.mapSelected;
+
+        const selectedStillVisible = visibleListings.some(
+          item => item.id === selectedId
+        );
+
+        if (!selectedStillVisible) {
+          const next = visibleListings[0];
+
+          card.hidden = false;
+          card.dataset.mapSelected = next.id;
+          card.innerHTML = renderRealMapCard(next);
+
+          document
+            .querySelectorAll('.rooms-map-price-marker')
+            .forEach(element => {
+              element.classList.remove('active');
+            });
+
+          const marker = exploreLeafletMarkers.get(next.id);
+          const markerElement = marker?.getElement();
+
+          if (markerElement) {
+            markerElement.classList.add('active');
+          }
+        } else {
+          card.hidden = false;
+        }
+      }
+    }
+
+    exploreLeafletMap.on('moveend zoomend', updateVisibleMapListings);
+
+    window.setTimeout(() => {
+      if (exploreLeafletMap) {
+        exploreLeafletMap.invalidateSize();
+        updateVisibleMapListings();
+      }
+    }, 80);
   }
 
   function renderRealExplore(listings) {
@@ -4010,13 +5177,19 @@
                   <div class="explore-property-body">
                     <div class="explore-property-top">
                       <div>
-                        <small>${escapeHtml(item.zone || 'Madrid')}</small>
+                        <small>${escapeHtml(item.zone || 'Zona sin definir')}</small>
                         <h2>${escapeHtml(title)}</h2>
                       </div>
 
                       <p class="explore-property-price">
-                        <b>${Number(item.price || 0).toLocaleString('es-ES')} €</b>
-                        <span>/ mes</span>
+                        ${
+                          item.price != null
+                            ? `
+                              <b>${Number(item.price).toLocaleString('es-ES')} €</b>
+                              <span>/ mes</span>
+                            `
+                            : '<b>Precio sin definir</b>'
+                        }
                       </p>
                     </div>
 
@@ -4059,18 +5232,7 @@
     }
 
     if (map) {
-      const zonePositions = {
-        'Chamberí': [38, 32],
-        'Moncloa': [25, 42],
-        'Argüelles': [31, 46],
-        'Salamanca': [63, 35],
-        'Retiro': [66, 52],
-        'Centro': [48, 50],
-        'Malasaña': [43, 40],
-        'La Latina': [42, 61],
-        'Lavapiés': [52, 62],
-        'Chamartín': [62, 20]
-      };
+      destroyExploreLeafletMap();
 
       if (!listings.length) {
         map.innerHTML = `
@@ -4081,49 +5243,43 @@
           </section>
         `;
       } else {
-        const first = listings[0];
+        const mappedListings = listings.filter(item => {
+          const latitude = Number(item.latitude);
+          const longitude = Number(item.longitude);
+
+          return (
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude)
+          );
+        });
+
+        const first = mappedListings[0] || listings[0];
 
         map.innerHTML = `
           <div class="real-map-layout">
-            <div class="real-map-canvas">
-              <div class="real-map-grid"></div>
+            <div
+              class="rooms-leaflet-map"
+              id="realExploreMap"
+              aria-label="Mapa de viviendas en Madrid"
+            ></div>
 
-              <span class="real-map-label north">NORTE</span>
-              <span class="real-map-label centro">CENTRO</span>
-              <span class="real-map-label retiro">RETIRO</span>
+            <div class="rooms-map-results-count" id="mapVisibleCount"></div>
 
-              ${listings.map((item, index) => {
-                const position =
-                  zonePositions[item.zone] ||
-                  [35 + ((index * 17) % 40), 28 + ((index * 13) % 45)];
-
-                return `
-                  <button
-                    type="button"
-                    class="real-map-pin ${index === 0 ? 'active' : ''}"
-                    style="--x:${position[0]}%;--y:${position[1]}%"
-                    data-real-map-pin="${item.id}"
-                    aria-label="${escapeHtml(item.zone || 'Madrid')} · ${Number(item.price || 0).toLocaleString('es-ES')} euros"
-                  >
-                    ${Number(item.price || 0).toLocaleString('es-ES')} €
-                  </button>
-                `;
-              }).join('')}
-            </div>
-
-            <article class="real-map-card" id="realMapCard">
+            <article
+              class="real-map-card"
+              id="realMapCard"
+              data-map-selected="${first?.id || ''}"
+            >
               ${renderRealMapCard(first)}
             </article>
           </div>
         `;
+
+        window.setTimeout(() => {
+          initExploreLeafletMap(listings);
+        }, 0);
       }
     }
-  }
-
-  function clearDemoOnlyViews() {
-
-    const collections = document.querySelector('#savedView .collection-grid');
-    if (collections) collections.innerHTML = '<div class="real-empty-state"><b>Todavía no tienes colecciones</b><p>Crea una cuando quieras organizar tus guardados.</p></div>';
   }
 
   function refreshOwnActivity(type) {
@@ -4131,12 +5287,29 @@
     const active = type || document.querySelector('[data-own-activity].active')?.dataset.ownActivity || 'posts';
     const ownListings = [...state.listings.values()].filter(item => item.owner_id === state.user.id);
     const ownPosts = [...state.posts.values()].filter(item => item.author_id === state.user.id);
-    const counts = { posts: ownPosts.length, listings: ownListings.length, shared: 0, reviews: 0 };
-    const tabNames = { posts: 'Publicaciones', listings: 'Anuncios', shared: 'Compartidos', reviews: 'Reseñas' };
-    document.querySelectorAll('[data-own-activity]').forEach(tab => {
-      tab.textContent = `${tabNames[tab.dataset.ownActivity]} (${counts[tab.dataset.ownActivity] || 0})`;
-      tab.classList.toggle('active', tab.dataset.ownActivity === active);
-    });
+    const counts = {
+      posts: ownPosts.length,
+      listings: ownListings.length
+    };
+
+    const tabNames = {
+      posts: 'Publicaciones',
+      listings: 'Anuncios'
+    };
+
+    document
+      .querySelectorAll('[data-own-activity]')
+      .forEach(tab => {
+        const type = tab.dataset.ownActivity;
+
+        tab.textContent =
+          `${tabNames[type]} (${counts[type] || 0})`;
+
+        tab.classList.toggle(
+          'active',
+          type === active
+        );
+      });
     renderOwnActivity(active, ownListings, ownPosts);
   }
 
@@ -4149,7 +5322,11 @@
         const photo = listing.photos?.[0];
         return `<article class="own-real-listing" data-real-listing="${listing.id}">
           ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(listing.title)}">` : '<div class="own-listing-placeholder">rooms.</div>'}
-          <div><small>${escapeHtml(kind)}</small><h3>${escapeHtml(listing.zone)} · ${Number(listing.price).toLocaleString('es-ES')} €/mes</h3><p>${escapeHtml(listing.description || 'Sin descripción')}</p><button type="button" data-edit-listing="${listing.id}">Editar anuncio</button></div>
+          <div><small>${escapeHtml(kind)}</small><h3>${
+            listing.price != null
+              ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+              : 'Precio sin definir'
+          } · ${escapeHtml(listing.zone || 'Zona sin definir')}</h3><p>${escapeHtml(listing.description || 'Sin descripción')}</p><button type="button" data-edit-listing="${listing.id}">Editar anuncio</button></div>
         </article>`;
       }).join('')}</div>`;
       return;
@@ -4158,11 +5335,14 @@
       target.innerHTML = `<div class="own-real-activity-list">${ownPosts.map(post => `<article class="own-real-post"><small>${relativeTime(post.created_at)}</small><p>${escapeHtml(post.body)}</p></article>`).join('')}</div>`;
       return;
     }
-    const labels = { posts: 'publicaciones', listings: 'anuncios', shared: 'elementos compartidos', reviews: 'reseñas' };
+    const labels = {
+      posts: 'publicaciones',
+      listings: 'anuncios'
+    };
     target.innerHTML = `<small>TODAVÍA VACÍO</small><p>Aún no tienes ${labels[type] || 'actividad'}.</p><span>Cuando empieces a usar Rooms aparecerá aquí.</span>`;
   }
 
-  const publishTotals = { room: 4, apartment: 3, mate: 2, external: 3, post: 2 };
+  const publishTotals = { room: 3, apartment: 3, mate: 2, external: 3, post: 2 };
 
   function currentPublishType() {
     const label = document.querySelector('#publishFlowKind')?.textContent || '';
@@ -4188,31 +5368,48 @@
     }
     const step = currentPublishStep(type);
     const content = document.querySelector('#publishFlowContent');
-    const values = [...content.querySelectorAll('input:not([type="file"]),textarea,select')].map(field => field.value.trim());
+    const values = [...content.querySelectorAll(
+      'input:not([type="file"]):not([data-exact-address]):not([data-auto-zone-input]),textarea,select'
+    )].map(field => field.value.trim());
     const selected = [...content.querySelectorAll('[data-selectable][aria-pressed="true"]')].map(button => button.textContent.trim());
-    const meta =
-      type === 'post'
-        ? {
-            zone:
-              content
-                .querySelector('[data-post-zone]')
-                ?.value
-                .trim() || null,
+    let meta = {};
 
-            expiresAt:
-              content
-                .querySelector('[data-post-expires]')
-                ?.value || null,
+    if (type === 'post') {
+      meta = {
+        zone:
+          content
+            .querySelector('[data-post-zone]')
+            ?.value
+            .trim() || null,
 
-            listingId:
-              content
-                .querySelector('[data-post-listing]')
-                ?.value || null,
+        expiresAt:
+          content
+            .querySelector('[data-post-expires]')
+            ?.value || null,
 
-            communityPostType:
-              selectedCommunityPostType(content)
-          }
-        : {};
+        listingId:
+          content
+            .querySelector('[data-post-listing]')
+            ?.value || null,
+
+        communityPostType:
+          selectedCommunityPostType(content)
+      };
+    }
+
+    if (
+      (type === 'room' || type === 'apartment') &&
+      step === 0
+    ) {
+      meta = {
+        ...meta,
+        exactAddress:
+          content
+            .querySelector('[data-exact-address]')
+            ?.value
+            .trim() || null
+      };
+    }
 
     state.publishDraft.steps[step] = {
       values,
@@ -4391,8 +5588,12 @@
 
                     ${ownListings.map(listing => `
                       <option value="${escapeHtml(listing.id)}">
-                        ${escapeHtml(listing.title || listing.zone)}
-                        · ${Number(listing.price || 0).toLocaleString('es-ES')} €
+                        ${escapeHtml(listing.title || listing.zone || 'Vivienda')}
+                        · ${
+                          listing.price != null
+                            ? `${Number(listing.price).toLocaleString('es-ES')} €`
+                            : 'Precio sin definir'
+                        }
                       </option>
                     `).join('')}
                   </select>
@@ -4417,7 +5618,6 @@
         <div
           id="communityPostExtraFields"
           class="community-post-extra-fields"
-          data-community-post-type="${escapeHtml(type)}"
         >
           ${fields}
         </div>
@@ -4451,6 +5651,99 @@
   }
 
 
+  function prepareListingLocationField(
+    content,
+    type,
+    step,
+    saved
+  ) {
+    if (
+      !content ||
+      step !== 0 ||
+      !['room', 'apartment'].includes(type)
+    ) {
+      return;
+    }
+
+    const existing =
+      content.querySelector('[data-exact-address]');
+
+    if (existing) {
+      existing.value =
+        saved?.meta?.exactAddress || '';
+      return;
+    }
+
+    const regularFields =
+      [...content.querySelectorAll(
+        'input:not([type="file"]),textarea,select'
+      )];
+
+    const zoneField = regularFields[0];
+
+    if (!zoneField) return;
+
+    const zoneContainer =
+      zoneField.closest('label') ||
+      zoneField.parentElement;
+
+    if (!zoneContainer) return;
+
+    /*
+      Para vivienda, la zona pública se obtiene automáticamente
+      desde la dirección exacta geocodificada.
+    */
+    zoneField.value = '';
+    zoneField.removeAttribute('required');
+    zoneField.dataset.autoZoneInput = 'true';
+    zoneContainer.hidden = true;
+    zoneContainer.dataset.autoZoneField = 'true';
+
+    const wrapper =
+      document.createElement('div');
+
+    wrapper.className =
+      'publish-private-location';
+
+    wrapper.innerHTML = `
+      <label class="publish-private-location-field">
+        <span>
+          Dirección exacta
+          <b>Obligatorio</b>
+        </span>
+
+        <input
+          type="text"
+          data-exact-address
+          autocomplete="street-address"
+          placeholder="Ej. Calle de Serrano 55, Madrid"
+          value="${escapeHtml(saved?.meta?.exactAddress || '')}"
+        >
+      </label>
+
+      <p class="publish-private-location-help">
+        <span>⌖</span>
+        <span>
+          <b>Tu dirección exacta es privada.</b>
+          Solo la usamos para situar la vivienda.
+          En Rooms se mostrará una ubicación aproximada.
+        </span>
+      </p>
+
+      <p
+        class="publish-detected-zone"
+        data-detected-zone
+        hidden
+      ></p>
+    `;
+
+    zoneContainer.insertAdjacentElement(
+      'afterend',
+      wrapper
+    );
+  }
+
+
   function preparePublishStep() {
     const type = currentPublishType();
     if (!type) return;
@@ -4461,11 +5754,21 @@
     const step = currentPublishStep(type);
     const content = document.querySelector('#publishFlowContent');
     const saved = state.publishDraft.steps[step];
-    const fields = [...content.querySelectorAll('input:not([type="file"]),textarea,select')];
+    const fields = [...content.querySelectorAll(
+      'input:not([type="file"]):not([data-exact-address]):not([data-auto-zone-input]),textarea,select'
+    )];
+
     fields.forEach((field, index) => {
       if (saved) field.value = saved.values[index] || '';
       else if (field.tagName !== 'SELECT') field.value = '';
     });
+
+    prepareListingLocationField(
+      content,
+      type,
+      step,
+      saved
+    );
     content.querySelectorAll('.linked-people article').forEach(item => item.remove());
     content.querySelectorAll('.completion-card strong').forEach(item => { item.textContent = '✓'; });
     content.querySelectorAll('.completion-card b').forEach(item => { item.textContent = 'Datos del anuncio'; });
@@ -4490,7 +5793,6 @@
     if (!button) return;
     if (button.dataset.realUploader === 'true') return;
     button.dataset.realUploader = 'true';
-    button.removeAttribute('data-toast');
     const count = state.publishDraft.files?.length || 0;
     button.innerHTML = `<span>＋</span><b>${count ? `${count} ${count === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}` : 'Añadir fotos'}</b><small>Hasta 10 imágenes · JPG, PNG, WebP o HEIC</small>`;
     const input = document.createElement('input');
@@ -4537,8 +5839,86 @@
     }
     const values = state.publishDraft.steps[0]?.values || [];
     const features = state.publishDraft.steps[1]?.selected || [];
-    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[1] || '—')} €/mes · ${escapeHtml(values[0] || 'Zona sin definir')}</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[2] || 'Fecha sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
+    preview.innerHTML = `<span>VISTA PREVIA</span><h3>${escapeHtml(values[0] || '—')} €/mes</h3><p>${type === 'apartment' ? 'Piso entero' : 'Habitación'} · ${escapeHtml(values[1] || 'Sin definir')}</p><div>${features.map(item => `<i>${escapeHtml(item)}</i>`).join('')}</div>`;
   }
+
+  async function geocodeListingAddress(address) {
+    const cleanAddress =
+      String(address || '').trim();
+
+    if (cleanAddress.length < 5) {
+      throw new Error(
+        'Introduce la dirección exacta de la vivienda'
+      );
+    }
+
+    const response = await fetch(
+      '/api/geocode',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          address: cleanAddress
+        })
+      }
+    );
+
+    let payload = {};
+
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        payload.error ||
+        'No hemos podido localizar esa dirección'
+      );
+    }
+
+    const latitude =
+      Number(payload.latitude);
+
+    const longitude =
+      Number(payload.longitude);
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      throw new Error(
+        'No hemos podido localizar esa dirección'
+      );
+    }
+
+    const result = {
+      latitude,
+      longitude,
+      formattedAddress:
+        payload.formattedAddress ||
+        cleanAddress,
+      district:
+        payload.district || null
+    };
+
+    const detectedZone =
+      document.querySelector('[data-detected-zone]');
+
+    if (detectedZone) {
+      detectedZone.hidden = false;
+      detectedZone.textContent =
+        result.district
+          ? `Ubicación detectada: ${result.district}, Madrid`
+          : 'Ubicación detectada: Madrid';
+    }
+
+    return result;
+  }
+
 
   async function publishRealContent(type) {
     const first = state.publishDraft.steps[0] || { values: [], selected: [] };
@@ -4661,33 +6041,184 @@
       }).eq('id', state.user.id);
       if (error) return notify('No se pudo actualizar tu búsqueda');
     } else {
-      const second = state.publishDraft.steps[1] || { values: [], selected: [] };
-      const finalStep = state.publishDraft.steps[publishTotals[type] - 1] || { values: [] };
-      const zone = first.values[0] || '';
-      const price = Number(String(first.values[1] || '').replace(/\D/g, ''));
-      if (!zone || !price) return notify('Añade al menos la zona y el precio');
-      const { data: listing, error } = await db.from('listings').insert({
-        owner_id: state.user.id,
-        kind: type,
-        title: `${type === 'apartment' ? 'Piso' : 'Habitación'} en ${zone}`,
-        zone,
-        price,
-        available_from: first.values[2] || null,
-        duration: first.values[3] || null,
-        rooms: second.values[0] ? Number(second.values[0]) : null,
-        baths: second.values[1] ? Number(second.values[1]) : null,
-        area: second.values[2] ? Number(second.values[2]) : null,
-        furnished: second.selected.includes('Amueblado'),
-        features: second.selected,
-        description: finalStep.values[0] || null,
-        photos: []
-      }).select().single();
-      if (error) return notify('No se pudo publicar la vivienda');
-      if (state.publishDraft.files?.length) {
-        const photos = await uploadListingPhotos(listing.id, state.publishDraft.files);
+      const second =
+        state.publishDraft.steps[1] ||
+        { values: [], selected: [] };
+
+      const finalStep =
+        state.publishDraft.steps[
+          publishTotals[type] - 1
+        ] || { values: [] };
+
+      const price =
+        Number(
+          String(first.values[0] || '')
+            .replace(/\D/g, '')
+        );
+
+      const exactAddress =
+        first.meta?.exactAddress || '';
+
+      if (!price) {
+        return notify(
+          'Añade el precio de la vivienda'
+        );
+      }
+
+      if (!exactAddress) {
+        return notify(
+          'Añade la dirección exacta de la vivienda'
+        );
+      }
+
+      let geocodedLocation;
+
+      try {
+        geocodedLocation =
+          await geocodeListingAddress(
+            exactAddress
+          );
+      } catch (error) {
+        console.error(
+          'Rooms: error geocodificando vivienda',
+          error
+        );
+
+        return notify(
+          error?.message ||
+          'No hemos podido localizar esa dirección'
+        );
+      }
+
+      const zone =
+        geocodedLocation.district ||
+        'Madrid';
+
+      const {
+        data: listing,
+        error
+      } = await db
+        .from('listings')
+        .insert({
+          owner_id: state.user.id,
+          kind: type,
+          title:
+            `${type === 'apartment'
+              ? 'Piso'
+              : 'Habitación'
+            } en ${zone}`,
+          zone,
+          price,
+          available_from:
+            first.values[1] || null,
+          duration:
+            first.values[2] || null,
+          rooms:
+            second.values[0]
+              ? Number(second.values[0])
+              : null,
+          baths:
+            second.values[1]
+              ? Number(second.values[1])
+              : null,
+          area:
+            second.values[2]
+              ? Number(second.values[2])
+              : null,
+          furnished:
+            second.selected.includes(
+              'Amueblado'
+            ),
+          features:
+            second.selected,
+          description:
+            finalStep.values[0] || null,
+          photos: [],
+          location_precision:
+            'approximate'
+        })
+        .select()
+        .single();
+
+      if (error || !listing) {
+        console.error(
+          'Rooms: error creando vivienda',
+          error
+        );
+
+        return notify(
+          'No se pudo publicar la vivienda'
+        );
+      }
+
+      const {
+        error: locationError
+      } = await db.rpc(
+        'set_listing_private_location',
+        {
+          target_listing_id:
+            listing.id,
+
+          target_exact_address:
+            geocodedLocation.formattedAddress ||
+            exactAddress,
+
+          target_exact_latitude:
+            geocodedLocation.latitude,
+
+          target_exact_longitude:
+            geocodedLocation.longitude
+        }
+      );
+
+      if (locationError) {
+        console.error(
+          'Rooms: error guardando ubicación privada',
+          locationError
+        );
+
+        const {
+          error: rollbackError
+        } = await db
+          .from('listings')
+          .delete()
+          .eq('id', listing.id)
+          .eq('owner_id', state.user.id);
+
+        if (rollbackError) {
+          console.error(
+            'Rooms: error revirtiendo vivienda',
+            rollbackError
+          );
+        }
+
+        return notify(
+          'No se pudo guardar la ubicación de la vivienda'
+        );
+      }
+
+      if (
+        state.publishDraft.files?.length
+      ) {
+        const photos =
+          await uploadListingPhotos(
+            listing.id,
+            state.publishDraft.files
+          );
+
         if (photos.length) {
-          const { error: photoError } = await db.from('listings').update({ photos }).eq('id', listing.id);
-          if (photoError) notify('La vivienda se publicó, pero no pudimos vincular todas las fotos');
+          const {
+            error: photoError
+          } = await db
+            .from('listings')
+            .update({ photos })
+            .eq('id', listing.id);
+
+          if (photoError) {
+            notify(
+              'La vivienda se publicó, pero no pudimos vincular todas las fotos'
+            );
+          }
         }
       }
     }
@@ -5181,7 +6712,6 @@
       return index >= 0 ? decodeURIComponent(String(url).slice(index + marker.length)) : null;
     }).filter(Boolean);
     if (storagePaths.length) db.storage.from('listing-images').remove(storagePaths);
-    state.currentListingId = null;
     hideAllModals();
     await loadRealContent();
     await loadSavedItems();
@@ -5194,11 +6724,11 @@
   function applyTargetProfile(profile) {
     const name = profile.alias || profile.name || 'Usuario de Rooms';
     const age = profile.age ? `, ${profile.age}` : '';
-    const zone = profile.zones?.[0] || 'Madrid';
+    const zone = profile.zones?.[0] || 'Zona sin definir';
     const seeking = labelSeeking(profile.seeking?.[0]);
     const moveDate = profile.move_in_date
       ? new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(`${profile.move_in_date}T00:00:00`))
-      : 'Próximamente';
+      : 'Sin definir';
 
     document.querySelectorAll('[data-user-card]').forEach(card => {
       card.dataset.userId = profile.id;
@@ -5227,13 +6757,37 @@
   }
 
   function labelSeeking(value) {
-    return ({ room: 'Busca habitación', home: 'Busca piso', mates: 'Busca compañeros' })[value] || 'Busca vivienda';
+    return (
+      {
+        room: 'Busca habitación',
+        home: 'Busca piso',
+        mates: 'Busca compañeros'
+      }[value] || 'Sin definir'
+    );
   }
 
   function formatBudget(profile) {
-    if (!profile.budget_min && !profile.budget_max) return 'Por definir';
-    if (!profile.budget_max) return `Desde ${profile.budget_min || 0} €`;
-    return `${profile.budget_min || 0}–${profile.budget_max} €`;
+    const hasMin =
+      profile?.budget_min != null &&
+      profile.budget_min !== '';
+
+    const hasMax =
+      profile?.budget_max != null &&
+      profile.budget_max !== '';
+
+    if (!hasMin && !hasMax) {
+      return 'Sin definir';
+    }
+
+    if (hasMin && hasMax) {
+      return `${profile.budget_min}–${profile.budget_max} €`;
+    }
+
+    if (hasMin) {
+      return `Desde ${profile.budget_min} €`;
+    }
+
+    return `Hasta ${profile.budget_max} €`;
   }
 
   function getConnectionForUser(userId) {
@@ -5320,6 +6874,7 @@
     }
 
     updateConnectButtons();
+    updateTrustView();
   }
 
   async function loadConnection(
@@ -5384,6 +6939,22 @@
           return;
         }
 
+        if (
+          state.blockedUsers?.has(userId)
+        ) {
+          button.textContent = 'Bloqueado';
+          button.disabled = true;
+          button.classList.add(
+            'connection-blocked'
+          );
+          return;
+        }
+
+        button.disabled = false;
+        button.classList.remove(
+          'connection-blocked'
+        );
+
         const connection =
           getConnectionForUser(userId);
 
@@ -5411,6 +6982,15 @@
 
   async function handleConnect(userId) {
     if (!userId || !state.user) return;
+
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'Desbloquea a este usuario para poder conectar.'
+      );
+      return;
+    }
 
     const profile =
       state.profiles.get(userId) ||
@@ -5651,6 +7231,15 @@
   async function connectToUser(userId) {
     if (!userId) return;
 
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'Desbloquea a este usuario para poder conectar.'
+      );
+      return;
+    }
+
     const profile =
       state.profiles.get(userId);
 
@@ -5685,6 +7274,14 @@
       new Map();
 
     (data || []).forEach(request => {
+      if (
+        state.blockedUsers?.has(
+          request.requester_id
+        )
+      ) {
+        return;
+      }
+
       state.incomingRequests.set(
         request.id,
         { request }
@@ -5789,7 +7386,7 @@
     const zone =
       profile.zones?.length
         ? profile.zones.join(' · ')
-        : 'Madrid';
+        : 'Zona sin definir';
 
     const seeking =
       profile.seeking?.length
@@ -6062,7 +7659,25 @@
         interests: collectPressed('[data-interest]', 'interest'),
         traits: collectPressed('[data-self-description]', 'selfDescription')
       },
-      privacy: { level: privacy?.dataset.privacyLevel || 'balanced', controls }
+      privacy: {
+        level:
+          privacy?.dataset.privacyLevel === 'public'
+            ? 'open'
+            : privacy?.dataset.privacyLevel || 'balanced',
+        controls: {
+          living: controls.habits ? 'public' : 'private',
+          search: controls.searching ? 'public' : 'private',
+          budget:
+            !controls.searching
+              ? 'private'
+              : privacy?.dataset.privacyLevel === 'balanced'
+                ? 'connections'
+                : privacy?.dataset.privacyLevel === 'private'
+                  ? 'private'
+                  : 'public',
+          activity: controls.posts ? 'public' : 'private'
+        }
+      }
     };
   }
 
@@ -6106,15 +7721,6 @@
     if (target.dataset.saveId && target.dataset.saveKind) {
       return { item_type: target.dataset.saveKind, item_id: target.dataset.saveId };
     }
-    const propertyCard = target.closest('[data-listing-id]');
-    if (propertyCard) {
-      const id = propertyCard.dataset.listingId;
-      const listing = window.listings?.find?.(item => String(item.id) === String(id));
-      return { item_type: listing?.kind === 'Piso entero' ? 'apartment' : 'room', item_id: `listing-${id}` };
-    }
-    if (target.matches('[data-detail-save]') && state.currentListingId) {
-      return { item_type: 'room', item_id: `listing-${state.currentListingId}` };
-    }
     if (target.closest('[data-person-save]') && state.targetProfile) {
       return { item_type: 'person', item_id: state.targetProfile.id };
     }
@@ -6124,6 +7730,16 @@
   async function persistSavedItem(target) {
     const item = savedDescriptor(target);
     if (!item || !state.user) return;
+
+    if (
+      item.item_type === 'person' &&
+      state.blockedUsers?.has(item.item_id)
+    ) {
+      notify(
+        'No puedes guardar a un usuario bloqueado.'
+      );
+      return;
+    }
 
     const wasSaved = target.classList.contains('saved');
     let result;
@@ -6185,19 +7801,1147 @@
     return result;
   }
 
+  function openRealReport(target) {
+    if (!target || !state.user) return;
+
+    state.reportTarget = {
+      type: target.dataset.reportType || 'user',
+      id: target.dataset.reportId || null,
+      userId: target.dataset.reportUser || null
+    };
+
+    const modal = document.querySelector('#reportModal');
+    const label = document.querySelector('#reportTarget');
+    const details = document.querySelector('#reportDetails');
+    const submit = document.querySelector('#submitReport');
+
+    if (!modal) return;
+
+    document
+      .querySelectorAll('#reportModal .report-reasons button')
+      .forEach(button => {
+        button.setAttribute('aria-checked', 'false');
+      });
+
+    if (details) details.value = '';
+    if (submit) submit.disabled = true;
+
+    const labels = {
+      profile: 'Este perfil',
+      listing: 'Este anuncio',
+      post: 'Esta publicación',
+      community: 'Esta comunidad',
+      message: 'Este mensaje',
+      user: 'Este usuario'
+    };
+
+    if (label) {
+      label.textContent =
+        `Sobre: ${labels[state.reportTarget.type] || 'Este contenido'}`;
+    }
+
+    showModal(modal);
+  }
+
+
+  async function submitRealReport() {
+    if (!state.user || !state.reportTarget) return;
+
+    const modal = document.querySelector('#reportModal');
+
+    const selected =
+      modal?.querySelector(
+        '.report-reasons button[aria-checked="true"]'
+      );
+
+    const details =
+      document.querySelector('#reportDetails')?.value.trim() || null;
+
+    const submit =
+      document.querySelector('#submitReport');
+
+    if (!selected) {
+      notify('Selecciona un motivo para continuar.');
+      return;
+    }
+
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = 'Enviando…';
+    }
+
+    const payload = {
+      reporter_id: state.user.id,
+      reported_user_id:
+        state.reportTarget.userId || null,
+      target_type:
+        state.reportTarget.type,
+      target_id:
+        state.reportTarget.id || null,
+      reason:
+        selected.textContent.trim(),
+      details,
+      status: 'pending'
+    };
+
+    const { error } =
+      await db
+        .from('reports')
+        .insert(payload);
+
+    if (submit) {
+      submit.textContent = 'Enviar reporte';
+    }
+
+    if (error) {
+      console.error('Error creando reporte:', error);
+
+      if (submit) {
+        submit.disabled = false;
+      }
+
+      notify(
+        'No hemos podido enviar el reporte. Inténtalo de nuevo.'
+      );
+
+      return;
+    }
+
+    state.reportTarget = null;
+
+    hideAllModals();
+
+    notify(
+      'Reporte enviado. Gracias por ayudarnos a cuidar Rooms.'
+    );
+  }
+
+
+  async function showMyRealReports() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('reports')
+        .select('id,status,reason,target_type,created_at')
+        .eq('reporter_id', state.user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error cargando reportes:', error);
+      notify('No hemos podido cargar tus reportes.');
+      return;
+    }
+
+    const reports = data || [];
+
+    if (!reports.length) {
+      notify('No tienes reportes activos.');
+      return;
+    }
+
+    const pending =
+      reports.filter(item =>
+        item.status === 'pending' ||
+        item.status === 'reviewing'
+      ).length;
+
+    notify(
+      pending
+        ? `${pending} ${pending === 1 ? 'reporte activo' : 'reportes activos'}`
+        : `${reports.length} ${reports.length === 1 ? 'reporte enviado' : 'reportes enviados'}`
+    );
+  }
+
+
+  async function loadConversationPreferences() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('conversation_preferences')
+        .select(
+          'other_user_id,muted,deleted_before,updated_at'
+        )
+        .eq('user_id', state.user.id);
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando preferencias de conversación',
+        error
+      );
+
+      state.conversationPreferences =
+        new Map();
+
+      return;
+    }
+
+    state.conversationPreferences =
+      new Map(
+        (data || []).map(item => [
+          String(item.other_user_id),
+          item
+        ])
+      );
+  }
+
+
+  function getConversationPreference(userId) {
+    return (
+      state.conversationPreferences?.get(
+        String(userId)
+      ) || {
+        other_user_id: userId,
+        muted: false,
+        deleted_before: null
+      }
+    );
+  }
+
+
+  async function saveConversationPreference(
+    userId,
+    changes
+  ) {
+    if (
+      !state.user ||
+      !userId ||
+      userId === state.user.id
+    ) {
+      return null;
+    }
+
+    const current =
+      getConversationPreference(userId);
+
+    const payload = {
+      user_id: state.user.id,
+      other_user_id: userId,
+      muted:
+        changes.muted ??
+        current.muted ??
+        false,
+      deleted_before:
+        changes.deleted_before !== undefined
+          ? changes.deleted_before
+          : current.deleted_before ?? null,
+      updated_at:
+        new Date().toISOString()
+    };
+
+    const { data, error } =
+      await db
+        .from('conversation_preferences')
+        .upsert(
+          payload,
+          {
+            onConflict:
+              'user_id,other_user_id'
+          }
+        )
+        .select(
+          'other_user_id,muted,deleted_before,updated_at'
+        )
+        .single();
+
+    if (error) {
+      console.error(
+        'Rooms: error guardando preferencias de conversación',
+        error
+      );
+
+      return null;
+    }
+
+    state.conversationPreferences.set(
+      String(userId),
+      data
+    );
+
+    return data;
+  }
+
+
+  async function loadUserBlocks() {
+    if (!state.user) return;
+
+    const { data, error } =
+      await db
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', state.user.id);
+
+    if (error) {
+      console.error('Rooms: error cargando bloqueos', error);
+      state.blockedUsers = new Set();
+      return;
+    }
+
+    state.blockedUsers =
+      new Set(
+        (data || []).map(item => item.blocked_id)
+      );
+
+    updateBlockedUsersCount();
+  }
+
+
+  function updateBlockedUsersCount() {
+    const count =
+      state.blockedUsers?.size || 0;
+
+    const label =
+      document.querySelector(
+        '#blockedUsersCount'
+      );
+
+    if (!label) return;
+
+    label.textContent =
+      `${count} ${
+        count === 1
+          ? 'persona'
+          : 'personas'
+      }`;
+  }
+
+
+  function ensureBlockedUsersModal() {
+    let modal =
+      document.querySelector(
+        '#blockedUsersModal'
+      );
+
+    if (modal) return modal;
+
+    modal =
+      document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'blockedUsersModal';
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-blocked-users
+      ></div>
+
+      <article class="blocked-users-shell">
+
+        <button
+          type="button"
+          class="blocked-users-close"
+          data-close-blocked-users
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <header class="blocked-users-header">
+          <small>SEGURIDAD</small>
+          <h2>Usuarios bloqueados</h2>
+          <p>
+            Estas personas no pueden conectar
+            ni enviarte mensajes mientras estén
+            bloqueadas.
+          </p>
+        </header>
+
+        <div
+          id="blockedUsersList"
+          class="blocked-users-list"
+        ></div>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+
+  async function openBlockedUsersManager() {
+    if (!state.user) return;
+
+    const modal =
+      ensureBlockedUsersModal();
+
+    const list =
+      modal.querySelector(
+        '#blockedUsersList'
+      );
+
+    list.innerHTML = `
+      <div class="blocked-users-loading">
+        Cargando...
+      </div>
+    `;
+
+    showModal(modal);
+
+    const { data, error } =
+      await db.rpc(
+        'get_blocked_profiles'
+      );
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando usuarios bloqueados',
+        error
+      );
+
+      list.innerHTML = `
+        <div class="real-empty-state">
+          <b>No hemos podido cargar esta lista</b>
+          <p>Inténtalo de nuevo.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const users = data || [];
+
+    if (!users.length) {
+      list.innerHTML = `
+        <div class="real-empty-state">
+          <b>No tienes usuarios bloqueados</b>
+          <p>
+            Las personas que bloquees
+            aparecerán aquí.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    list.innerHTML =
+      users.map(user => {
+        const name =
+          user.alias ||
+          user.name ||
+          'Usuario de Rooms';
+
+        return `
+          <article class="blocked-user-row">
+
+            <div class="blocked-user-avatar">
+              ${
+                user.avatar_url
+                  ? `
+                    <img
+                      src="${escapeHtml(user.avatar_url)}"
+                      alt="${escapeHtml(name)}"
+                    >
+                  `
+                  : `
+                    <span>
+                      ${escapeHtml(initials(name))}
+                    </span>
+                  `
+              }
+            </div>
+
+            <div class="blocked-user-info">
+              <b>${escapeHtml(name)}</b>
+              <small>Usuario bloqueado</small>
+            </div>
+
+            <button
+              type="button"
+              class="blocked-user-unblock"
+              data-unblock-user="${user.id}"
+              data-unblock-name="${escapeHtml(name)}"
+            >
+              Desbloquear
+            </button>
+
+          </article>
+        `;
+      }).join('');
+  }
+
+
+  function ensureSessionsModal() {
+    let modal =
+      document.querySelector(
+        '#sessionsModal'
+      );
+
+    if (modal) return modal;
+
+    modal =
+      document.createElement('div');
+
+    modal.className = 'modal';
+    modal.id = 'sessionsModal';
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-sessions
+      ></div>
+
+      <article class="sessions-shell">
+
+        <button
+          type="button"
+          class="sessions-close"
+          data-close-sessions
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+        <small class="sessions-eyebrow">
+          SEGURIDAD
+        </small>
+
+        <h2>Gestionar sesiones</h2>
+
+        <p>
+          Tu sesión actual permanecerá abierta.
+          Puedes cerrar las demás sesiones de
+          Rooms iniciadas en otros navegadores
+          o dispositivos.
+        </p>
+
+        <div class="sessions-current">
+          <span>✓</span>
+          <div>
+            <b>Sesión actual</b>
+            <small>Este navegador</small>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="sessions-signout-others"
+          id="signOutOtherSessions"
+        >
+          Cerrar las demás sesiones
+        </button>
+
+      </article>
+    `;
+
+    document.body.appendChild(modal);
+
+    return modal;
+  }
+
+
+  function openSessionsManager() {
+    if (!state.user) return;
+
+    const modal =
+      ensureSessionsModal();
+
+    showModal(modal);
+  }
+
+
+  async function signOutOtherSessions() {
+    if (!state.user) return;
+
+    const confirmed =
+      window.confirm(
+        '¿Cerrar las demás sesiones de Rooms? Tu sesión actual seguirá abierta.'
+      );
+
+    if (!confirmed) return;
+
+    const button =
+      document.querySelector(
+        '#signOutOtherSessions'
+      );
+
+    if (button) {
+      button.disabled = true;
+      button.textContent =
+        'Cerrando sesiones…';
+    }
+
+    const { error } =
+      await db.auth.signOut({
+        scope: 'others'
+      });
+
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        'Cerrar las demás sesiones';
+    }
+
+    if (error) {
+      console.error(
+        'Rooms: error cerrando otras sesiones',
+        error
+      );
+
+      notify(
+        'No hemos podido cerrar las demás sesiones.'
+      );
+
+      return;
+    }
+
+    notify(
+      'Las demás sesiones se han cerrado.'
+    );
+  }
+
+
+  function openRealBlock(target) {
+    if (!state.user || !target) return;
+
+    const userId =
+      target.dataset.realBlockUser;
+
+    const name =
+      target.dataset.realBlockName ||
+      'este usuario';
+
+    if (!userId || userId === state.user.id) return;
+
+    /*
+     * Si ya está bloqueado, desbloqueamos directamente
+     * desde la misma acción.
+     */
+    if (state.blockedUsers?.has(userId)) {
+      unblockRealUser(userId, name);
+      return;
+    }
+
+    state.blockTarget = {
+      id: userId,
+      name
+    };
+
+    const modal =
+      document.querySelector('#blockModal');
+
+    if (!modal) return;
+
+    const title =
+      modal.querySelector('h2');
+
+    if (title) {
+      title.textContent =
+        `¿Bloquear a ${name}?`;
+    }
+
+    showModal(modal);
+  }
+
+
+  async function removeConnectionWithUser(userId) {
+    if (!state.user || !userId) {
+      return { ok: false };
+    }
+
+    const { error } =
+      await db
+        .from('connections')
+        .delete()
+        .or(
+          `and(requester_id.eq.${state.user.id},recipient_id.eq.${userId}),and(requester_id.eq.${userId},recipient_id.eq.${state.user.id})`
+        );
+
+    if (error) {
+      console.error(
+        'Rooms: error eliminando conexión al bloquear',
+        error
+      );
+
+      return {
+        ok: false,
+        error
+      };
+    }
+
+    state.connectionsByUser.delete(
+      String(userId)
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      state.connection = null;
+    }
+
+    for (
+      const [requestId, entry]
+      of state.incomingRequests
+    ) {
+      const requesterId =
+        entry?.request?.requester_id;
+
+      if (requesterId === userId) {
+        state.incomingRequests.delete(
+          requestId
+        );
+      }
+    }
+
+    updateConnectButtons();
+
+    return {
+      ok: true
+    };
+  }
+
+
+  async function removeBlockedUserFromSavedAndGroups(userId) {
+    if (!state.user || !userId) {
+      return { ok: false };
+    }
+
+    const [
+      savedResult,
+      groupResult
+    ] = await Promise.all([
+      db
+        .from('saved_items')
+        .delete()
+        .match({
+          user_id: state.user.id,
+          item_type: 'person',
+          item_id: userId
+        }),
+
+      db
+        .from('household_person_candidates')
+        .delete()
+        .eq('user_id', userId)
+        .eq('added_by', state.user.id)
+    ]);
+
+    if (savedResult.error) {
+      console.error(
+        'Rooms: error eliminando perfil bloqueado de Guardados',
+        savedResult.error
+      );
+
+      return {
+        ok: false,
+        error: savedResult.error
+      };
+    }
+
+    if (groupResult.error) {
+      console.error(
+        'Rooms: error eliminando perfil bloqueado de grupos',
+        groupResult.error
+      );
+
+      return {
+        ok: false,
+        error: groupResult.error
+      };
+    }
+
+    state.savedItems?.delete(
+      `person:${userId}`
+    );
+
+    await loadSavedItems();
+
+    if (state.household) {
+      await loadHouseholdCandidates();
+    }
+
+    return {
+      ok: true
+    };
+  }
+
+
+  async function confirmRealBlock() {
+    if (!state.user || !state.blockTarget?.id) return;
+
+    const target =
+      state.blockTarget;
+
+    const button =
+      document.querySelector('#confirmBlock');
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Bloqueando…';
+    }
+
+    const { error } =
+      await db
+        .from('user_blocks')
+        .insert({
+          blocker_id: state.user.id,
+          blocked_id: target.id
+        });
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Bloquear usuario';
+    }
+
+    if (error) {
+      console.error(
+        'Rooms: error bloqueando usuario',
+        error
+      );
+
+      notify(
+        'No hemos podido bloquear al usuario.'
+      );
+
+      return;
+    }
+
+    const connectionResult =
+      await removeConnectionWithUser(
+        target.id
+      );
+
+    if (!connectionResult.ok) {
+      /*
+       * Si no podemos cortar la relación existente,
+       * revertimos el bloqueo para no dejar un estado
+       * inconsistente.
+       */
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', target.id);
+
+      if (button) {
+        button.disabled = false;
+      }
+
+      notify(
+        'No hemos podido completar el bloqueo.'
+      );
+
+      return;
+    }
+
+    const cleanupResult =
+      await removeBlockedUserFromSavedAndGroups(
+        target.id
+      );
+
+    if (!cleanupResult.ok) {
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', target.id);
+
+      notify(
+        'No hemos podido completar el bloqueo.'
+      );
+
+      return;
+    }
+
+    state.blockedUsers.add(target.id);
+    state.blockTarget = null;
+
+    updateBlockedUsersCount();
+    updateConnectButtons();
+
+    await loadRealInbox();
+    await loadRealNotifications();
+
+    hideAllModals();
+
+    notify(
+      'Usuario bloqueado.'
+    );
+  }
+
+
+  async function unblockRealUser(userId, name) {
+    if (!state.user || !userId) return;
+
+    const confirmed =
+      window.confirm(
+        `¿Desbloquear a ${name || 'este usuario'}?`
+      );
+
+    if (!confirmed) return;
+
+    const { error } =
+      await db
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', state.user.id)
+        .eq('blocked_id', userId);
+
+    if (error) {
+      console.error(
+        'Rooms: error desbloqueando usuario',
+        error
+      );
+
+      notify(
+        'No hemos podido desbloquear al usuario.'
+      );
+
+      return;
+    }
+
+    state.blockedUsers.delete(userId);
+
+    updateBlockedUsersCount();
+
+    if (
+      document.querySelector(
+        '#blockedUsersModal'
+      )?.getAttribute('aria-hidden') === 'false'
+    ) {
+      await openBlockedUsersManager();
+    }
+
+    notify(
+      'Usuario desbloqueado.'
+    );
+
+    if (
+      state.targetProfile?.id === userId
+    ) {
+      openRealUser(state.targetProfile);
+    }
+  }
+
+
+  async function toggleConversationMute() {
+    if (
+      !state.user ||
+      !state.chatTarget
+    ) {
+      return;
+    }
+
+    const userId =
+      state.chatTarget.id;
+
+    const current =
+      getConversationPreference(
+        userId
+      );
+
+    const nextMuted =
+      !Boolean(current.muted);
+
+    const saved =
+      await saveConversationPreference(
+        userId,
+        {
+          muted: nextMuted
+        }
+      );
+
+    if (!saved) {
+      notify(
+        'No hemos podido actualizar las notificaciones.'
+      );
+      return;
+    }
+
+    await loadRealNotifications();
+
+    renderConversationOptionsMenu();
+
+    notify(
+      nextMuted
+        ? 'Conversación silenciada.'
+        : 'Notificaciones activadas.'
+    );
+  }
+
+
+  async function deleteConversationForMe() {
+    if (
+      !state.user ||
+      !state.chatTarget
+    ) {
+      return;
+    }
+
+    const name =
+      state.chatTarget.alias ||
+      state.chatTarget.name ||
+      'esta persona';
+
+    const confirmed =
+      window.confirm(
+        `¿Eliminar la conversación con ${name}? Desaparecerá para ti. Si recibes un mensaje nuevo, volverá a aparecer.`
+      );
+
+    if (!confirmed) return;
+
+    const deletedBefore =
+      new Date().toISOString();
+
+    const saved =
+      await saveConversationPreference(
+        state.chatTarget.id,
+        {
+          deleted_before:
+            deletedBefore
+        }
+      );
+
+    if (!saved) {
+      notify(
+        'No hemos podido eliminar la conversación.'
+      );
+      return;
+    }
+
+    /*
+     * Los mensajes anteriores ya no deben seguir
+     * apareciendo como pendientes para este usuario.
+     */
+    const { error: readError } =
+      await db
+        .from('messages')
+        .update({
+          read_at:
+            new Date().toISOString()
+        })
+        .eq(
+          'sender_id',
+          state.chatTarget.id
+        )
+        .eq(
+          'recipient_id',
+          state.user.id
+        )
+        .is(
+          'read_at',
+          null
+        )
+        .lte(
+          'created_at',
+          deletedBefore
+        );
+
+    if (readError) {
+      console.error(
+        'Rooms: error cerrando notificaciones de conversación eliminada',
+        readError
+      );
+    }
+
+    const modal =
+      document.querySelector(
+        '#conversationModal'
+      );
+
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute(
+        'aria-hidden',
+        'true'
+      );
+    }
+
+    document.body.style.overflow = '';
+
+    state.chatTarget = null;
+
+    await Promise.all([
+      loadRealInbox(),
+      loadRealNotifications()
+    ]);
+
+    notify(
+      'Conversación eliminada para ti.'
+    );
+  }
+
+
   async function loadRealNotifications() {
     if (!state.user) return;
     const [{ data: connections }, { data: messages }] = await Promise.all([
       db.from('connections').select('*').or(`requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`).order('created_at', { ascending: false }),
       db.from('messages').select('*').eq('recipient_id', state.user.id).is('read_at', null).order('created_at', { ascending: false }).limit(20)
     ]);
-    const relevantConnections = (connections || []).filter(item =>
-      (item.recipient_id === state.user.id && item.status === 'pending') ||
-      (item.requester_id === state.user.id && item.status === 'accepted')
-    );
+    state.incomingRequests = new Map();
+
+    const relevantConnections = (connections || []).filter(item => {
+      const otherId =
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id;
+
+      if (state.blockedUsers?.has(otherId)) {
+        return false;
+      }
+
+      return (
+        (item.recipient_id === state.user.id && item.status === 'pending') ||
+        (item.requester_id === state.user.id && item.status === 'accepted')
+      );
+    });
+
+    const visibleMessages = (messages || []).filter(message => {
+      if (
+        state.blockedUsers?.has(
+          message.sender_id
+        )
+      ) {
+        return false;
+      }
+
+      const preference =
+        getConversationPreference(
+          message.sender_id
+        );
+
+      if (preference.muted) {
+        return false;
+      }
+
+      if (preference.deleted_before) {
+        const deletedBefore =
+          new Date(
+            preference.deleted_before
+          ).getTime();
+
+        const messageTime =
+          new Date(
+            message.created_at
+          ).getTime();
+
+        if (messageTime <= deletedBefore) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
     const ids = [
-      ...relevantConnections.map(item => item.requester_id === state.user.id ? item.recipient_id : item.requester_id),
-      ...(messages || []).map(item => item.sender_id)
+      ...relevantConnections.map(item =>
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id
+      ),
+      ...visibleMessages.map(item => item.sender_id)
     ];
     const profiles = await fetchProfiles(ids);
     const items = [];
@@ -6221,7 +8965,7 @@
     });
 
     const seenSenders = new Set();
-    (messages || []).forEach(message => {
+    visibleMessages.forEach(message => {
       if (seenSenders.has(message.sender_id)) return;
       seenSenders.add(message.sender_id);
       const profile = profiles.get(message.sender_id);
@@ -6251,28 +8995,122 @@
       .or(`requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .eq('status', 'accepted')
       .order('updated_at', { ascending: false });
-    const otherIds = (connections || []).map(item => item.requester_id === state.user.id ? item.recipient_id : item.requester_id);
+    const otherIds = (connections || [])
+      .map(item =>
+        item.requester_id === state.user.id
+          ? item.recipient_id
+          : item.requester_id
+      )
+      .filter(id =>
+        !state.blockedUsers?.has(id)
+      );
+
     const profiles = await fetchProfiles(otherIds);
     const { data: messages } = await db.from('messages').select('*')
       .or(`sender_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .order('created_at', { ascending: false });
     const latestByUser = new Map();
+
     (messages || []).forEach(message => {
-      const otherId = message.sender_id === state.user.id ? message.recipient_id : message.sender_id;
-      if (!latestByUser.has(otherId)) latestByUser.set(otherId, message);
+      const otherId =
+        message.sender_id === state.user.id
+          ? message.recipient_id
+          : message.sender_id;
+
+      if (state.blockedUsers?.has(otherId)) {
+        return;
+      }
+
+      const preference =
+        getConversationPreference(otherId);
+
+      const deletedBefore =
+        preference.deleted_before
+          ? new Date(
+              preference.deleted_before
+            ).getTime()
+          : null;
+
+      if (
+        deletedBefore &&
+        new Date(
+          message.created_at
+        ).getTime() <= deletedBefore
+      ) {
+        return;
+      }
+
+      if (!latestByUser.has(otherId)) {
+        latestByUser.set(otherId, message);
+      }
     });
-    const list = document.querySelector('#chatInboxModal .conversation-list');
+
+    const visibleConversationIds =
+      otherIds.filter(id => {
+        const preference =
+          getConversationPreference(id);
+
+        if (!preference.deleted_before) {
+          return true;
+        }
+
+        return latestByUser.has(id);
+      });
+
+    const list =
+      document.querySelector(
+        '#chatInboxModal .conversation-list'
+      );
+
     if (!list) return;
-    list.innerHTML = otherIds.length ? otherIds.map(id => {
+
+    list.innerHTML =
+      visibleConversationIds.length
+        ? visibleConversationIds.map(id => {
       const profile = profiles.get(id);
       const name = profile?.alias || profile?.name || 'Usuario de Rooms';
       const last = latestByUser.get(id);
-      return `<button type="button" data-real-chat="${id}" data-chat-type="person">
+      return `<button type="button" data-real-chat="${id}">
         <span class="home-chat-icon">${escapeHtml(initials(name))}</span>
         <div><b>${escapeHtml(name)}</b><p>${escapeHtml(last?.body || 'Ya podéis empezar a hablar.')}</p><small>CONEXIÓN ROOMS</small></div>
         <time>${last ? relativeTime(last.created_at) : ''}</time>
       </button>`;
-    }).join('') : '<div class="real-empty-state"><b>Todavía no tienes conversaciones</b><p>Cuando aceptéis una conexión, el chat aparecerá aquí.</p></div>';
+    }).join('')
+        : '<div class="real-empty-state"><b>Todavía no tienes conversaciones</b><p>Cuando aceptéis una conexión, el chat aparecerá aquí.</p></div>';
+
+    const inboxSearch =
+      document.querySelector('#chatInboxSearch');
+
+    const query =
+      inboxSearch?.value
+        .trim()
+        .toLocaleLowerCase('es') || '';
+
+    const renderedConversations =
+      [...list.querySelectorAll('[data-real-chat]')];
+
+    renderedConversations.forEach(item => {
+      item.hidden =
+        Boolean(query) &&
+        !item.textContent
+          .toLocaleLowerCase('es')
+          .includes(query);
+    });
+
+    list
+      .querySelector('[data-chat-search-empty]')
+      ?.remove();
+
+    if (
+      query &&
+      renderedConversations.length &&
+      !renderedConversations.some(item => !item.hidden)
+    ) {
+      list.insertAdjacentHTML(
+        'beforeend',
+        '<div class="real-empty-state" data-chat-search-empty><b>No encontramos conversaciones</b><p>Prueba con otro nombre o palabra del último mensaje.</p></div>'
+      );
+    }
   }
 
   function initials(name) {
@@ -6449,8 +9287,16 @@
       const listing = state.listings.get(saved.item_id);
       if (!listing) return null;
 
+      const priceLabel =
+        listing.price != null
+          ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+          : 'Precio sin definir';
+
+      const zoneLabel =
+        listing.zone || 'Zona sin definir';
+
       return {
-        title: `${Number(listing.price).toLocaleString('es-ES')} €/mes · ${listing.zone}`,
+        title: `${priceLabel} · ${zoneLabel}`,
         subtitle: listing.kind === 'apartment' ? 'Piso entero' : 'Habitación',
         mark: '⌂',
         image: Array.isArray(listing.photos) && listing.photos.length ? listing.photos[0] : null
@@ -6464,7 +9310,7 @@
       const name = person.alias || person.name || 'Usuario de Rooms';
       return {
         title: name,
-        subtitle: person.zones?.[0] || 'Madrid',
+        subtitle: person.zones?.[0] || 'Zona sin definir',
         mark: initials(name)
       };
     }
@@ -6685,7 +9531,12 @@
   window.roomsBackend.openSavedCollection = openSavedCollection;
 
   async function loadSavedItems() {
-    const { data } = await db.from('saved_items').select('item_type,item_id').eq('user_id', state.user.id);
+    const { data } = await db
+      .from('saved_items')
+      .select('item_type,item_id,created_at')
+      .eq('user_id', state.user.id)
+      .order('created_at', { ascending: false });
+
     if (!data) return;
 
     state.savedItems = new Set(
@@ -6713,17 +9564,21 @@
       if (listing) {
         const type = listing.kind === 'apartment' ? 'flat' : 'room';
         counts[type]++;
-        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${Number(listing.price).toLocaleString('es-ES')} €/mes · ${escapeHtml(listing.zone)}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-home" data-saved-type="${type}" data-real-listing="${listing.id}" data-saved-created="${escapeHtml(item.created_at || '')}" data-saved-price="${Number(listing.price || 0)}">${Array.isArray(listing.photos) && listing.photos.length ? `<img src="${escapeHtml(listing.photos[0])}" alt="${escapeHtml(listing.title || listing.zone)}">` : '<div class="saved-text-cover">⌂</div>'}<div><small>${listing.kind === 'apartment' ? 'PISO' : 'HABITACIÓN'}</small><h3>${
+  listing.price != null
+    ? `${Number(listing.price).toLocaleString('es-ES')} €/mes`
+    : 'Precio sin definir'
+} · ${escapeHtml(listing.zone || 'Zona sin definir')}</h3><p>${listing.kind === 'apartment' ? 'Piso entero' : 'Habitación'}</p><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="${item.item_type}" data-save-id="${item.item_id}">Eliminar</button></div></div></article>`);
       } else if (person && person.id !== state.user.id) {
         counts.person++;
         const name = person.alias || person.name || 'Usuario de Rooms';
-        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Madrid')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-person" data-saved-type="person" data-real-user="${person.id}" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">${escapeHtml(initials(name))}</div><div><small>PERSONA</small><h3>${escapeHtml(name)}</h3><p>${escapeHtml(person.zones?.[0] || 'Zona sin definir')}</p><div class="saved-card-actions"><button type="button" data-connect data-user-id="${person.id}">${escapeHtml(connectionButtonLabel(person.id))}</button><button type="button" data-real-remove-saved data-save-kind="person" data-save-id="${person.id}">Eliminar</button></div></div></article>`);
       } else if (post) {
         counts.post++;
-        cards.push(`<article class="saved-card saved-post" data-saved-type="post"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-post" data-saved-type="post" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-text-cover">“</div><div><small>PUBLICACIÓN</small><h3>${escapeHtml(post.body)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="post" data-save-id="${post.id}">Eliminar</button></div></div></article>`);
       } else if (community) {
         counts.community++;
-        cards.push(`<article class="saved-card saved-community" data-saved-type="community"><div class="saved-community-cover">#</div><div><small>COMUNIDAD</small><h3>${escapeHtml(community.name)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="community" data-save-id="${community.id}">Eliminar</button></div></div></article>`);
+        cards.push(`<article class="saved-card saved-community" data-saved-type="community" data-saved-created="${escapeHtml(item.created_at || '')}"><div class="saved-community-cover">#</div><div><small>COMUNIDAD</small><h3>${escapeHtml(community.name)}</h3><div class="saved-card-actions"><button type="button" data-real-remove-saved data-save-kind="community" data-save-id="${community.id}">Eliminar</button></div></div></article>`);
       }
     });
     const grid = document.querySelector('#savedView .saved-grid');
@@ -6732,13 +9587,144 @@
       const label = document.querySelector(`#savedView [data-saved-filter="${type}"] i`);
       if (label) label.textContent = count;
     });
-    const all = document.querySelector('#savedView [data-saved-filter="all"] i');
-    if (all) all.textContent = data.length;
+    const all =
+      document.querySelector(
+        '#savedView [data-saved-filter="all"] i'
+      );
+
+    if (all) {
+      all.textContent = data.length;
+    }
+
+    sortSavedItems(
+      document.querySelector(
+        '#savedSort'
+      )?.value || 'recent'
+    );
+
+    const activeSavedFilter =
+      document.querySelector(
+        '#savedView [data-saved-filter].active'
+      );
+
+    const activeSavedType =
+      activeSavedFilter?.dataset.savedFilter || 'all';
+
+    const renderedSavedCards =
+      document.querySelectorAll(
+        '#savedView [data-saved-type]'
+      );
+
+    renderedSavedCards.forEach(card => {
+      card.hidden =
+        activeSavedType !== 'all' &&
+        card.dataset.savedType !== activeSavedType;
+    });
+
+    const visibleSavedCount =
+      activeSavedType === 'all'
+        ? renderedSavedCards.length
+        : [...renderedSavedCards].filter(
+            card => card.dataset.savedType === activeSavedType
+          ).length;
+
+    const savedTitle =
+      document.querySelector('#savedResultsTitle');
+
+    if (savedTitle) {
+      savedTitle.textContent =
+        `${visibleSavedCount} ${
+          visibleSavedCount === 1
+            ? 'elemento'
+            : 'elementos'
+        }`;
+    }
   }
 
-  function openRealListingDetail(listing) {
-    state.currentListingId = listing.id;
+  function sortSavedItems(mode = 'recent') {
+    const grid =
+      document.querySelector(
+        '#savedView .saved-grid'
+      );
 
+    if (!grid) return;
+
+    const cards =
+      [...grid.querySelectorAll(
+        '.saved-card'
+      )];
+
+    cards.sort((a, b) => {
+      if (mode === 'price-asc') {
+        const aPrice =
+          Number(a.dataset.savedPrice);
+
+        const bPrice =
+          Number(b.dataset.savedPrice);
+
+        const aHasPrice =
+          Number.isFinite(aPrice) &&
+          a.dataset.savedPrice !== undefined;
+
+        const bHasPrice =
+          Number.isFinite(bPrice) &&
+          b.dataset.savedPrice !== undefined;
+
+        if (!aHasPrice && !bHasPrice) {
+          return 0;
+        }
+
+        if (!aHasPrice) return 1;
+        if (!bHasPrice) return -1;
+
+        return aPrice - bPrice;
+      }
+
+      if (mode === 'price-desc') {
+        const aPrice =
+          Number(a.dataset.savedPrice);
+
+        const bPrice =
+          Number(b.dataset.savedPrice);
+
+        const aHasPrice =
+          Number.isFinite(aPrice) &&
+          a.dataset.savedPrice !== undefined;
+
+        const bHasPrice =
+          Number.isFinite(bPrice) &&
+          b.dataset.savedPrice !== undefined;
+
+        if (!aHasPrice && !bHasPrice) {
+          return 0;
+        }
+
+        if (!aHasPrice) return 1;
+        if (!bHasPrice) return -1;
+
+        return bPrice - aPrice;
+      }
+
+      const aDate =
+        new Date(
+          a.dataset.savedCreated || 0
+        ).getTime();
+
+      const bDate =
+        new Date(
+          b.dataset.savedCreated || 0
+        ).getTime();
+
+      return bDate - aDate;
+    });
+
+    cards.forEach(card =>
+      grid.appendChild(card)
+    );
+  }
+
+
+  function openRealListingDetail(listing) {
     const detail = document.querySelector('#detailContent');
     if (!detail) return;
 
@@ -6749,14 +9735,18 @@
           ? 'Fuente externa'
           : 'Habitación';
 
-    const zone = listing.zone || 'Madrid';
+    const zone = listing.zone || null;
 
     const title =
       listing.title ||
-      `${kind} en ${zone}`;
+      (zone
+        ? `${kind} en ${zone}`
+        : kind);
 
     const price =
-      Number(listing.price || 0).toLocaleString('es-ES');
+      listing.price != null
+        ? Number(listing.price).toLocaleString('es-ES')
+        : null;
 
     const date =
       listing.available_from
@@ -6766,7 +9756,7 @@
           }).format(
             new Date(`${listing.available_from}T00:00:00`)
           )
-        : 'Flexible';
+        : null;
 
     const photos =
       Array.isArray(listing.photos)
@@ -6893,8 +9883,8 @@
 
 
           <div class="rooms-property-availability">
-            <span>Disponible</span>
-            <b>${escapeHtml(date)}</b>
+            <span>Disponibilidad</span>
+            <b>${date ? escapeHtml(date) : 'Sin definir'}</b>
           </div>
 
 
@@ -6926,6 +9916,24 @@
               : ''
           }
 
+
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="listing"
+              data-report-id="${escapeHtml(String(listing.id))}"
+              data-report-user="${escapeHtml(String(
+                listing.user_id ||
+                listing.owner_id ||
+                listing.author_id ||
+                ''
+              ))}"
+            >
+              Reportar anuncio
+            </button>
+          </div>
 
           <div class="rooms-property-copy">
             <small>SOBRE ESTA VIVIENDA</small>
@@ -6997,6 +10005,521 @@
     showModal(document.querySelector('#detailModal'));
   }
 
+  function normalizeMatchValue(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase();
+  }
+
+
+  function calculateRealMatch(target) {
+    const ownProfile = state.profile || {};
+    const ownAnswers =
+      state.preferences?.answers || {};
+
+    const factors = [];
+
+    /*
+     * ZONAS
+     */
+    const ownZones =
+      (ownProfile.zones || [])
+        .map(normalizeMatchValue)
+        .filter(Boolean);
+
+    const targetZones =
+      (target?.zones || [])
+        .map(normalizeMatchValue)
+        .filter(Boolean);
+
+    if (ownZones.length && targetZones.length) {
+      const sharedZones =
+        ownZones.filter(zone =>
+          targetZones.includes(zone)
+        );
+
+      factors.push({
+        key: 'zones',
+        label: 'Zonas',
+        score: sharedZones.length ? 100 : 0,
+        detail: sharedZones.length
+          ? `Coincidís en ${sharedZones.join(', ')}`
+          : 'No hay una zona coincidente'
+      });
+    }
+
+
+    /*
+     * PRESUPUESTO
+     */
+    const ownHasBudget =
+      ownProfile.budget_min != null ||
+      ownProfile.budget_max != null;
+
+    const targetHasBudget =
+      target?.budget_min != null ||
+      target?.budget_max != null;
+
+    if (ownHasBudget && targetHasBudget) {
+      const ownMin =
+        Number(ownProfile.budget_min ?? 0);
+
+      const ownMax =
+        Number(
+          ownProfile.budget_max ??
+          Number.MAX_SAFE_INTEGER
+        );
+
+      const targetMin =
+        Number(target.budget_min ?? 0);
+
+      const targetMax =
+        Number(
+          target.budget_max ??
+          Number.MAX_SAFE_INTEGER
+        );
+
+      const overlaps =
+        ownMin <= targetMax &&
+        targetMin <= ownMax;
+
+      factors.push({
+        key: 'budget',
+        label: 'Presupuesto',
+        score: overlaps ? 100 : 0,
+        detail: overlaps
+          ? 'Vuestros rangos de presupuesto se solapan'
+          : 'Vuestros rangos de presupuesto no se solapan'
+      });
+    }
+
+
+    /*
+     * FECHA DE ENTRADA
+     *
+     * <= 31 días: compatible
+     * 32–62 días: compatibilidad parcial
+     * > 62 días: diferente
+     */
+    if (
+      ownProfile.move_in_date &&
+      target?.move_in_date
+    ) {
+      const ownDate =
+        new Date(
+          `${ownProfile.move_in_date}T00:00:00`
+        );
+
+      const targetDate =
+        new Date(
+          `${target.move_in_date}T00:00:00`
+        );
+
+      const differenceDays =
+        Math.round(
+          Math.abs(
+            ownDate.getTime() -
+            targetDate.getTime()
+          ) /
+          86400000
+        );
+
+      let score = 0;
+
+      if (differenceDays <= 31) {
+        score = 100;
+      } else if (differenceDays <= 62) {
+        score = 50;
+      }
+
+      factors.push({
+        key: 'date',
+        label: 'Fecha de entrada',
+        score,
+        detail:
+          differenceDays === 0
+            ? 'Buscáis entrar en la misma fecha'
+            : `${differenceDays} días de diferencia`
+      });
+    }
+
+
+    /*
+     * DURACIÓN
+     */
+    if (
+      ownProfile.duration &&
+      ownProfile.duration !== 'unknown' &&
+      target?.duration &&
+      target.duration !== 'unknown'
+    ) {
+      const sameDuration =
+        ownProfile.duration ===
+        target.duration;
+
+      factors.push({
+        key: 'duration',
+        label: 'Duración',
+        score: sameDuration ? 100 : 0,
+        detail: sameDuration
+          ? 'Buscáis una duración similar'
+          : 'Buscáis duraciones distintas'
+      });
+    }
+
+
+    /*
+     * CONVIVENCIA
+     *
+     * Solo se usa si la RPC ha autorizado
+     * expresamente esos datos.
+     *
+     * Misma respuesta: 100
+     * Respuestas contiguas: 50
+     * Extremos opuestos: 0
+     */
+    const ownLiving =
+      ownAnswers.living || {};
+
+    const targetLiving =
+      target?.living_visible
+        ? target.living || {}
+        : {};
+
+    const livingNames = [
+      'Limpieza',
+      'Horarios',
+      'Ruido',
+      'Visitas',
+      'Fiestas en casa',
+      'Teletrabajo / estudio',
+      'Fumar',
+      'Mascotas'
+    ];
+
+    const livingScores = [];
+
+    Object.keys(ownLiving).forEach(key => {
+      const ownOption =
+        Number(ownLiving?.[key]?.option);
+
+      const targetOption =
+        Number(targetLiving?.[key]?.option);
+
+      if (
+        !Number.isInteger(ownOption) ||
+        !Number.isInteger(targetOption)
+      ) {
+        return;
+      }
+
+      const distance =
+        Math.abs(
+          ownOption -
+          targetOption
+        );
+
+      const score =
+        distance === 0
+          ? 100
+          : distance === 1
+            ? 50
+            : 0;
+
+      livingScores.push({
+        category:
+          livingNames[Number(key)] ||
+          `Convivencia ${key}`,
+        score
+      });
+    });
+
+    if (livingScores.length) {
+      const livingScore =
+        Math.round(
+          livingScores.reduce(
+            (total, item) =>
+              total + item.score,
+            0
+          ) /
+          livingScores.length
+        );
+
+      factors.push({
+        key: 'living',
+        label: 'Convivencia',
+        score: livingScore,
+        detail:
+          `${livingScores.length} ${
+            livingScores.length === 1
+              ? 'hábito comparado'
+              : 'hábitos comparados'
+          }`,
+        breakdown: livingScores
+      });
+    }
+
+
+    /*
+     * TIPO DE BÚSQUEDA
+     *
+     * Lo mostramos como información,
+     * pero no entra todavía en la nota:
+     * "buscar habitación", "piso" o
+     * "compañeros" no determina por sí solo
+     * que dos personas sean incompatibles.
+     */
+    const ownSeeking =
+      ownProfile.seeking || [];
+
+    const targetSeeking =
+      target?.seeking || [];
+
+    const comparableSeeking =
+      ownSeeking.length &&
+      targetSeeking.length;
+
+    const seekingInfo =
+      comparableSeeking
+        ? {
+            own: ownSeeking,
+            target: targetSeeking
+          }
+        : null;
+
+
+    const score =
+      factors.length
+        ? Math.round(
+            factors.reduce(
+              (total, factor) =>
+                total + factor.score,
+              0
+            ) /
+            factors.length
+          )
+        : null;
+
+    return {
+      score,
+      factors,
+      seekingInfo,
+      comparedFactors: factors.length
+    };
+  }
+
+
+  async function loadRealMatchProfile(userId) {
+    if (!state.user || !userId) {
+      return null;
+    }
+
+    const { data, error } =
+      await db.rpc(
+        'get_match_profile',
+        {
+          target_user_id: userId
+        }
+      );
+
+    if (error) {
+      console.error(
+        'Rooms: error cargando datos de compatibilidad',
+        error
+      );
+
+      return null;
+    }
+
+    return data || null;
+  }
+
+
+  function ensureRealMatchModal() {
+    const modal =
+      document.querySelector('#matchModal');
+
+    if (!modal) return null;
+
+    modal.innerHTML = `
+      <div
+        class="backdrop"
+        data-close-real-match
+      ></div>
+
+      <article class="detail match-detail-shell">
+
+        <button
+          type="button"
+          class="close match-back"
+          data-close-real-match
+          aria-label="Volver"
+        >
+          ←
+        </button>
+
+        <div id="realMatchContent"></div>
+
+      </article>
+    `;
+
+    return modal;
+  }
+
+
+  async function openRealMatch(profile) {
+    if (
+      !profile ||
+      !state.user ||
+      state.blockedUsers?.has(profile.id)
+    ) {
+      return;
+    }
+
+    const modal =
+      ensureRealMatchModal();
+
+    if (!modal) return;
+
+    const content =
+      modal.querySelector(
+        '#realMatchContent'
+      );
+
+    content.innerHTML = `
+      <div class="real-match-loading">
+        Calculando compatibilidad…
+      </div>
+    `;
+
+    showModal(modal);
+
+    const target =
+      await loadRealMatchProfile(
+        profile.id
+      );
+
+    if (!target) {
+      content.innerHTML = `
+        <div class="real-empty-state">
+          <b>No hay suficientes datos disponibles</b>
+          <p>
+            La privacidad del perfil o los datos
+            disponibles no permiten calcular la
+            compatibilidad ahora mismo.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const match =
+      calculateRealMatch(target);
+
+    const name =
+      profile.alias ||
+      profile.name ||
+      'esta persona';
+
+    const scoreLabel =
+      match.score == null
+        ? '—'
+        : `${match.score}%`;
+
+    content.innerHTML = `
+      <section class="real-match-hero">
+
+        <small>
+          COMPATIBILIDAD CON
+          ${escapeHtml(name.toUpperCase())}
+        </small>
+
+        <strong>
+          ${escapeHtml(scoreLabel)}
+        </strong>
+
+        <h2>
+          ${
+            match.comparedFactors
+              ? `Calculado con ${match.comparedFactors} ${
+                  match.comparedFactors === 1
+                    ? 'factor real'
+                    : 'factores reales'
+                }`
+              : 'Sin datos suficientes'
+          }
+        </h2>
+
+        <p>
+          El porcentaje utiliza únicamente información
+          disponible y autorizada por la privacidad de
+          ambos perfiles.
+        </p>
+
+      </section>
+
+      <section class="real-match-factors">
+
+        ${
+          match.factors.length
+            ? match.factors.map(factor => `
+                <article>
+                  <div>
+                    <b>
+                      ${escapeHtml(factor.label)}
+                    </b>
+
+                    <span>
+                      ${escapeHtml(factor.detail)}
+                    </span>
+                  </div>
+
+                  <strong>
+                    ${factor.score}%
+                  </strong>
+                </article>
+              `).join('')
+            : `
+                <div class="real-empty-state">
+                  <b>No hay factores comparables todavía</b>
+                </div>
+              `
+        }
+
+      </section>
+
+      ${
+        match.seekingInfo
+          ? `
+            <section class="real-match-note">
+              <small>TIPO DE BÚSQUEDA</small>
+              <p>
+                Este dato se muestra como contexto,
+                pero no altera el porcentaje hasta
+                que Rooms pueda distinguir mejor
+                el rol de cada persona en la búsqueda.
+              </p>
+            </section>
+          `
+          : ''
+      }
+
+      <aside class="real-match-method">
+        <b>Cómo se calcula</b>
+        <p>
+          Zona, presupuesto, fecha, duración y
+          convivencia se comparan solo cuando ambas
+          partes tienen datos disponibles. Ningún
+          dato privado oculto se utiliza para generar
+          este resultado.
+        </p>
+      </aside>
+
+    `;
+  }
+
+
   async function openRealUser(profile) {
     if (!profile) return;
 
@@ -7064,7 +10587,7 @@
               `${profile.move_in_date}T00:00:00`
             )
           )
-        : 'Flexible';
+        : 'Sin definir';
 
     const imageBox =
       modal.querySelector('.profile-hero');
@@ -7091,6 +10614,32 @@
     if (content) {
       content.innerHTML = `
         <section class="real-user-profile-intro">
+
+          <div class="real-report-row">
+            <button
+              type="button"
+              class="real-report-button"
+              data-real-report
+              data-report-type="profile"
+              data-report-id="${escapeHtml(profile.id)}"
+              data-report-user="${escapeHtml(profile.id)}"
+            >
+              Reportar perfil
+            </button>
+
+            <button
+              type="button"
+              class="real-report-button real-block-button"
+              data-real-block-user="${escapeHtml(profile.id)}"
+              data-real-block-name="${escapeHtml(name)}"
+            >
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'Desbloquear usuario'
+                  : 'Bloquear usuario'
+              }
+            </button>
+          </div>
 
           <div class="real-user-profile-eyebrow">
             <span>PERFIL</span>
@@ -7139,7 +10688,7 @@
 
             <div>
               <small>DURACIÓN</small>
-              <b>${escapeHtml(profile.duration || 'Flexible')}</b>
+              <b>${escapeHtml(profile.duration || 'Sin definir')}</b>
             </div>
 
           </div>
@@ -7187,34 +10736,67 @@
 
           <div class="real-user-profile-actions">
 
+            ${
+              !state.blockedUsers?.has(profile.id)
+                ? `
+                  <button
+                    type="button"
+                    class="real-user-match"
+                    data-open-real-match="${profile.id}"
+                  >
+                    Ver compatibilidad
+                  </button>
+                `
+                : ''
+            }
+
             <button
               type="button"
-              class="real-user-connect"
+              class="real-user-connect ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'connection-blocked'
+                  : ''
+              }"
               data-connect
               data-user-id="${profile.id}"
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'disabled'
+                  : ''
+              }
             >
-              ${escapeHtml(
-                connectionButtonLabel(profile.id)
-              )}
+              ${
+                state.blockedUsers?.has(profile.id)
+                  ? 'Bloqueado'
+                  : escapeHtml(
+                      connectionButtonLabel(profile.id)
+                    )
+              }
             </button>
 
-            <button
-              type="button"
-              class="real-user-group"
-              data-send-person-home="${profile.id}"
-            >
-              + Añadir a grupo
-            </button>
+            ${
+              !state.blockedUsers?.has(profile.id)
+                ? `
+                  <button
+                    type="button"
+                    class="real-user-group"
+                    data-send-person-home="${profile.id}"
+                  >
+                    + Añadir a grupo
+                  </button>
 
-            <button
-              type="button"
-              class="real-user-save ${saved ? 'saved' : ''}"
-              data-person-save
-              data-save-kind="person"
-              data-save-id="${profile.id}"
-            >
-              ${saved ? '♥ Guardado' : '♡ Guardar'}
-            </button>
+                  <button
+                    type="button"
+                    class="real-user-save ${saved ? 'saved' : ''}"
+                    data-person-save
+                    data-save-kind="person"
+                    data-save-id="${profile.id}"
+                  >
+                    ${saved ? '♥ Guardado' : '♡ Guardar'}
+                  </button>
+                `
+                : ''
+            }
 
           </div>
 
@@ -7239,8 +10821,165 @@
     showModal(modal);
   }
 
+  function ensureConversationOptionsMenu() {
+    const header =
+      document.querySelector(
+        '#conversationModal .conversation-shell header'
+      );
+
+    if (!header) return null;
+
+    let button =
+      header.querySelector(
+        '[data-real-conversation-options]'
+      );
+
+    if (!button) {
+      button =
+        document.createElement('button');
+
+      button.type = 'button';
+      button.className =
+        'conversation-options-trigger';
+
+      button.setAttribute(
+        'data-real-conversation-options',
+        ''
+      );
+
+      button.setAttribute(
+        'aria-label',
+        'Opciones de conversación'
+      );
+
+      button.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+
+      button.textContent = '•••';
+
+      header.appendChild(button);
+    }
+
+    let menu =
+      document.querySelector(
+        '#realConversationOptionsMenu'
+      );
+
+    if (!menu) {
+      menu =
+        document.createElement('div');
+
+      menu.id =
+        'realConversationOptionsMenu';
+
+      menu.className =
+        'real-conversation-options';
+
+      menu.hidden = true;
+
+      header.appendChild(menu);
+    }
+
+    return menu;
+  }
+
+
+  function renderConversationOptionsMenu() {
+    if (!state.chatTarget) return;
+
+    const menu =
+      ensureConversationOptionsMenu();
+
+    if (!menu) return;
+
+    const preference =
+      getConversationPreference(
+        state.chatTarget.id
+      );
+
+    menu.innerHTML = `
+      <button
+        type="button"
+        data-real-chat-action="profile"
+      >
+        Ver perfil
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="mute"
+      >
+        ${
+          preference.muted
+            ? 'Activar notificaciones'
+            : 'Silenciar conversación'
+        }
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="report"
+      >
+        Reportar usuario
+      </button>
+
+      <button
+        type="button"
+        data-real-chat-action="block"
+      >
+        Bloquear usuario
+      </button>
+
+      <hr>
+
+      <button
+        type="button"
+        class="danger"
+        data-real-chat-action="delete"
+      >
+        Eliminar conversación
+      </button>
+    `;
+  }
+
+
+  function closeConversationOptionsMenu() {
+    const menu =
+      document.querySelector(
+        '#realConversationOptionsMenu'
+      );
+
+    const button =
+      document.querySelector(
+        '[data-real-conversation-options]'
+      );
+
+    if (menu) {
+      menu.hidden = true;
+    }
+
+    if (button) {
+      button.setAttribute(
+        'aria-expanded',
+        'false'
+      );
+    }
+  }
+
+
   async function openRealConversation(profile) {
     if (!profile || !state.user) return;
+
+    if (
+      state.blockedUsers?.has(profile.id)
+    ) {
+      notify(
+        'Has bloqueado a este usuario.'
+      );
+      return;
+    }
 
     const connection =
       getConnectionForUser(profile.id) ||
@@ -7324,6 +11063,10 @@
 
     showModal(modal);
 
+    ensureConversationOptionsMenu();
+    renderConversationOptionsMenu();
+    closeConversationOptionsMenu();
+
     await renderMessages();
 
     subscribeToMessages();
@@ -7382,8 +11125,25 @@
       return;
     }
 
+    const preference =
+      getConversationPreference(
+        state.chatTarget.id
+      );
+
+    const deletedBefore =
+      preference.deleted_before
+        ? new Date(
+            preference.deleted_before
+          ).getTime()
+        : null;
+
     const messages =
-      data || [];
+      (data || []).filter(message =>
+        !deletedBefore ||
+        new Date(
+          message.created_at
+        ).getTime() > deletedBefore
+      );
 
     if (!messages.length) {
       const name =
@@ -7448,7 +11208,6 @@
     return `
       <div
         class="chat-message ${mine ? 'mine' : 'other'}"
-        data-message-id="${escapeHtml(message.id)}"
       >
         ${
           mine
@@ -7474,6 +11233,17 @@
       !state.user ||
       !text
     ) {
+      return;
+    }
+
+    if (
+      state.blockedUsers?.has(
+        state.chatTarget.id
+      )
+    ) {
+      notify(
+        'Has bloqueado a este usuario.'
+      );
       return;
     }
 
@@ -7597,6 +11367,284 @@
 
 
   document.addEventListener('click', event => {
+    const openMatch =
+      event.target.closest(
+        '[data-open-real-match]'
+      );
+
+    if (openMatch) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const profile =
+        state.profiles.get(
+          openMatch.dataset.openRealMatch
+        ) ||
+        state.targetProfile;
+
+      if (profile) {
+        openRealMatch(profile);
+      }
+
+      return;
+    }
+
+    const closeRealMatch =
+      event.target.closest(
+        '[data-close-real-match]'
+      );
+
+    if (closeRealMatch) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#matchModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+
+      if (state.targetProfile) {
+        openRealUser(
+          state.targetProfile
+        );
+      }
+
+      return;
+    }
+
+    const manageSessions =
+      event.target.closest(
+        '#manageSessions'
+      );
+
+    if (manageSessions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openSessionsManager();
+      return;
+    }
+
+    const closeSessions =
+      event.target.closest(
+        '[data-close-sessions]'
+      );
+
+    if (closeSessions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#sessionsModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+      return;
+    }
+
+    const signOutOthers =
+      event.target.closest(
+        '#signOutOtherSessions'
+      );
+
+    if (signOutOthers) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      signOutOtherSessions();
+      return;
+    }
+
+    const conversationOptions =
+      event.target.closest(
+        '[data-real-conversation-options]'
+      );
+
+    if (conversationOptions) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const menu =
+        ensureConversationOptionsMenu();
+
+      if (!menu) return;
+
+      menu.hidden =
+        !menu.hidden;
+
+      conversationOptions.setAttribute(
+        'aria-expanded',
+        String(!menu.hidden)
+      );
+
+      return;
+    }
+
+    const conversationAction =
+      event.target.closest(
+        '[data-real-chat-action]'
+      );
+
+    if (conversationAction) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (!state.chatTarget) return;
+
+      const action =
+        conversationAction.dataset.realChatAction;
+
+      const profile =
+        state.chatTarget;
+
+      const name =
+        profile.alias ||
+        profile.name ||
+        'este usuario';
+
+      closeConversationOptionsMenu();
+
+      if (action === 'profile') {
+        openRealUser(profile);
+        return;
+      }
+
+      if (action === 'mute') {
+        toggleConversationMute();
+        return;
+      }
+
+      if (action === 'report') {
+        openRealReport({
+          dataset: {
+            reportType: 'user',
+            reportId: profile.id,
+            reportUser: profile.id
+          }
+        });
+        return;
+      }
+
+      if (action === 'block') {
+        openRealBlock({
+          dataset: {
+            realBlockUser: profile.id,
+            realBlockName: name
+          }
+        });
+        return;
+      }
+
+      if (action === 'delete') {
+        deleteConversationForMe();
+        return;
+      }
+    }
+
+    const blockedUsersButton =
+      event.target.closest('#blockedUsers');
+
+    if (blockedUsersButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      openBlockedUsersManager();
+      return;
+    }
+
+    const closeBlockedUsers =
+      event.target.closest(
+        '[data-close-blocked-users]'
+      );
+
+    if (closeBlockedUsers) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const modal =
+        document.querySelector(
+          '#blockedUsersModal'
+        );
+
+      if (modal) {
+        modal.classList.remove('open');
+        modal.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+      }
+
+      document.body.style.overflow = '';
+      return;
+    }
+
+    const unblockUser =
+      event.target.closest(
+        '[data-unblock-user]'
+      );
+
+    if (unblockUser) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      unblockRealUser(
+        unblockUser.dataset.unblockUser,
+        unblockUser.dataset.unblockName
+      );
+
+      return;
+    }
+
+    const realBlock =
+      event.target.closest('[data-real-block-user]');
+
+    if (realBlock) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openRealBlock(realBlock);
+      return;
+    }
+
+    const confirmBlock =
+      event.target.closest('#confirmBlock');
+
+    if (confirmBlock) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      confirmRealBlock();
+      return;
+    }
+
+    const realReport =
+      event.target.closest('[data-real-report]');
+
+    if (realReport) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openRealReport(realReport);
+      return;
+    }
+
+
     const shareRealListing =
       event.target.closest('[data-share-real-listing]');
 
@@ -7622,12 +11670,6 @@
           .catch(() => notify('No se pudo copiar el enlace'));
       }
 
-      return;
-    }
-
-    if (event.target.closest('[data-open-current-home]')) {
-      event.preventDefault();
-      notify('Mi hogar estará disponible próximamente');
       return;
     }
 
@@ -7869,7 +11911,7 @@
 
     if (
       event.target.closest(
-        '[data-community-publish-placeholder]'
+        '[data-community-publish]'
       )
     ) {
       event.preventDefault();
@@ -7911,7 +11953,7 @@
 
     if (
       event.target.closest(
-        '[data-manage-community-placeholder]'
+        '[data-manage-community]'
       )
     ) {
       event.preventDefault();
@@ -8066,19 +12108,18 @@
     }
 
 
-    const livingChoice = event.target.closest('[data-living-choice]');
-    const livingWeight = event.target.closest('[data-living-weight]');
-    if (livingChoice) {
-      const [category, option] = livingChoice.dataset.livingChoice.split(':');
-      state.living[category] = { ...(state.living[category] || {}), option: Number(option) };
-    }
-    if (livingWeight) {
-      const [category, weight] = livingWeight.dataset.livingWeight.split(':');
-      state.living[category] = { ...(state.living[category] || {}), weight: Number(weight) };
-    }
+    const livingChoice =
+      event.target.closest('[data-living-choice]');
 
-    const listing = event.target.closest('[data-listing-id]');
-    if (listing) state.currentListingId = listing.dataset.listingId;
+    if (livingChoice) {
+      const [category, option] =
+        livingChoice.dataset.livingChoice.split(':');
+
+      state.living[category] = {
+        ...(state.living[category] || {}),
+        option: Number(option)
+      };
+    }
 
     const realCollection = event.target.closest('[data-real-collection]');
     if (realCollection) {
@@ -8119,6 +12160,54 @@
         modal.setAttribute('aria-hidden', 'true');
       }
       document.body.style.overflow = '';
+      return;
+    }
+
+    const myReports =
+      event.target.closest('#myReports');
+
+    if (myReports) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showMyRealReports();
+      return;
+    }
+
+    const reportReason =
+      event.target.closest(
+        '#reportModal .report-reasons button'
+      );
+
+    if (reportReason) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      document
+        .querySelectorAll(
+          '#reportModal .report-reasons button'
+        )
+        .forEach(button => {
+          button.setAttribute(
+            'aria-checked',
+            String(button === reportReason)
+          );
+        });
+
+      const submit =
+        document.querySelector('#submitReport');
+
+      if (submit) submit.disabled = false;
+
+      return;
+    }
+
+    const submitReport =
+      event.target.closest('#submitReport');
+
+    if (submitReport) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      submitRealReport();
       return;
     }
 
@@ -8220,6 +12309,42 @@
       return;
     }
 
+
+  /* HOME — keyboard access for real cards */
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+    const listingCard =
+      event.target.closest('[data-real-listing][tabindex="0"]');
+
+    if (listingCard) {
+      event.preventDefault();
+
+      const listing =
+        state.listings.get(listingCard.dataset.realListing);
+
+      if (listing) {
+        openRealListingDetail(listing);
+      }
+
+      return;
+    }
+
+    const userCard =
+      event.target.closest('[data-real-user][tabindex="0"]');
+
+    if (userCard) {
+      event.preventDefault();
+
+      const profile =
+        state.profiles.get(userCard.dataset.realUser);
+
+      if (profile) {
+        openRealUser(profile);
+      }
+    }
+  });
+
     const realListing = event.target.closest('[data-real-listing]');
     if (realListing) {
       if (
@@ -8270,10 +12395,15 @@
     if (publishContinue) {
       const snapshot = capturePublishStep();
       const finalAction = /Publicar|Compartir/.test(publishContinue.textContent);
-      if (snapshot && snapshot.step === 0 && ['room', 'apartment'].includes(snapshot.type) && (!snapshot.values[0] || !snapshot.values[1])) {
+      if (
+        snapshot &&
+        snapshot.step === 0 &&
+        ['room', 'apartment'].includes(snapshot.type) &&
+        (!snapshot.values[0] || !snapshot.meta?.exactAddress)
+      ) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        notify('Añade la zona y el precio para continuar');
+        notify('Añade el precio y la dirección exacta para continuar');
         return;
       }
       if (finalAction && snapshot) {
@@ -8319,13 +12449,6 @@
 
     const finalOnboarding = event.target.closest('#onboardingContinue');
     if (finalOnboarding && finalOnboarding.textContent.includes('Ver mi feed')) saveOnboarding();
-
-    const logout = event.target.closest('.logout-button');
-    if (logout) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      db.auth.signOut();
-    }
 
     const ownActivity = event.target.closest('[data-own-activity]');
     if (ownActivity) {
@@ -8392,13 +12515,123 @@
 
   injectAuthGate();
 
+  function readAuthUrlError() {
+    const hash =
+      window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : '';
+
+    if (!hash) return null;
+
+    const params =
+      new URLSearchParams(hash);
+
+    const error =
+      params.get('error');
+
+    const code =
+      params.get('error_code');
+
+    const description =
+      params.get('error_description');
+
+    if (!error && !code) {
+      return null;
+    }
+
+    const result = {
+      error,
+      code,
+      description
+    };
+
+    window.history.replaceState(
+      {},
+      '',
+      `${window.location.pathname}${window.location.search}`
+    );
+
+    return result;
+  }
+
+  const startupAuthUrlError =
+    readAuthUrlError();
+
   db.auth.onAuthStateChange((event, session) => {
-    if (session) startSession(session);
-    else if (event === 'SIGNED_OUT') endSession();
+    if (
+      event === 'PASSWORD_RECOVERY' &&
+      session
+    ) {
+      manualAuthNavigationPending = false;
+
+      startSession(
+        session,
+        { forceHome: false }
+      );
+
+      setTimeout(
+        openPasswordRecoveryModal,
+        0
+      );
+
+      return;
+    }
+
+    if (session) {
+      const forceHome =
+        event === 'SIGNED_IN' &&
+        manualAuthNavigationPending;
+
+      manualAuthNavigationPending = false;
+
+      startSession(session, { forceHome });
+    } else if (event === 'SIGNED_OUT') {
+      manualAuthNavigationPending = false;
+      endSession();
+    }
   });
 
-  db.auth.getSession().then(({ data }) => {
-    if (data.session) startSession(data.session);
+  db.auth.getSession().then(async ({ data }) => {
+    const expiredAuthLink =
+      startupAuthUrlError?.code === 'otp_expired';
+
+    if (data.session) {
+      await startSession(data.session, {
+        forceHome: false
+      });
+
+      if (expiredAuthLink) {
+        notify(
+          'El enlace de recuperación ha caducado. Tu sesión actual sigue activa.'
+        );
+      }
+
+      return;
+    }
+
+    const authGate =
+      document.querySelector('#authGate');
+
+    if (authGate) {
+      authGate.hidden = false;
+    }
+
+    if (expiredAuthLink) {
+      const message =
+        document.querySelector('#authMessage');
+
+      if (message) {
+        message.className =
+          'auth-message';
+
+        message.textContent =
+          'Este enlace de recuperación ha caducado. Solicita uno nuevo para cambiar tu contraseña.';
+      }
+    }
+
+    document.body.classList.remove(
+      'rooms-booting'
+    );
   });
   function ensureProfileEditorModal() {
     let modal = document.querySelector('#profileEditorModal');
@@ -8543,7 +12776,11 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target.closest('#editOwnProfile')) {
+    if (
+      event.target.closest(
+        '#editOwnProfile,[data-open-profile-editor]'
+      )
+    ) {
       openProfileEditor();
       return;
     }
@@ -8615,11 +12852,11 @@
 
   document.addEventListener('click', event => {
     if (event.target.closest('#changeProfilePhoto')) {
-      document.querySelector('#profilePhotoInput')?.click();
+      document.querySelector('#ownProfilePhotoInput')?.click();
     }
   });
 
-  document.querySelector('#profilePhotoInput')?.addEventListener('change', event => {
+  document.querySelector('#ownProfilePhotoInput')?.addEventListener('change', event => {
     const file = event.target.files?.[0];
     if (file) uploadProfilePhoto(file);
     event.target.value = '';
@@ -8661,7 +12898,7 @@
         <form id="livingEditorForm">
           <div class="living-editor-groups">
             ${groups.map((group, index) => `
-              <section class="living-editor-group" data-living-editor-group="${index}">
+              <section class="living-editor-group">
                 <small>${group[0]}</small>
                 <div>
                   ${group[1].map((option, optionIndex) => `
@@ -8761,7 +12998,7 @@
   }
 
   document.addEventListener('click', event => {
-    const livingEdit = event.target.closest('#ownProfileView .own-profile-content > section:nth-child(2) .manage-section-title button');
+    const livingEdit = event.target.closest('[data-open-living-editor]');
 
     if (livingEdit) {
       event.preventDefault();
@@ -8797,7 +13034,7 @@
           <div>
             <small>TU BÚSQUEDA</small>
             <h2>Qué busco</h2>
-            <p>Rooms utiliza estos datos para enseñarte viviendas y personas que realmente encajan contigo.</p>
+            <p>Estos datos definen lo que estás buscando y se usan en tu perfil y filtros.</p>
           </div>
           <button type="button" data-close-search-preferences aria-label="Cerrar">×</button>
         </header>
@@ -9000,6 +13237,30 @@
     return modal;
   }
 
+  document.addEventListener('click', event => {
+    if (event.target.closest('[data-open-search-preferences]')) {
+      event.preventDefault();
+      openSearchPreferencesEditor();
+      return;
+    }
+
+    const completionAction =
+      event.target.closest('[data-profile-completion-action]');
+
+    if (completionAction) {
+      event.preventDefault();
+
+      if (
+        completionAction.dataset.profileCompletionAction === 'search'
+      ) {
+        openSearchPreferencesEditor();
+      } else {
+        openProfileEditor();
+      }
+    }
+  });
+
+
   function openSearchPreferencesEditor() {
     if (!state.profile) return;
 
@@ -9043,16 +13304,6 @@
   }
 
   document.addEventListener('click', event => {
-    const searchEdit = event.target.closest(
-      '#ownProfileView .own-profile-content > section:nth-child(3) .manage-section-title button'
-    );
-
-    if (searchEdit) {
-      event.preventDefault();
-      openSearchPreferencesEditor();
-      return;
-    }
-
     if (event.target.closest('[data-close-search-preferences]')) {
       const modal = document.querySelector('#searchPreferencesModal');
 
@@ -9257,7 +13508,7 @@
       : `<span>${escapeHtml(initials || 'R')}</span>`;
 
     modal.querySelector('#ownPublicVerification').textContent =
-      state.user?.email_confirmed_at ? 'VERIFICADO ✓' : 'PERFIL';
+      state.user?.email_confirmed_at ? 'EMAIL VERIFICADO ✓' : 'PERFIL';
 
     modal.querySelector('#ownPublicName').textContent =
       profile.age ? `${name}, ${profile.age}` : name;
@@ -9459,7 +13710,7 @@
           <div>
             <small>PREFERENCIAS</small>
             <h2>Tu vivienda ideal</h2>
-            <p>Selecciona lo que valoras. Rooms lo usará para ordenar mejor tus recomendaciones.</p>
+            <p>Selecciona las características que valoras en una vivienda.</p>
           </div>
           <button type="button" data-close-home-preferences aria-label="Cerrar">×</button>
         </header>
@@ -9596,22 +13847,6 @@
   });
 
 
-  document.addEventListener('click', event => {
-    if (!event.target.closest('#trustRecommendations')) return;
-
-    const trustView = document.querySelector('#trustView');
-    const profileView = document.querySelector('#ownProfileView');
-
-    if (trustView) trustView.hidden = true;
-    if (profileView) profileView.hidden = false;
-
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  });
-
-
   function renderProfilePrivacySettings() {
     const privacy = state.preferences?.answers?.privacy || {};
     const level = privacy.level || 'balanced';
@@ -9635,20 +13870,82 @@
     });
   }
 
+  const profilePrivacyPresets = {
+    open: {
+      living: 'public',
+      search: 'public',
+      budget: 'public',
+      activity: 'public'
+    },
+    balanced: {
+      living: 'public',
+      search: 'public',
+      budget: 'connections',
+      activity: 'public'
+    },
+    private: {
+      living: 'private',
+      search: 'private',
+      budget: 'private',
+      activity: 'private'
+    }
+  };
+
+  function applyProfilePrivacyControls(controls) {
+    document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+      const key = row.dataset.profilePrivacyRow;
+      const value = controls[key] || 'public';
+
+      row.querySelectorAll('[data-privacy-value]').forEach(button => {
+        const active = button.dataset.privacyValue === value;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    });
+  }
+
+  function detectProfilePrivacyLevel() {
+    const current = {};
+
+    document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
+      current[row.dataset.profilePrivacyRow] =
+        row.querySelector('[data-privacy-value].active')
+          ?.dataset.privacyValue || 'public';
+    });
+
+    return Object.entries(profilePrivacyPresets).find(([, preset]) =>
+      Object.keys(preset).every(key => preset[key] === current[key])
+    )?.[0] || 'custom';
+  }
+
+  function renderProfilePrivacyLevel(level) {
+    document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
+      const active = button.dataset.profilePrivacyLevel === level;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
   document.addEventListener('click', event => {
     const levelButton = event.target.closest('[data-profile-privacy-level]');
+
     if (levelButton) {
-      document.querySelectorAll('[data-profile-privacy-level]').forEach(button => {
-        button.classList.toggle('active', button === levelButton);
-        button.setAttribute(
-          'aria-pressed',
-          button === levelButton ? 'true' : 'false'
-        );
-      });
+      const level = levelButton.dataset.profilePrivacyLevel;
+      const preset = profilePrivacyPresets[level];
+
+      renderProfilePrivacyLevel(level);
+
+      if (preset) {
+        applyProfilePrivacyControls(preset);
+      }
+
       return;
     }
 
-    const privacyButton = event.target.closest('[data-profile-privacy-row] [data-privacy-value]');
+    const privacyButton = event.target.closest(
+      '[data-profile-privacy-row] [data-privacy-value]'
+    );
+
     if (privacyButton) {
       const row = privacyButton.closest('[data-profile-privacy-row]');
 
@@ -9659,13 +13956,17 @@
           button === privacyButton ? 'true' : 'false'
         );
       });
+
+      renderProfilePrivacyLevel(
+        detectProfilePrivacyLevel()
+      );
+
       return;
     }
 
     if (event.target.closest('#saveProfilePrivacy')) {
       const level =
-        document.querySelector('[data-profile-privacy-level].active')
-          ?.dataset.profilePrivacyLevel || 'balanced';
+        detectProfilePrivacyLevel();
 
       const controls = {};
 
@@ -9760,7 +14061,6 @@
       return;
     }
 
-    endSession();
     notify('Sesión cerrada');
   }
 
@@ -9776,215 +14076,6 @@
   });
 
   renderAccountSettings();
-
-
-  function ensureLanguageModal() {
-    let modal = document.querySelector('#languageModal');
-    if (modal) return modal;
-
-    modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'languageModal';
-    modal.setAttribute('aria-hidden', 'true');
-
-    modal.innerHTML = `
-      <div class="backdrop" data-close-language></div>
-      <article class="detail language-modal-shell">
-        <header>
-          <div>
-            <small>IDIOMA</small>
-            <h2>Idioma de Rooms</h2>
-            <p>Selecciona el idioma que prefieres usar.</p>
-          </div>
-          <button type="button" data-close-language aria-label="Cerrar">×</button>
-        </header>
-
-        <div class="language-options">
-          <button type="button" data-language-option="es">
-            <span>Español</span>
-            <i></i>
-          </button>
-
-          <button type="button" data-language-option="en">
-            <span>English</span>
-            <i></i>
-          </button>
-        </div>
-      </article>
-    `;
-
-    document.body.appendChild(modal);
-    return modal;
-  }
-
-  function renderLanguageSetting() {
-    const language = state.preferences?.answers?.language || 'es';
-    const label = language === 'en' ? 'English' : 'Español';
-
-    const node = document.querySelector('#settingsLanguage');
-    if (node) node.textContent = label;
-  }
-
-  async function saveLanguage(language) {
-    const answers = {
-      ...(state.preferences?.answers || {}),
-      language
-    };
-
-    const { error } = await db
-      .from('onboarding_preferences')
-      .upsert({
-        user_id: state.user.id,
-        answers
-      });
-
-    if (error) {
-      console.error('Rooms: error guardando idioma', error);
-      notify('No se pudo guardar el idioma');
-      return;
-    }
-
-    state.preferences = {
-      ...(state.preferences || {}),
-      answers
-    };
-
-    renderLanguageSetting();
-
-    const modal = document.querySelector('#languageModal');
-    if (modal) {
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-
-    document.body.style.overflow = '';
-
-    notify(language === 'en' ? 'Language updated' : 'Idioma actualizado');
-  }
-
-  document.addEventListener('click', event => {
-    if (event.target.closest('#changeLanguage')) {
-      const modal = ensureLanguageModal();
-      const current = state.preferences?.answers?.language || 'es';
-
-      modal.querySelectorAll('[data-language-option]').forEach(button => {
-        const active = button.dataset.languageOption === current;
-        button.classList.toggle('active', active);
-
-        const icon = button.querySelector('i');
-        if (icon) icon.textContent = active ? '✓' : '';
-      });
-
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      return;
-    }
-
-    const languageButton = event.target.closest('[data-language-option]');
-    if (languageButton) {
-      saveLanguage(languageButton.dataset.languageOption);
-      return;
-    }
-
-    if (event.target.closest('[data-close-language]')) {
-      const modal = document.querySelector('#languageModal');
-      if (modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-      document.body.style.overflow = '';
-    }
-  });
-
-  renderLanguageSetting();
-
-
-  function renderContactSettings() {
-    const contact = state.preferences?.answers?.contact || {
-      connections: 'anyone',
-      listingContact: 'request'
-    };
-
-    document.querySelectorAll('[data-contact-group]').forEach(group => {
-      const key = group.dataset.contactGroup;
-      const selected = contact[key];
-
-      group.querySelectorAll('[data-contact-value]').forEach(button => {
-        const active = button.dataset.contactValue === selected;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    });
-  }
-
-  document.addEventListener('click', event => {
-    const option = event.target.closest(
-      '[data-contact-group] [data-contact-value]'
-    );
-
-    if (option) {
-      const group = option.closest('[data-contact-group]');
-
-      group.querySelectorAll('[data-contact-value]').forEach(button => {
-        const active = button === option;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-
-      return;
-    }
-
-    if (event.target.closest('#saveContactSettings')) {
-      const contact = {};
-
-      document.querySelectorAll('[data-contact-group]').forEach(group => {
-        const key = group.dataset.contactGroup;
-        const selected = group.querySelector('[data-contact-value].active');
-
-        contact[key] = selected?.dataset.contactValue || null;
-      });
-
-      const answers = {
-        ...(state.preferences?.answers || {}),
-        contact
-      };
-
-      db.from('onboarding_preferences')
-        .upsert({
-          user_id: state.user.id,
-          answers
-        })
-        .then(({ error }) => {
-          if (error) {
-            console.error('Rooms: error guardando contacto', error);
-            notify('No se pudo guardar la configuración de contacto');
-            return;
-          }
-
-          state.preferences = {
-            ...(state.preferences || {}),
-            answers
-          };
-
-          notify('Preferencias de contacto actualizadas');
-        });
-    }
-  });
-
-  setTimeout(renderContactSettings, 0);
-
-
-  document.addEventListener('click', event => {
-    const activityTab = event.target.closest('[data-own-activity]');
-    if (!activityTab) return;
-
-    event.preventDefault();
-
-    refreshOwnActivity(
-      activityTab.dataset.ownActivity
-    );
-  });
 
 
   function sortExploreListings(listings) {
@@ -10011,6 +14102,25 @@
 
 
   document.addEventListener('click', event => {
+    const viewToggle =
+      event.target.closest('[data-explore-view]');
+
+    if (viewToggle) {
+      event.preventDefault();
+
+      document
+        .querySelectorAll('[data-explore-view]')
+        .forEach(button => {
+          button.classList.toggle(
+            'active',
+            button === viewToggle
+          );
+        });
+
+      renderFilteredExplore();
+      return;
+    }
+
     const pin = event.target.closest('[data-real-map-pin]');
 
     if (pin) {
@@ -10583,7 +14693,7 @@
           </label>
 
           <p class="create-household-hint">
-            Puedes cambiar el nombre más adelante.
+            Elige un nombre para identificar el grupo.
           </p>
 
           <button type="submit" class="cta">
@@ -10695,7 +14805,7 @@
 
             <div class="search-group-card-footer">
               <span>
-                ${active ? 'Grupo activo' : 'Búsqueda compartida'}
+                ${active ? 'Grupo actual' : 'Búsqueda compartida'}
               </span>
 
               <b>Entrar →</b>
@@ -10711,61 +14821,183 @@
     const view = document.querySelector('#householdView');
     if (!view || !household) return;
 
-    const ownerName =
-      state.profile?.alias ||
-      state.profile?.name ||
-      'Tú';
+    const visibleMembers = Array.isArray(members)
+      ? members
+      : [];
+
+    const membersUnavailable =
+      state.householdMembersError === true;
+
+    const isOwner =
+      household.owner_id === state.user?.id;
+
+    const memberCount = visibleMembers.length;
+
+    const memberAvatars = visibleMembers
+      .slice(0, 5)
+      .map(member => {
+        const isMe =
+          member.user_id === state.user?.id;
+
+        const name =
+          member.alias ||
+          member.name ||
+          (isMe ? 'Tú' : 'Usuario de Rooms');
+
+        return member.avatar_url
+          ? `
+            <img
+              class="member-you"
+              src="${escapeHtml(member.avatar_url)}"
+              alt="${escapeHtml(name)}"
+            >
+          `
+          : `
+            <span class="member-you">
+              ${escapeHtml(initials(name))}
+            </span>
+          `;
+      })
+      .join('');
+
+    const memberCards = visibleMembers
+      .map(member => {
+        const isMe =
+          member.user_id === state.user?.id;
+
+        const name =
+          member.alias ||
+          member.name ||
+          (isMe ? 'Tú' : 'Usuario de Rooms');
+
+        const roleLabel =
+          member.role === 'owner'
+            ? 'Propietario'
+            : member.role === 'admin'
+              ? 'Admin'
+              : 'Miembro';
+
+        return `
+          <article class="real-household-person">
+
+            <div class="real-household-person-avatar">
+              ${
+                member.avatar_url
+                  ? `
+                    <img
+                      src="${escapeHtml(member.avatar_url)}"
+                      alt="${escapeHtml(name)}"
+                    >
+                  `
+                  : escapeHtml(initials(name))
+              }
+            </div>
+
+            <div>
+              <b>${escapeHtml(name)}</b>
+              <span>${escapeHtml(roleLabel)}</span>
+            </div>
+
+            ${
+              isMe
+                ? '<small>Tú</small>'
+                : ''
+            }
+
+          </article>
+        `;
+      })
+      .join('');
 
     view.innerHTML = `
       <header class="real-household-hero">
-        <div class="real-household-kicker">GRUPO DE BÚSQUEDA</div>
+        <div class="real-household-kicker">
+          GRUPO DE BÚSQUEDA
+        </div>
 
         <div class="real-household-title">
           <div>
-            <h1>${escapeHtml(household.name)}</h1>
+            <h1>
+              ${escapeHtml(household.name)}
+            </h1>
+
             <p>
-              Grupo privado ·
-              ${members.length || 1}
-              ${(members.length || 1) === 1 ? 'miembro' : 'miembros'}
+              ${
+                membersUnavailable
+                  ? 'No se pudieron cargar los miembros'
+                  : `Grupo privado · ${memberCount} ${
+                      memberCount === 1 ? 'miembro' : 'miembros'
+                    }`
+              }
             </p>
           </div>
 
-          <button type="button" id="inviteRealHousehold">
-            Invitar +
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHousehold"
+                >
+                  Invitar +
+                </button>
+              `
+              : ''
+          }
         </div>
 
         <div class="real-household-members">
-          <span class="member-you">
-            ${escapeHtml(initials(ownerName))}
-          </span>
+          ${memberAvatars}
 
-          <button type="button" id="inviteRealHouseholdSmall">
-            ＋
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHouseholdSmall"
+                >
+                  ＋
+                </button>
+              `
+              : ''
+          }
         </div>
       </header>
 
       <nav class="real-household-tabs">
-        <button class="active" type="button" data-real-household-tab="candidates">
+
+        <button
+          class="active"
+          type="button"
+          data-real-household-tab="candidates"
+        >
           Candidatos
         </button>
 
-        <button type="button" data-real-household-tab="members">
+        <button
+          type="button"
+          data-real-household-tab="members"
+        >
           Miembros
-          <i>${members.length || 1}</i>
+          <i>${membersUnavailable ? '—' : memberCount}</i>
         </button>
 
-        <button type="button" data-real-household-tab="chat" disabled>
+        <button
+          type="button"
+          data-real-household-tab="chat"
+          disabled
+        >
           Chat
           <small>Próximamente</small>
         </button>
+
       </nav>
 
       <section
         class="real-household-panel active"
         data-real-household-panel="candidates"
       >
+
         <div class="real-household-section-heading">
           <div>
             <small>VIVIENDAS Y PERSONAS</small>
@@ -10775,15 +15007,23 @@
 
         <div class="real-household-empty-section">
           <span>⌂</span>
-          <h3>Todavía no habéis añadido viviendas ni personas</h3>
+
+          <h3>
+            Todavía no habéis añadido viviendas ni personas
+          </h3>
+
           <p>
-            Más adelante podrás enviar viviendas desde Explore y Guardados.
+            Añade viviendas desde Explore o Guardados para valorarlas juntos.
           </p>
 
-          <button type="button" data-household-go-explore>
+          <button
+            type="button"
+            data-household-go-explore
+          >
             Explorar viviendas y personas →
           </button>
         </div>
+
       </section>
 
       <section
@@ -10791,29 +15031,39 @@
         data-real-household-panel="members"
         hidden
       >
+
         <div class="real-household-section-heading">
           <div>
             <small>PERSONAS</small>
             <h2>Miembros del Hogar</h2>
           </div>
 
-          <button type="button" id="inviteRealHouseholdMembers">
-            Invitar persona
-          </button>
+          ${
+            isOwner
+              ? `
+                <button
+                  type="button"
+                  id="inviteRealHouseholdMembers"
+                >
+                  Invitar persona
+                </button>
+              `
+              : ''
+          }
         </div>
 
-        <article class="real-household-person">
-          <div class="real-household-person-avatar">
-            ${escapeHtml(initials(ownerName))}
-          </div>
+        ${
+          membersUnavailable
+            ? `
+              <div class="real-household-empty-section">
+                <p>
+                  No hemos podido cargar los miembros de este grupo.
+                </p>
+              </div>
+            `
+            : memberCards
+        }
 
-          <div>
-            <b>${escapeHtml(ownerName)}</b>
-            <span>Administradora</span>
-          </div>
-
-          <small>Tú</small>
-        </article>
       </section>
     `;
   }
@@ -10897,6 +15147,7 @@
     if (!state.households.length) {
       state.household = null;
       state.householdMembers = [];
+      state.householdMembersError = false;
       state.householdCandidates = [];
       state.householdPersonCandidates = [];
       state.householdCandidateVotes = [];
@@ -10918,11 +15169,10 @@
     state.household = household;
 
     const { data: members, error: membersError } = await db
-      .from('household_members')
-      .select('*')
-      .eq('household_id', household.id)
-      .eq('status', 'accepted')
-      .order('joined_at', { ascending: true });
+      .rpc(
+        'get_household_members',
+        { _household_id: household.id }
+      );
 
     if (membersError) {
       console.error(
@@ -10931,7 +15181,11 @@
       );
     }
 
-    state.householdMembers = members || [];
+    state.householdMembersError =
+      Boolean(membersError);
+
+    state.householdMembers =
+      membersError ? [] : (members || []);
 
     renderRealHousehold(
       state.household,
@@ -11019,6 +15273,11 @@
       return;
     }
 
+    if (state.household.owner_id !== state.user?.id) {
+      notify('Solo el propietario del Hogar puede invitar personas');
+      return;
+    }
+
     const modal = ensureHouseholdInviteModal();
 
     modal.classList.add('open');
@@ -11028,6 +15287,11 @@
 
   async function generateHouseholdInvitation() {
     if (!state.user || !state.household) return;
+
+    if (state.household.owner_id !== state.user.id) {
+      notify('Solo el propietario del Hogar puede invitar personas');
+      return;
+    }
 
     const button =
       document.querySelector('#generateHouseholdInvite');
@@ -11485,6 +15749,15 @@
       return false;
     }
 
+    if (
+      state.blockedUsers?.has(userId)
+    ) {
+      notify(
+        'No puedes añadir a un usuario bloqueado.'
+      );
+      return false;
+    }
+
     if (userId === state.user.id) {
       notify('No puedes añadirte a ti misma');
       return false;
@@ -11748,7 +16021,7 @@
                 day: 'numeric',
                 month: 'short'
               })
-          : 'Fecha flexible';
+          : null;
 
       return `
         <article class="real-household-candidate">
@@ -11777,21 +16050,33 @@
             <h3>
               ${escapeHtml(
                 listing.title ||
-                `${listing.zone || 'Madrid'} · ${kindLabel}`
+                listing.zone
+                  ? `${listing.zone} · ${kindLabel}`
+                  : kindLabel
               )}
             </h3>
 
             <p>
-              <b>
-                ${Number(listing.price || 0)
-                  .toLocaleString('es-ES')} €
-              </b>
-              / mes
+              ${
+                listing.price != null
+                  ? `
+                    <b>
+                      ${Number(listing.price)
+                        .toLocaleString('es-ES')} €
+                    </b>
+                    / mes
+                  `
+                  : '<b>Precio sin definir</b>'
+              }
             </p>
 
             <span>
-              ${escapeHtml(listing.zone || 'Madrid')}
-              · Disponible ${escapeHtml(available)}
+              ${escapeHtml(listing.zone || 'Zona sin definir')}
+              · ${
+                available
+                  ? `Disponible ${escapeHtml(available)}`
+                  : 'Disponibilidad sin definir'
+              }
             </span>
 
             <div class="real-household-candidate-meta">
@@ -12040,7 +16325,6 @@
     return `
       <div
         class="household-vote-controls"
-        data-vote-candidate="${escapeHtml(candidateId)}"
       >
         ${options.map(([value, emoji, label]) => `
           <button
@@ -12309,6 +16593,30 @@
         'Rooms: error creando miembro propietario',
         memberError
       );
+
+      const { error: rollbackError } = await db
+        .from('households')
+        .delete()
+        .eq('id', householdId)
+        .eq('owner_id', state.user.id);
+
+      if (rollbackError) {
+        console.error(
+          'Rooms: error revirtiendo Hogar incompleto',
+          rollbackError
+        );
+      }
+
+      submit.disabled = false;
+      submit.textContent = 'Crear grupo';
+
+      notify(
+        rollbackError
+          ? 'No se pudo completar la creación del Hogar'
+          : 'No se pudo crear el Hogar'
+      );
+
+      return;
     }
 
     state.household = household;
@@ -12441,12 +16749,6 @@
         'listing',
         listing.id
       );
-
-      if (sendHomeButton.closest('#compareModal')) {
-        document
-          .querySelector('#compareModal [data-close]')
-          ?.click();
-      }
 
       return;
     }
@@ -12672,6 +16974,17 @@
           ? 'foto nueva seleccionada'
           : 'fotos nuevas seleccionadas'}`
       : '';
+  });
+
+
+  document.addEventListener('change', event => {
+    if (event.target?.id !== 'savedSort') {
+      return;
+    }
+
+    sortSavedItems(
+      event.target.value
+    );
   });
 
 
