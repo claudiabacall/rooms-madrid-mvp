@@ -989,6 +989,30 @@ if (
   }
 }
 
+title('RUTAS DE ONBOARDING');
+
+try {
+  const output =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-onboarding.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(output.trim());
+  ok('Rutas de onboarding');
+} catch (error) {
+  fail('Rutas de onboarding');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
 title('RESULTADO');
 
 console.log(

@@ -620,6 +620,31 @@
           forceHome ? 'home' : restoredView
         );
       }
+    } else {
+      if (authGate) {
+        authGate.hidden = true;
+      }
+
+      const onboarding =
+        document.querySelector('#onboarding');
+
+      if (onboarding) {
+        onboarding.hidden = false;
+        onboarding.classList.remove('leaving');
+      }
+
+      document
+        .querySelectorAll('.app-shell')
+        .forEach(element => {
+          element.hidden = true;
+        });
+
+      document.body.classList.remove(
+        'app-visible',
+        'rooms-booting'
+      );
+
+      return;
     }
 
     if (authGate) {
@@ -7658,39 +7683,147 @@
   }
 
   function collectOnboarding() {
-    const duration = document.querySelector('[data-duration][aria-pressed="true"]');
-    const privacy = document.querySelector('[data-privacy-level][aria-checked="true"]');
-    const controls = [...document.querySelectorAll('[data-privacy-control]')].reduce((result, item) => {
-      result[item.dataset.privacyControl] = item.getAttribute('aria-checked') === 'true';
+    const duration =
+      document.querySelector(
+        '[data-duration][aria-pressed="true"]'
+      );
+
+    const privacy =
+      document.querySelector(
+        '[data-privacy-level][aria-checked="true"]'
+      );
+
+    const controls = [
+      ...document.querySelectorAll(
+        '[data-privacy-control]'
+      )
+    ].reduce((result, item) => {
+      result[item.dataset.privacyControl] =
+        item.getAttribute('aria-checked') === 'true';
+
       return result;
     }, {});
+
+    const intent =
+      collectPressed(
+        '[data-onboarding-intent]',
+        'onboardingIntent'
+      );
+
+    const housingSeeking =
+      collectPressed(
+        '[data-search-type]',
+        'searchType'
+      );
+
+    const matesMode =
+      document.querySelector(
+        '[data-mates-mode][aria-pressed="true"]'
+      )?.dataset.matesMode || null;
+
+    /*
+      Compatibilidad con el modelo actual de profiles.seeking.
+
+      El nuevo modelo detallado vive en user_intents, pero
+      room / home / mates sigue alimentando las cards y
+      funcionalidades existentes mientras hacemos la transición.
+    */
+    const seeking = [
+      ...housingSeeking,
+      ...(intent.includes('mates') ? ['mates'] : [])
+    ];
+
     return {
-      seeking: collectPressed('[data-search-type]', 'searchType'),
-      zones: collectPressed('[data-area]', 'area'),
+      intent,
+      seeking,
+
+      mates: {
+        mode: matesMode,
+        homeZone:
+          document.querySelector(
+            '#onboardingHomeZone'
+          )?.value || null
+      },
+
+      zones:
+        collectPressed(
+          '[data-area]',
+          'area'
+        ),
+
       budget: {
-        min: Number(document.querySelector('#onboardingBudgetMin')?.value || 0),
-        max: Number(document.querySelector('#onboardingBudgetMax')?.value || 0),
-        over4000: document.querySelector('#budgetOver4000')?.getAttribute('aria-pressed') === 'true'
+        min: Number(
+          document.querySelector(
+            '#onboardingBudgetMin'
+          )?.value || 0
+        ),
+
+        max: Number(
+          document.querySelector(
+            '#onboardingBudgetMax'
+          )?.value || 0
+        ),
+
+        over4000:
+          document.querySelector(
+            '#budgetOver4000'
+          )?.getAttribute('aria-pressed') === 'true'
       },
+
       move: {
-        date: document.querySelector('#onboardingMoveDate')?.value || null,
-        flexible: document.querySelector('#flexibleDate')?.getAttribute('aria-pressed') === 'true',
-        duration: duration?.dataset.duration || null
+        date:
+          document.querySelector(
+            '#onboardingMoveDate'
+          )?.value || null,
+
+        flexible:
+          document.querySelector(
+            '#flexibleDate'
+          )?.getAttribute('aria-pressed') === 'true',
+
+        duration:
+          duration?.dataset.duration || null
       },
-      homeFeatures: collectPressed('[data-home-feature]', 'homeFeature'),
+
+      homeFeatures:
+        collectPressed(
+          '[data-home-feature]',
+          'homeFeature'
+        ),
+
       living: state.living,
+
       social: {
-        interests: collectPressed('[data-interest]', 'interest'),
-        traits: collectPressed('[data-self-description]', 'selfDescription')
+        interests:
+          collectPressed(
+            '[data-interest]',
+            'interest'
+          ),
+
+        traits:
+          collectPressed(
+            '[data-self-description]',
+            'selfDescription'
+          )
       },
+
       privacy: {
         level:
           privacy?.dataset.privacyLevel === 'public'
             ? 'open'
             : privacy?.dataset.privacyLevel || 'balanced',
+
         controls: {
-          living: controls.habits ? 'public' : 'private',
-          search: controls.searching ? 'public' : 'private',
+          living:
+            controls.habits
+              ? 'public'
+              : 'private',
+
+          search:
+            controls.searching
+              ? 'public'
+              : 'private',
+
           budget:
             !controls.searching
               ? 'private'
@@ -7699,45 +7832,204 @@
                 : privacy?.dataset.privacyLevel === 'private'
                   ? 'private'
                   : 'public',
-          activity: controls.posts ? 'public' : 'private'
+
+          activity:
+            controls.posts
+              ? 'public'
+              : 'private'
         }
       }
     };
   }
 
+  function onboardingIntentRows(answers) {
+    const intents = [];
+
+    if (
+      answers.intent.includes('housing') &&
+      answers.seeking.includes('home')
+    ) {
+      intents.push('find_apartment');
+    }
+
+    if (
+      answers.intent.includes('housing') &&
+      answers.seeking.includes('room')
+    ) {
+      intents.push('find_room');
+    }
+
+    if (
+      answers.intent.includes('mates') &&
+      answers.mates?.mode === 'have-home'
+    ) {
+      intents.push('find_mates_for_home');
+    }
+
+    if (
+      answers.intent.includes('mates') &&
+      answers.mates?.mode === 'search-together'
+    ) {
+      intents.push('find_mates_to_search');
+    }
+
+    return [...new Set(intents)].map(intent => ({
+      user_id: state.user.id,
+      intent
+    }));
+  }
+
   async function saveOnboarding() {
     if (!state.user) return;
-    const answers = collectOnboarding();
-    const name = document.querySelector('#profileName')?.value.trim() || state.profile?.name || '';
-    const bio = document.querySelector('#profileBio')?.value.trim() || '';
-    const max = answers.budget.over4000 ? null : answers.budget.max;
 
-    const [profileResult, preferencesResult] = await Promise.all([
-      db.from('profiles').update({
-        name,
-        alias: name,
-        bio,
-        seeking: answers.seeking,
-        zones: answers.zones,
-        budget_min: answers.budget.min || null,
-        budget_max: max,
-        move_in_date: answers.move.date,
-        duration: answers.move.duration,
-        interests: answers.social.interests,
-        traits: answers.social.traits,
-        onboarding_completed: true
-      }).eq('id', state.user.id).select().single(),
-      db.from('onboarding_preferences').upsert({ user_id: state.user.id, answers })
-    ]);
+    const answers =
+      collectOnboarding();
 
-    if (profileResult.error || preferencesResult.error) {
-      notify('No se pudieron guardar todas tus preferencias');
+    const intents =
+      onboardingIntentRows(answers);
+
+    const name =
+      document.querySelector(
+        '#profileName'
+      )?.value.trim() ||
+      state.profile?.name ||
+      '';
+
+    const bio =
+      document.querySelector(
+        '#profileBio'
+      )?.value.trim() ||
+      '';
+
+    const max =
+      answers.budget.over4000
+        ? null
+        : answers.budget.max;
+
+    /*
+      Sincronizamos primero las intenciones.
+
+      Si algo falla aquí, no marcamos el onboarding como
+      completado y el usuario puede volver a intentarlo.
+    */
+    const deleteIntentsResult =
+      await db
+        .from('user_intents')
+        .delete()
+        .eq('user_id', state.user.id);
+
+    if (deleteIntentsResult.error) {
+      console.error(
+        'Rooms: no se pudieron limpiar las intenciones anteriores.',
+        deleteIntentsResult.error
+      );
+
+      notify(
+        'No se pudieron guardar todas tus preferencias'
+      );
+
       return;
     }
-    state.profile = profileResult.data;
-    state.preferences = { answers };
-    updateOwnProfile(state.profile, state.preferences);
-    notify('Tu perfil y preferencias se han guardado');
+
+    if (intents.length) {
+      const insertIntentsResult =
+        await db
+          .from('user_intents')
+          .insert(intents);
+
+      if (insertIntentsResult.error) {
+        console.error(
+          'Rooms: no se pudieron guardar las nuevas intenciones.',
+          insertIntentsResult.error
+        );
+
+        notify(
+          'No se pudieron guardar todas tus preferencias'
+        );
+
+        return;
+      }
+    }
+
+    const [
+      profileResult,
+      preferencesResult
+    ] = await Promise.all([
+      db
+        .from('profiles')
+        .upsert(
+          {
+            id: state.user.id,
+            name,
+            alias: name,
+            bio,
+            seeking: answers.seeking,
+            zones: answers.zones,
+            budget_min:
+              answers.budget.min || null,
+            budget_max: max,
+            move_in_date:
+              answers.move.date,
+            duration:
+              answers.move.duration,
+            interests:
+              answers.social.interests,
+            traits:
+              answers.social.traits,
+            onboarding_completed: true
+          },
+          {
+            onConflict: 'id'
+          }
+        )
+        .select()
+        .single(),
+
+      db
+        .from('onboarding_preferences')
+        .upsert({
+          user_id: state.user.id,
+          answers
+        })
+    ]);
+
+    if (
+      profileResult.error ||
+      preferencesResult.error
+    ) {
+      console.error(
+        'Rooms: error guardando onboarding.',
+        {
+          profile:
+            profileResult.error,
+          preferences:
+            preferencesResult.error
+        }
+      );
+
+      notify(
+        'No se pudieron guardar todas tus preferencias'
+      );
+
+      return;
+    }
+
+    state.profile =
+      profileResult.data;
+
+    state.preferences = {
+      answers
+    };
+
+    updateOwnProfile(
+      state.profile,
+      state.preferences
+    );
+
+    notify(
+      'Tu perfil y preferencias se han guardado'
+    );
+
     await loadOtherProfile();
   }
 

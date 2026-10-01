@@ -25,19 +25,93 @@
     </header>
     <div class="onboarding-content">
       <div class="onboarding-step active" id="onboardingStep1">
-        <h1 id="onboardingTitle">¿Qué buscas<br>ahora mismo?</h1>
-        <div class="onboarding-options search-type-options" role="group" aria-label="Qué buscas ahora mismo">
-          <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="room">Habitación</button>
-          <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="home">Piso entero</button>
-          <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="mates">Compañeros</button>
+        <h1 id="onboardingTitle">¿Qué quieres hacer<br>en Rooms?</h1>
+        <p class="onboarding-help">Puedes elegir una opción o las dos.</p>
+
+        <div class="onboarding-options onboarding-intent-options" role="group" aria-label="Qué quieres hacer en Rooms">
+          <button class="onboarding-option onboarding-intent-card" type="button" aria-pressed="false" data-onboarding-intent="housing">
+            <b>Encontrar dónde vivir</b>
+            <span>Busca una habitación o un piso entero.</span>
+          </button>
+
+          <button class="onboarding-option onboarding-intent-card" type="button" aria-pressed="false" data-onboarding-intent="mates">
+            <b>Encontrar compañeros</b>
+            <span>Conoce personas para compartir casa o buscar juntos.</span>
+          </button>
         </div>
       </div>
       <div class="onboarding-step" id="onboardingStep2" hidden>
-        <h1>¿Dónde te<br>gustaría vivir?</h1>
-        <p class="onboarding-help">Elige todas las zonas que te encajen.</p>
-        <label class="zone-search"><span aria-hidden="true">⌕</span><input id="onboardingZoneSearch" type="search" placeholder="Buscar barrio o zona" autocomplete="off" aria-label="Buscar barrio o zona"></label>
-        <div class="zone-options" id="onboardingZones" role="group" aria-label="Zonas donde te gustaría vivir"></div>
-        <p class="zone-empty" id="zoneEmpty" hidden>No encontramos esa zona.</p>
+        <h1>Cuéntanos un poco<br>más sobre tu búsqueda</h1>
+
+        <div id="housingIntentDetails" class="onboarding-branch-block" hidden>
+          <h2>¿Qué tipo de vivienda buscas?</h2>
+          <p class="onboarding-help">Puedes elegir una o las dos.</p>
+
+          <div class="onboarding-options search-type-options" role="group" aria-label="Tipo de vivienda que buscas">
+            <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="room">
+              <b>Habitación</b>
+              <span>Una habitación en un piso compartido.</span>
+            </button>
+
+            <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="home">
+              <b>Piso entero</b>
+              <span>Un piso completo para ti o para compartir.</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="matesIntentDetails" class="onboarding-branch-block" hidden>
+          <h2>¿Cuál es tu situación?</h2>
+          <p class="onboarding-help">Elige la opción que más se parezca a lo que buscas ahora.</p>
+
+          <div class="onboarding-options mates-mode-options" role="group" aria-label="Situación para buscar compañeros">
+            <button class="onboarding-option" type="button" aria-pressed="false" data-mates-mode="have-home">
+              <b>Ya tengo casa</b>
+              <span>Busco a alguien para vivir conmigo.</span>
+            </button>
+
+            <button class="onboarding-option" type="button" aria-pressed="false" data-mates-mode="search-together">
+              <b>Quiero buscar con alguien</b>
+              <span>Quiero conocer personas para encontrar vivienda juntos.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="onboarding-branch-block onboarding-zone-block" id="searchZonesBlock" hidden>
+          <h2>¿Dónde te gustaría vivir?</h2>
+          <p class="onboarding-help">Elige todas las zonas que te encajen.</p>
+
+          <label class="zone-search">
+            <span aria-hidden="true">⌕</span>
+            <input id="onboardingZoneSearch" type="search" placeholder="Buscar barrio o zona" autocomplete="off" aria-label="Buscar barrio o zona">
+          </label>
+
+          <div class="zone-options" id="onboardingZones" role="group" aria-label="Zonas donde te gustaría vivir"></div>
+          <p class="zone-empty" id="zoneEmpty" hidden>No encontramos esa zona.</p>
+        </div>
+
+        <div class="onboarding-branch-block onboarding-home-zone-block" id="homeZoneBlock" hidden>
+          <h2>¿Dónde está tu vivienda?</h2>
+          <p class="onboarding-help">Indica la zona de la casa donde buscas compañero.</p>
+
+          <label class="onboarding-select-label">
+            <span>Zona de la vivienda</span>
+            <select id="onboardingHomeZone" aria-label="Zona de tu vivienda">
+              <option value="">Selecciona una zona</option>
+              <option value="Chamberí">Chamberí</option>
+              <option value="Malasaña">Malasaña</option>
+              <option value="Salamanca">Salamanca</option>
+              <option value="Retiro">Retiro</option>
+              <option value="Moncloa">Moncloa</option>
+              <option value="La Latina">La Latina</option>
+              <option value="Lavapiés">Lavapiés</option>
+              <option value="Argüelles">Argüelles</option>
+              <option value="Chamartín">Chamartín</option>
+              <option value="Centro">Centro</option>
+              <option value="Otra zona">Otra zona</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div class="onboarding-step" id="onboardingStep3" hidden>
         <h1>¿Cuál es tu<br>presupuesto mensual?</h1>

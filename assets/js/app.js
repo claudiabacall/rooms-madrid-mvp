@@ -1,5 +1,5 @@
 const toast=document.querySelector('#toast');
-const onboarding=document.querySelector('#onboarding'),onboardingContinue=document.querySelector('#onboardingContinue'),onboardingBack=document.querySelector('#onboardingBack'),searchTypes=new Set(),preferredZones=new Set();let onboardingStep=1;
+const onboarding=document.querySelector('#onboarding'),onboardingContinue=document.querySelector('#onboardingContinue'),onboardingBack=document.querySelector('#onboardingBack'),onboardingIntent=new Set(),searchTypes=new Set(),preferredZones=new Set();let onboardingStep=1,matesMode='',homeZone='';
 const onboardingBudgetMin=document.querySelector('#onboardingBudgetMin'),onboardingBudgetMax=document.querySelector('#onboardingBudgetMax'),onboardingBudgetMinRange=document.querySelector('#onboardingBudgetMinRange'),onboardingBudgetMaxRange=document.querySelector('#onboardingBudgetMaxRange'),onboardingBudgetRange=document.querySelector('#onboardingBudgetRange');
 const ONBOARDING_BUDGET_FLOOR=300,ONBOARDING_BUDGET_CEILING=4000,ONBOARDING_BUDGET_STEP=50;let savedBudgetMax=1000,durationChoice='',activeLivingCategory=0;
 const homeFeatures=new Set(),livingPreferences=new Map(),socialInterests=new Set(),selfDescriptions=new Set();
@@ -15,15 +15,165 @@ const livingCategories=[
 ];
 const livingImportance=['Imprescindible','Importante','Me da igual'];
 const onboardingAreas=['Chamberí','Malasaña','Salamanca','Retiro','Moncloa','La Latina','Lavapiés','Argüelles','Chamartín','Centro'];
+document.querySelectorAll('[data-onboarding-intent]').forEach(option=>option.addEventListener('click',()=>{
+  toggleOnboardingChoice(option,onboardingIntent,option.dataset.onboardingIntent);
+
+  if(!onboardingIntent.has('housing')){
+    searchTypes.clear();
+    document.querySelectorAll('[data-search-type]').forEach(button=>{
+      button.setAttribute('aria-pressed','false');
+      button.classList.remove('selected');
+    });
+  }
+
+  if(!onboardingIntent.has('mates')){
+    matesMode='';
+    document.querySelectorAll('[data-mates-mode]').forEach(button=>{
+      button.setAttribute('aria-pressed','false');
+      button.classList.remove('selected');
+    });
+  }
+}));
+
 document.querySelectorAll('[data-search-type]').forEach(option=>option.addEventListener('click',()=>toggleOnboardingChoice(option,searchTypes,option.dataset.searchType)));
+
+document.querySelectorAll('[data-mates-mode]').forEach(option=>option.addEventListener('click',()=>{
+  matesMode=option.dataset.matesMode;
+  document.querySelectorAll('[data-mates-mode]').forEach(button=>{
+    const active=button===option;
+    button.setAttribute('aria-pressed',String(active));
+    button.classList.toggle('selected',active);
+  });
+  updateOnboardingContinue();
+}));
 document.querySelectorAll('[data-home-feature]').forEach(option=>option.addEventListener('click',()=>toggleOnboardingChoice(option,homeFeatures,option.dataset.homeFeature)));
 document.querySelectorAll('[data-interest]').forEach(option=>option.addEventListener('click',()=>toggleOnboardingChoice(option,socialInterests,option.dataset.interest)));
 document.querySelectorAll('[data-self-description]').forEach(option=>option.addEventListener('click',()=>toggleOnboardingChoice(option,selfDescriptions,option.dataset.selfDescription)));
 function toggleOnboardingChoice(option,collection,value){const selected=option.getAttribute('aria-pressed')==='true';option.setAttribute('aria-pressed',String(!selected));option.classList.toggle('selected',!selected);if(selected)collection.delete(value);else collection.add(value);updateOnboardingContinue()}
-function updateOnboardingContinue(){onboardingContinue.disabled=onboardingStep===1?searchTypes.size===0:onboardingStep===2?preferredZones.size===0:onboardingStep===4?!(document.querySelector('#onboardingMoveDate').value&&durationChoice):onboardingStep===7?!document.querySelector('#profileName').value.trim():false}
+function updateOnboardingContinue(){
+  if(onboardingStep===1){
+    onboardingContinue.disabled=onboardingIntent.size===0;
+    return;
+  }
+
+  if(onboardingStep===2){
+    const housingReady=
+      !onboardingIntent.has('housing') ||
+      searchTypes.size>0;
+
+    const matesReady=
+      !onboardingIntent.has('mates') ||
+      Boolean(matesMode);
+
+    const needsSearchZones=
+      onboardingIntent.has('housing') ||
+      (
+        onboardingIntent.has('mates') &&
+        matesMode==='search-together'
+      );
+
+    const needsHomeZone=
+      onboardingIntent.has('mates') &&
+      matesMode==='have-home';
+
+    const searchZonesReady=
+      !needsSearchZones ||
+      preferredZones.size>0;
+
+    const homeZoneReady=
+      !needsHomeZone ||
+      Boolean(homeZone);
+
+    onboardingContinue.disabled=
+      !housingReady ||
+      !matesReady ||
+      !searchZonesReady ||
+      !homeZoneReady;
+
+    return;
+  }
+
+  onboardingContinue.disabled=
+    onboardingStep===4
+      ? !(document.querySelector('#onboardingMoveDate').value&&durationChoice)
+      : onboardingStep===7
+        ? !document.querySelector('#profileName').value.trim()
+        : false;
+}
 function renderOnboardingZones(query=''){const normalized=query.trim().toLocaleLowerCase('es');const areas=[...onboardingAreas,'Estoy abierto a otras zonas'];const visible=areas.filter(area=>area.toLocaleLowerCase('es').includes(normalized));document.querySelector('#onboardingZones').innerHTML=visible.map(area=>`<button class="zone-chip${area.startsWith('Estoy abierto')?' open-zone':''}" type="button" aria-pressed="${preferredZones.has(area)}" data-area="${area}">${area}</button>`).join('');document.querySelector('#zoneEmpty').hidden=visible.length>0;document.querySelectorAll('[data-area]').forEach(option=>option.addEventListener('click',()=>toggleOnboardingChoice(option,preferredZones,option.dataset.area)))}
 function renderLivingCategories(){document.querySelector('#livingCategories').innerHTML=livingCategories.map((category,index)=>{const active=index===activeLivingCategory,preference=livingPreferences.get(index),complete=preference!==undefined,summary=preference===undefined?'Sin responder':category.options[preference];return `<section class="living-category${active?' active':''}${complete?' complete':''}"><button class="living-category-header" type="button" data-living-header="${index}" aria-expanded="${active}"><span><b>${category.name}</b><small>${summary}</small></span><i aria-hidden="true">${active?'−':'+'}</i></button>${active?`<div class="living-category-body"><p>Tu preferencia</p><div class="living-choice-row">${category.options.map((option,optionIndex)=>`<button type="button" data-living-choice="${index}:${optionIndex}" aria-pressed="${preference===optionIndex}">${option}</button>`).join('')}</div></div>`:''}</section>`}).join('')}
-function showOnboardingStep(step){onboardingStep=step;document.querySelectorAll('.onboarding-step').forEach((panel,index)=>panel.hidden=index!==step-1);document.querySelector('.onboarding-progress').setAttribute('aria-label',`Paso ${step} de 10`);document.querySelector('.progress-copy').innerHTML=`${step} <i>/ 10</i>`;document.querySelector('.progress-track span').style.width=`${step*10}%`;onboardingBack.hidden=step===1;document.querySelector('#onboardingTagline').hidden=step>1;document.querySelector('#onboardingLater').hidden=step!==9;onboardingContinue.innerHTML=step===10?'Ver mi feed <span aria-hidden="true">→</span>':'Continuar <span aria-hidden="true">→</span>';updateOnboardingContinue();if(step===2)setTimeout(()=>document.querySelector('#onboardingZoneSearch').focus(),80)}
+function showOnboardingStep(step){
+  onboardingStep=step;
+
+  document.querySelectorAll('.onboarding-step').forEach(
+    (panel,index)=>panel.hidden=index!==step-1
+  );
+
+  document.querySelector('.onboarding-progress')
+    .setAttribute('aria-label',`Paso ${step} de 10`);
+
+  document.querySelector('.progress-copy').innerHTML=
+    `${step} <i>/ 10</i>`;
+
+  document.querySelector('.progress-track span').style.width=
+    `${step*10}%`;
+
+  onboardingBack.hidden=step===1;
+  document.querySelector('#onboardingTagline').hidden=step>1;
+  document.querySelector('#onboardingLater').hidden=step!==9;
+
+  onboardingContinue.innerHTML=
+    step===10
+      ? 'Ver mi feed <span aria-hidden="true">→</span>'
+      : 'Continuar <span aria-hidden="true">→</span>';
+
+  if(step===2){
+    const housingBlock=
+      document.querySelector('#housingIntentDetails');
+
+    const matesBlock=
+      document.querySelector('#matesIntentDetails');
+
+    if(housingBlock){
+      housingBlock.hidden=
+        !onboardingIntent.has('housing');
+    }
+
+    if(matesBlock){
+      matesBlock.hidden=
+        !onboardingIntent.has('mates');
+    }
+
+    const searchZonesBlock=
+      document.querySelector('#searchZonesBlock');
+
+    const homeZoneBlock=
+      document.querySelector('#homeZoneBlock');
+
+    const needsSearchZones=
+      onboardingIntent.has('housing') ||
+      (
+        onboardingIntent.has('mates') &&
+        matesMode==='search-together'
+      );
+
+    const needsHomeZone=
+      onboardingIntent.has('mates') &&
+      matesMode==='have-home';
+
+    if(searchZonesBlock){
+      searchZonesBlock.hidden=
+        !needsSearchZones;
+    }
+
+    if(homeZoneBlock){
+      homeZoneBlock.hidden=
+        !needsHomeZone;
+    }
+  }
+
+  updateOnboardingContinue();
+}
 function setOnboardingBudget(min,max,changed){min=Math.max(ONBOARDING_BUDGET_FLOOR,Math.min(ONBOARDING_BUDGET_CEILING-ONBOARDING_BUDGET_STEP,Math.round(min/ONBOARDING_BUDGET_STEP)*ONBOARDING_BUDGET_STEP));max=Math.max(ONBOARDING_BUDGET_FLOOR+ONBOARDING_BUDGET_STEP,Math.min(ONBOARDING_BUDGET_CEILING,Math.round(max/ONBOARDING_BUDGET_STEP)*ONBOARDING_BUDGET_STEP));if(max-min<ONBOARDING_BUDGET_STEP){if(changed==='min')min=max-ONBOARDING_BUDGET_STEP;else max=min+ONBOARDING_BUDGET_STEP}onboardingBudgetMin.value=min;onboardingBudgetMax.value=max;onboardingBudgetMinRange.value=min;onboardingBudgetMaxRange.value=max;const span=ONBOARDING_BUDGET_CEILING-ONBOARDING_BUDGET_FLOOR;onboardingBudgetRange.style.setProperty('--budget-start',`${((min-ONBOARDING_BUDGET_FLOOR)/span)*100}%`);onboardingBudgetRange.style.setProperty('--budget-end',`${((max-ONBOARDING_BUDGET_FLOOR)/span)*100}%`)}
 onboardingBudgetMin.addEventListener('change',()=>setOnboardingBudget(Number(onboardingBudgetMin.value)||600,Number(onboardingBudgetMax.value),'min'));
 onboardingBudgetMax.addEventListener('change',()=>setOnboardingBudget(Number(onboardingBudgetMin.value),Number(onboardingBudgetMax.value)||1000,'max'));
@@ -74,6 +224,11 @@ document.querySelectorAll('[data-privacy-level]').forEach(option=>option.addEven
 }));
 document.querySelectorAll('[data-privacy-control]').forEach(control=>control.addEventListener('click',()=>control.setAttribute('aria-checked',String(control.getAttribute('aria-checked')!=='true'))));
 document.querySelector('#onboardingZoneSearch').addEventListener('input',event=>renderOnboardingZones(event.target.value));
+
+document.querySelector('#onboardingHomeZone').addEventListener('change',event=>{
+  homeZone=event.target.value || '';
+  updateOnboardingContinue();
+});
 onboardingBack.addEventListener('click',()=>showOnboardingStep(onboardingStep-1));
 document.querySelector('#onboardingLater').addEventListener('click',()=>showOnboardingStep(10));
 function openPersonalizedFeed(
