@@ -544,13 +544,44 @@
     const authGate =
       document.querySelector('#authGate');
 
-    const [{ data: profile }, { data: preferences }] = await Promise.all([
-      db.from('profiles').select('*').eq('id', state.user.id).maybeSingle(),
-      db.from('onboarding_preferences').select('answers,updated_at').eq('user_id', state.user.id).maybeSingle()
+    const [
+      { data: profile },
+      { data: preferences },
+      { data: matchPreferences },
+      { data: userIntents }
+    ] = await Promise.all([
+      db.from('profiles')
+        .select('*')
+        .eq('id', state.user.id)
+        .maybeSingle(),
+
+      db.from('onboarding_preferences')
+        .select('answers,updated_at')
+        .eq('user_id', state.user.id)
+        .maybeSingle(),
+
+      db.from('match_preferences')
+        .select('*')
+        .eq('user_id', state.user.id)
+        .maybeSingle(),
+
+      db.from('user_intents')
+        .select('intent')
+        .eq('user_id', state.user.id)
     ]);
+
     state.profile = profile;
+
     state.preferences =
       normalizePreferencesRecord(preferences);
+
+    state.matchPreferences =
+      matchPreferences || null;
+
+    state.userIntents =
+      (userIntents || [])
+        .map(row => row.intent)
+        .filter(Boolean);
 
     if (profile) {
       state.profiles.set(profile.id, profile);
@@ -797,6 +828,65 @@
     );
   }
 
+  function roomsDnaLivingRows(matchPreferences) {
+    const dna = window.ROOMS_DNA;
+    const livingSelf =
+      matchPreferences?.living_self || {};
+
+    const thisOrThat =
+      livingSelf.this_or_that || {};
+
+    const scenarios =
+      livingSelf.scenarios || {};
+
+    if (!dna) return [];
+
+    const rows = [];
+
+    dna.thisOrThat
+      .filter(question =>
+        question.target === 'living_self'
+      )
+      .forEach(question => {
+        const selected =
+          thisOrThat[question.id];
+
+        const option =
+          question.left.id === selected
+            ? question.left.label
+            : question.right.id === selected
+              ? question.right.label
+              : null;
+
+        if (option) {
+          rows.push([
+            question.title,
+            option
+          ]);
+        }
+      });
+
+    dna.scenarios.forEach(question => {
+      const selected =
+        scenarios[question.id];
+
+      const option =
+        dna.scenarioScale
+          .find(item =>
+            item.id === selected
+          );
+
+      if (option) {
+        rows.push([
+          question.title,
+          option.label
+        ]);
+      }
+    });
+
+    return rows;
+  }
+
   function updateOwnProfile(profile, preferences = state.preferences) {
     if (!profile) return;
     const answers = preferences?.answers || {};
@@ -856,23 +946,33 @@
       }
     }
 
-    const livingNames = ['Limpieza', 'Horarios', 'Ruido', 'Visitas', 'Fiestas en casa', 'Teletrabajo / estudio', 'Fumar', 'Mascotas'];
-    const livingOptions = [
-      ['Muy ordenado', 'Normal', 'Flexible'], ['Madrugador', 'Horario normal', 'Nocturno'],
-      ['Muy tranquilo', 'Algo de ambiente', 'Me adapto'], ['Pocas', 'Con aviso', 'Sin problema'],
-      ['Nunca', 'Alguna vez', 'Me da igual'], ['Mucho', 'A veces', 'Casi nunca'],
-      ['No', 'Solo fuera', 'Me da igual'], ['Me encantan', 'Me da igual', 'Prefiero no']
-    ];
-    const livingGrid = document.querySelector('#ownProfileView .lifestyle-grid');
+    const livingGrid =
+      document.querySelector(
+        '#ownProfileView .lifestyle-grid'
+      );
+
     if (livingGrid) {
-      const living = answers.living || {};
-      const rows = Object.entries(living).map(([index, value]) => {
-        const category = Number(index);
-        const label = livingNames[category];
-        const option = livingOptions[category]?.[value.option];
-        return label && option ? `<span><small>${escapeHtml(label)}</small><b>${escapeHtml(option)}</b></span>` : '';
-      }).filter(Boolean);
-      livingGrid.innerHTML = rows.length ? rows.join('') : '<span><small>CONVIVENCIA</small><b>Sin datos añadidos</b></span>';
+      const rows =
+        roomsDnaLivingRows(
+          state.matchPreferences
+        );
+
+      livingGrid.innerHTML =
+        rows.length
+          ? rows
+              .map(([label, option]) => `
+                <span>
+                  <small>${escapeHtml(label)}</small>
+                  <b>${escapeHtml(option)}</b>
+                </span>
+              `)
+              .join('')
+          : `
+              <span>
+                <small>CONVIVENCIA</small>
+                <b>Sin datos añadidos</b>
+              </span>
+            `;
     }
 
     const durationLabels = {
@@ -963,9 +1063,9 @@
       profile.move_in_date,
       profile.duration,
       profile.interests?.length,
-      state.preferences?.answers?.living &&
+      state.matchPreferences?.living_self &&
         Object.keys(
-          state.preferences.answers.living
+          state.matchPreferences.living_self
         ).length
     ];
 
@@ -7678,348 +7778,276 @@
     setTimeout(() => status.remove(), 3500);
   }
 
-  function collectPressed(selector, attribute) {
-    return [...document.querySelectorAll(`${selector}[aria-pressed="true"]`)].map(item => item.dataset[attribute]);
-  }
+  function seekingFromIntents(intents = []) {
+    const seeking =
+      new Set();
 
-  function collectOnboarding() {
-    const duration =
-      document.querySelector(
-        '[data-duration][aria-pressed="true"]'
-      );
-
-    const privacy =
-      document.querySelector(
-        '[data-privacy-level][aria-checked="true"]'
-      );
-
-    const controls = [
-      ...document.querySelectorAll(
-        '[data-privacy-control]'
-      )
-    ].reduce((result, item) => {
-      result[item.dataset.privacyControl] =
-        item.getAttribute('aria-checked') === 'true';
-
-      return result;
-    }, {});
-
-    const intent =
-      collectPressed(
-        '[data-onboarding-intent]',
-        'onboardingIntent'
-      );
-
-    const housingSeeking =
-      collectPressed(
-        '[data-search-type]',
-        'searchType'
-      );
-
-    const matesMode =
-      document.querySelector(
-        '[data-mates-mode][aria-pressed="true"]'
-      )?.dataset.matesMode || null;
-
-    /*
-      Compatibilidad con el modelo actual de profiles.seeking.
-
-      El nuevo modelo detallado vive en user_intents, pero
-      room / home / mates sigue alimentando las cards y
-      funcionalidades existentes mientras hacemos la transición.
-    */
-    const seeking = [
-      ...housingSeeking,
-      ...(intent.includes('mates') ? ['mates'] : [])
-    ];
-
-    return {
-      intent,
-      seeking,
-
-      mates: {
-        mode: matesMode,
-        homeZone:
-          document.querySelector(
-            '#onboardingHomeZone'
-          )?.value || null
-      },
-
-      zones:
-        collectPressed(
-          '[data-area]',
-          'area'
-        ),
-
-      budget: {
-        min: Number(
-          document.querySelector(
-            '#onboardingBudgetMin'
-          )?.value || 0
-        ),
-
-        max: Number(
-          document.querySelector(
-            '#onboardingBudgetMax'
-          )?.value || 0
-        ),
-
-        over4000:
-          document.querySelector(
-            '#budgetOver4000'
-          )?.getAttribute('aria-pressed') === 'true'
-      },
-
-      move: {
-        date:
-          document.querySelector(
-            '#onboardingMoveDate'
-          )?.value || null,
-
-        flexible:
-          document.querySelector(
-            '#flexibleDate'
-          )?.getAttribute('aria-pressed') === 'true',
-
-        duration:
-          duration?.dataset.duration || null
-      },
-
-      homeFeatures:
-        collectPressed(
-          '[data-home-feature]',
-          'homeFeature'
-        ),
-
-      living: state.living,
-
-      social: {
-        interests:
-          collectPressed(
-            '[data-interest]',
-            'interest'
-          ),
-
-        traits:
-          collectPressed(
-            '[data-self-description]',
-            'selfDescription'
-          )
-      },
-
-      privacy: {
-        level:
-          privacy?.dataset.privacyLevel === 'public'
-            ? 'open'
-            : privacy?.dataset.privacyLevel || 'balanced',
-
-        controls: {
-          living:
-            controls.habits
-              ? 'public'
-              : 'private',
-
-          search:
-            controls.searching
-              ? 'public'
-              : 'private',
-
-          budget:
-            !controls.searching
-              ? 'private'
-              : privacy?.dataset.privacyLevel === 'balanced'
-                ? 'connections'
-                : privacy?.dataset.privacyLevel === 'private'
-                  ? 'private'
-                  : 'public',
-
-          activity:
-            controls.posts
-              ? 'public'
-              : 'private'
-        }
+    intents.forEach(intent => {
+      if (intent === 'find_room') {
+        seeking.add('room');
       }
-    };
+
+      if (intent === 'find_apartment') {
+        seeking.add('home');
+      }
+
+      if (
+        intent === 'find_mates_for_home' ||
+        intent === 'find_mates_to_search'
+      ) {
+        seeking.add('mates');
+      }
+    });
+
+    return [...seeking];
   }
 
-  function onboardingIntentRows(answers) {
-    const intents = [];
-
-    if (
-      answers.intent.includes('housing') &&
-      answers.seeking.includes('home')
-    ) {
-      intents.push('find_apartment');
+  async function saveRoomsDnaOnboarding() {
+    if (!state.user) {
+      notify('Inicia sesión para guardar tu perfil');
+      return false;
     }
 
     if (
-      answers.intent.includes('housing') &&
-      answers.seeking.includes('room')
+      typeof window.getRoomsDnaOnboardingSnapshot !==
+      'function'
     ) {
-      intents.push('find_room');
-    }
-
-    if (
-      answers.intent.includes('mates') &&
-      answers.mates?.mode === 'have-home'
-    ) {
-      intents.push('find_mates_for_home');
-    }
-
-    if (
-      answers.intent.includes('mates') &&
-      answers.mates?.mode === 'search-together'
-    ) {
-      intents.push('find_mates_to_search');
-    }
-
-    return [...new Set(intents)].map(intent => ({
-      user_id: state.user.id,
-      intent
-    }));
-  }
-
-  async function saveOnboarding() {
-    if (!state.user) return;
-
-    const answers =
-      collectOnboarding();
-
-    const intents =
-      onboardingIntentRows(answers);
-
-    const name =
-      document.querySelector(
-        '#profileName'
-      )?.value.trim() ||
-      state.profile?.name ||
-      '';
-
-    const bio =
-      document.querySelector(
-        '#profileBio'
-      )?.value.trim() ||
-      '';
-
-    const max =
-      answers.budget.over4000
-        ? null
-        : answers.budget.max;
-
-    /*
-      Sincronizamos primero las intenciones.
-
-      Si algo falla aquí, no marcamos el onboarding como
-      completado y el usuario puede volver a intentarlo.
-    */
-    const deleteIntentsResult =
-      await db
-        .from('user_intents')
-        .delete()
-        .eq('user_id', state.user.id);
-
-    if (deleteIntentsResult.error) {
       console.error(
-        'Rooms: no se pudieron limpiar las intenciones anteriores.',
-        deleteIntentsResult.error
+        'Rooms: no existe snapshot de ROOMS DNA.'
       );
 
       notify(
-        'No se pudieron guardar todas tus preferencias'
+        'No se pudieron preparar tus preferencias'
       );
 
-      return;
+      return false;
     }
 
-    if (intents.length) {
-      const insertIntentsResult =
-        await db
-          .from('user_intents')
-          .insert(intents);
+    const snapshot =
+      window.getRoomsDnaOnboardingSnapshot();
 
-      if (insertIntentsResult.error) {
-        console.error(
-          'Rooms: no se pudieron guardar las nuevas intenciones.',
-          insertIntentsResult.error
-        );
+    const match =
+      snapshot?.matchPreferences;
 
-        notify(
-          'No se pudieron guardar todas tus preferencias'
-        );
+    if (
+      !match ||
+      !snapshot.profile?.name ||
+      !snapshot.intents?.length
+    ) {
+      notify(
+        'Completa tu Rooms DNA antes de continuar'
+      );
 
-        return;
-      }
+      return false;
     }
 
-    const [
-      profileResult,
-      preferencesResult
-    ] = await Promise.all([
-      db
+    /*
+     * Primero creamos/actualizamos el perfil sin marcar
+     * todavía el onboarding como completado.
+     *
+     * Solo se activa onboarding_completed al final,
+     * cuando DNA + intenciones + perfil han quedado
+     * persistidos correctamente.
+     */
+    const provisionalProfileResult =
+      await db
         .from('profiles')
         .upsert(
           {
             id: state.user.id,
-            name,
-            alias: name,
-            bio,
-            seeking: answers.seeking,
-            zones: answers.zones,
-            budget_min:
-              answers.budget.min || null,
-            budget_max: max,
-            move_in_date:
-              answers.move.date,
-            duration:
-              answers.move.duration,
-            interests:
-              answers.social.interests,
-            traits:
-              answers.social.traits,
-            onboarding_completed: true
+            name: snapshot.profile.name,
+            alias: snapshot.profile.name,
+            bio: snapshot.profile.bio || null,
+            interests: match.interests,
+            traits: match.traits,
+            seeking:
+              seekingFromIntents(
+                snapshot.intents
+              ),
+            onboarding_completed: false
           },
           {
             onConflict: 'id'
           }
         )
         .select()
-        .single(),
+        .single();
 
-      db
-        .from('onboarding_preferences')
-        .upsert({
-          user_id: state.user.id,
-          answers
-        })
-    ]);
-
-    if (
-      profileResult.error ||
-      preferencesResult.error
-    ) {
+    if (provisionalProfileResult.error) {
       console.error(
-        'Rooms: error guardando onboarding.',
-        {
-          profile:
-            profileResult.error,
-          preferences:
-            preferencesResult.error
-        }
+        'Rooms: error guardando perfil base.',
+        provisionalProfileResult.error
       );
 
       notify(
-        'No se pudieron guardar todas tus preferencias'
+        'No se pudo guardar tu perfil'
       );
 
-      return;
+      return false;
     }
 
     state.profile =
-      profileResult.data;
+      provisionalProfileResult.data;
 
-    state.preferences = {
-      answers
-    };
+    state.profiles.set(
+      state.profile.id,
+      state.profile
+    );
+
+    const matchResult =
+      await db
+        .from('match_preferences')
+        .upsert(
+          {
+            user_id: state.user.id,
+            version: snapshot.version,
+            living_self:
+              match.living_self,
+            living_importance:
+              match.living_importance,
+            dealbreakers:
+              match.dealbreakers,
+            home_preferences:
+              match.home_preferences,
+            neighborhood_preferences:
+              match.neighborhood_preferences,
+            interests:
+              match.interests,
+            traits:
+              match.traits,
+            updated_at:
+              new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id'
+          }
+        )
+        .select()
+        .single();
+
+    if (matchResult.error) {
+      console.error(
+        'Rooms: error guardando ROOMS DNA.',
+        matchResult.error
+      );
+
+      notify(
+        'No se pudo guardar tu Rooms DNA'
+      );
+
+      return false;
+    }
+
+    const deleteIntentsResult =
+      await db
+        .from('user_intents')
+        .delete()
+        .eq(
+          'user_id',
+          state.user.id
+        );
+
+    if (deleteIntentsResult.error) {
+      console.error(
+        'Rooms: error limpiando intenciones.',
+        deleteIntentsResult.error
+      );
+
+      notify(
+        'No se pudo guardar lo que buscas'
+      );
+
+      return false;
+    }
+
+    const intentRows =
+      [...new Set(snapshot.intents)]
+        .map(intent => ({
+          user_id:
+            state.user.id,
+          intent
+        }));
+
+    const insertIntentsResult =
+      await db
+        .from('user_intents')
+        .insert(intentRows);
+
+    if (insertIntentsResult.error) {
+      console.error(
+        'Rooms: error guardando intenciones.',
+        insertIntentsResult.error
+      );
+
+      notify(
+        'No se pudo guardar lo que buscas'
+      );
+
+      return false;
+    }
+
+    state.userIntents =
+      [...new Set(snapshot.intents)];
+
+    /*
+     * Reutilizamos la infraestructura real del bucket
+     * avatars. Si el usuario eligió foto y falla, el
+     * onboarding permanece incompleto.
+     */
+    if (snapshot.profile.photo) {
+      const uploaded =
+        await uploadProfilePhoto(
+          snapshot.profile.photo,
+          {
+            silent: true
+          }
+        );
+
+      if (!uploaded) {
+        return false;
+      }
+    }
+
+    const finalProfileResult =
+      await db
+        .from('profiles')
+        .update({
+          onboarding_completed: true,
+          interests:
+            match.interests,
+          traits:
+            match.traits
+        })
+        .eq(
+          'id',
+          state.user.id
+        )
+        .select()
+        .single();
+
+    if (finalProfileResult.error) {
+      console.error(
+        'Rooms: error completando onboarding.',
+        finalProfileResult.error
+      );
+
+      notify(
+        'No se pudo completar tu onboarding'
+      );
+
+      return false;
+    }
+
+    state.profile =
+      finalProfileResult.data;
+
+    state.matchPreferences =
+      matchResult.data;
+
+    state.profiles.set(
+      state.profile.id,
+      state.profile
+    );
 
     updateOwnProfile(
       state.profile,
@@ -8027,11 +8055,25 @@
     );
 
     notify(
-      'Tu perfil y preferencias se han guardado'
+      'Tu Rooms DNA se ha guardado'
     );
 
     await loadOtherProfile();
+    await loadRealContent();
+
+    await Promise.all([
+      loadSavedItems(),
+      loadSavedCollections(),
+      loadRealNotifications(),
+      loadRealInbox()
+    ]);
+
+    return true;
   }
+
+  window.saveRoomsDnaOnboarding =
+    saveRoomsDnaOnboarding;
+
 
   function savedDescriptor(target) {
     if (target.dataset.saveId && target.dataset.saveKind) {
@@ -12763,9 +12805,6 @@
       return;
     }
 
-    const finalOnboarding = event.target.closest('#onboardingContinue');
-    if (finalOnboarding && finalOnboarding.textContent.includes('Ver mi feed')) saveOnboarding();
-
     const ownActivity = event.target.closest('[data-own-activity]');
     if (ownActivity) {
       event.preventDefault();
@@ -13112,17 +13151,24 @@
   });
 
 
-  async function uploadProfilePhoto(file) {
-    if (!file || !state.user) return;
+  async function uploadProfilePhoto(
+    file,
+    { silent = false } = {}
+  ) {
+    if (!file || !state.user) return false;
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      notify('Usa una imagen JPG, PNG o WEBP');
-      return;
+      if (!silent) {
+        notify('Usa una imagen JPG, PNG o WEBP');
+      }
+      return false;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      notify('La foto debe pesar menos de 5 MB');
-      return;
+      if (!silent) {
+        notify('La foto debe pesar menos de 5 MB');
+      }
+      return false;
     }
 
     const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -13138,7 +13184,7 @@
     if (uploadError) {
       console.error('Rooms: error subiendo avatar', uploadError);
       notify('No se pudo subir la foto');
-      return;
+      return false;
     }
 
     const { data: publicData } = db.storage
@@ -13157,13 +13203,21 @@
     if (error) {
       console.error('Rooms: error guardando avatar', error);
       notify('No se pudo actualizar tu perfil');
-      return;
+      return false;
     }
 
     state.profile = data;
     state.profiles.set(data.id, data);
-    updateOwnProfile(state.profile, state.preferences);
-    notify('Foto de perfil actualizada');
+    updateOwnProfile(
+      state.profile,
+      state.preferences
+    );
+
+    if (!silent) {
+      notify('Foto de perfil actualizada');
+    }
+
+    return data;
   }
 
   document.addEventListener('click', event => {
@@ -13180,116 +13234,351 @@
 
 
   function ensureLivingEditorModal() {
-    let modal = document.querySelector('#livingEditorModal');
+    let modal =
+      document.querySelector(
+        '#livingEditorModal'
+      );
+
     if (modal) return modal;
 
-    const groups = [
-      ['Limpieza', ['Muy ordenado', 'Normal', 'Flexible']],
-      ['Horarios', ['Madrugador', 'Horario normal', 'Nocturno']],
-      ['Ruido', ['Muy tranquilo', 'Algo de ambiente', 'Me adapto']],
-      ['Visitas', ['Pocas', 'Con aviso', 'Sin problema']],
-      ['Fiestas en casa', ['Nunca', 'Alguna vez', 'Me da igual']],
-      ['Teletrabajo / estudio', ['Mucho', 'A veces', 'Casi nunca']],
-      ['Fumar', ['No', 'Solo fuera', 'Me da igual']],
-      ['Mascotas', ['Me encantan', 'Me da igual', 'Prefiero no']]
-    ];
+    const dna =
+      window.ROOMS_DNA;
 
-    modal = document.createElement('div');
+    modal =
+      document.createElement('div');
+
     modal.className = 'modal';
     modal.id = 'livingEditorModal';
-    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
 
     modal.innerHTML = `
-      <div class="backdrop" data-close-living-editor></div>
+      <div
+        class="backdrop"
+        data-close-living-editor>
+      </div>
+
       <article class="detail living-editor-shell">
         <header>
           <div>
-            <small>CONVIVENCIA</small>
+            <small>ROOMS DNA</small>
             <h2>Cómo vivo</h2>
-            <p>Estas respuestas ayudan a calcular la compatibilidad con otras personas.</p>
+            <p>
+              Actualiza las respuestas que Rooms utiliza
+              para calcular compatibilidad de convivencia.
+            </p>
           </div>
-          <button type="button" data-close-living-editor aria-label="Cerrar">×</button>
+
+          <button
+            type="button"
+            data-close-living-editor
+            aria-label="Cerrar">×</button>
         </header>
 
         <form id="livingEditorForm">
+
           <div class="living-editor-groups">
-            ${groups.map((group, index) => `
-              <section class="living-editor-group">
-                <small>${group[0]}</small>
-                <div>
-                  ${group[1].map((option, optionIndex) => `
+
+            ${dna.thisOrThat
+              .filter(question =>
+                question.target === 'living_self'
+              )
+              .map(question => `
+                <section class="living-editor-group">
+                  <small>${question.title}</small>
+
+                  <div>
                     <button
                       type="button"
-                      data-living-editor-choice="${index}:${optionIndex}"
+                      data-living-dna-this="${question.id}"
+                      data-living-dna-value="${question.left.id}"
                       aria-pressed="false">
-                      ${option}
+                      ${question.left.label}
                     </button>
-                  `).join('')}
-                </div>
-              </section>
-            `).join('')}
+
+                    <button
+                      type="button"
+                      data-living-dna-this="${question.id}"
+                      data-living-dna-value="${question.right.id}"
+                      aria-pressed="false">
+                      ${question.right.label}
+                    </button>
+                  </div>
+                </section>
+              `)
+              .join('')}
+
+            ${dna.scenarios
+              .map(question => `
+                <section class="living-editor-group">
+                  <small>${question.title}</small>
+
+                  <div>
+                    ${dna.scenarioScale
+                      .map(option => `
+                        <button
+                          type="button"
+                          data-living-dna-scenario="${question.id}"
+                          data-living-dna-value="${option.id}"
+                          aria-pressed="false">
+                          ${option.label}
+                        </button>
+                      `)
+                      .join('')}
+                  </div>
+                </section>
+              `)
+              .join('')}
+
+            ${dna.dynamicImportance
+              .map(question => `
+                <section class="living-editor-group">
+                  <small>${question.prompt}</small>
+
+                  <div>
+                    ${dna.importanceScale
+                      .map(option => `
+                        <button
+                          type="button"
+                          data-living-dna-importance="${question.id}"
+                          data-living-dna-value="${option.id}"
+                          aria-pressed="false">
+                          ${option.label}
+                        </button>
+                      `)
+                      .join('')}
+                  </div>
+                </section>
+              `)
+              .join('')}
+
+            ${dna.dealbreakers
+              .map(question => `
+                <section class="living-editor-group">
+                  <small>${question.label}</small>
+
+                  <div>
+                    ${dna.dealbreakerScale
+                      .map(option => `
+                        <button
+                          type="button"
+                          data-living-dna-dealbreaker="${question.id}"
+                          data-living-dna-value="${option.id}"
+                          aria-pressed="false">
+                          ${option.label}
+                        </button>
+                      `)
+                      .join('')}
+                  </div>
+                </section>
+              `)
+              .join('')}
+
           </div>
 
-          <button class="cta" type="submit">Guardar cambios</button>
+          <button
+            class="cta"
+            type="submit">
+            Guardar cambios
+          </button>
         </form>
       </article>
     `;
 
     document.body.appendChild(modal);
 
-    modal.querySelectorAll('[data-living-editor-choice]').forEach(button => {
-      button.addEventListener('click', () => {
-        const [category] = button.dataset.livingEditorChoice.split(':');
+    const selectionGroups = [
+      'data-living-dna-this',
+      'data-living-dna-scenario',
+      'data-living-dna-importance',
+      'data-living-dna-dealbreaker'
+    ];
 
-        modal
-          .querySelectorAll(`[data-living-editor-choice^="${category}:"]`)
-          .forEach(item => {
-            item.classList.toggle('active', item === button);
-            item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
-          });
-      });
-    });
+    selectionGroups.forEach(attribute => {
+      modal
+        .querySelectorAll(`[${attribute}]`)
+        .forEach(button => {
+          button.addEventListener(
+            'click',
+            () => {
+              const value =
+                button.getAttribute(attribute);
 
-    modal.querySelector('#livingEditorForm').addEventListener('submit', async event => {
-      event.preventDefault();
+              modal
+                .querySelectorAll(
+                  `[${attribute}="${value}"]`
+                )
+                .forEach(item => {
+                  const active =
+                    item === button;
 
-      const living = {};
+                  item.classList.toggle(
+                    'active',
+                    active
+                  );
 
-      modal.querySelectorAll('[data-living-editor-choice].active').forEach(button => {
-        const [category, option] = button.dataset.livingEditorChoice.split(':');
-        living[category] = {
-          ...(state.preferences?.answers?.living?.[category] || {}),
-          option: Number(option)
-        };
-      });
-
-      const answers = {
-        ...(state.preferences?.answers || {}),
-        living
-      };
-
-      const { error } = await db
-        .from('onboarding_preferences')
-        .upsert({
-          user_id: state.user.id,
-          answers
+                  item.setAttribute(
+                    'aria-pressed',
+                    active
+                      ? 'true'
+                      : 'false'
+                  );
+                });
+            }
+          );
         });
-
-      if (error) {
-        console.error('Rooms: error actualizando convivencia', error);
-        notify('No se pudieron guardar tus hábitos');
-        return;
-      }
-
-      state.preferences = { answers };
-      updateOwnProfile(state.profile, state.preferences);
-
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-
-      notify('Hábitos de convivencia actualizados');
     });
+
+    modal
+      .querySelector('#livingEditorForm')
+      .addEventListener(
+        'submit',
+        async event => {
+          event.preventDefault();
+
+          const current =
+            state.matchPreferences || {};
+
+          const livingSelf = {
+            ...(
+              current.living_self || {}
+            ),
+
+            this_or_that: {
+              ...(
+                current.living_self
+                  ?.this_or_that || {}
+              )
+            },
+
+            scenarios: {
+              ...(
+                current.living_self
+                  ?.scenarios || {}
+              )
+            }
+          };
+
+          modal
+            .querySelectorAll(
+              '[data-living-dna-this].active'
+            )
+            .forEach(button => {
+              livingSelf.this_or_that[
+                button.dataset.livingDnaThis
+              ] =
+                button.dataset.livingDnaValue;
+            });
+
+          modal
+            .querySelectorAll(
+              '[data-living-dna-scenario].active'
+            )
+            .forEach(button => {
+              livingSelf.scenarios[
+                button.dataset.livingDnaScenario
+              ] =
+                button.dataset.livingDnaValue;
+            });
+
+          const livingImportance = {
+            ...(
+              current.living_importance ||
+              {}
+            )
+          };
+
+          modal
+            .querySelectorAll(
+              '[data-living-dna-importance].active'
+            )
+            .forEach(button => {
+              livingImportance[
+                button.dataset
+                  .livingDnaImportance
+              ] =
+                button.dataset.livingDnaValue;
+            });
+
+          const dealbreakers = {
+            ...(
+              current.dealbreakers ||
+              {}
+            )
+          };
+
+          modal
+            .querySelectorAll(
+              '[data-living-dna-dealbreaker].active'
+            )
+            .forEach(button => {
+              dealbreakers[
+                button.dataset
+                  .livingDnaDealbreaker
+              ] =
+                button.dataset.livingDnaValue ===
+                'dealbreaker';
+            });
+
+          const { data, error } =
+            await db
+              .from('match_preferences')
+              .update({
+                living_self:
+                  livingSelf,
+
+                living_importance:
+                  livingImportance,
+
+                dealbreakers,
+
+                updated_at:
+                  new Date().toISOString()
+              })
+              .eq(
+                'user_id',
+                state.user.id
+              )
+              .select()
+              .single();
+
+          if (error) {
+            console.error(
+              'Rooms: error actualizando ROOMS DNA',
+              error
+            );
+
+            notify(
+              'No se pudieron guardar tus hábitos'
+            );
+
+            return;
+          }
+
+          state.matchPreferences =
+            data;
+
+          updateOwnProfile(
+            state.profile,
+            state.preferences
+          );
+
+          modal.classList.remove('open');
+          modal.setAttribute(
+            'aria-hidden',
+            'true'
+          );
+
+          document.body.style.overflow =
+            '';
+
+          notify(
+            'Rooms DNA actualizado'
+          );
+        }
+      );
 
     return modal;
   }
@@ -13297,20 +13586,127 @@
   function openLivingEditor() {
     if (!state.user) return;
 
-    const modal = ensureLivingEditorModal();
-    const living = state.preferences?.answers?.living || {};
+    const modal =
+      ensureLivingEditorModal();
 
-    modal.querySelectorAll('[data-living-editor-choice]').forEach(button => {
-      const [category, option] = button.dataset.livingEditorChoice.split(':');
-      const active = Number(living?.[category]?.option) === Number(option);
+    const current =
+      state.matchPreferences || {};
 
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
+    const livingSelf =
+      current.living_self || {};
+
+    const thisOrThat =
+      livingSelf.this_or_that || {};
+
+    const scenarios =
+      livingSelf.scenarios || {};
+
+    modal
+      .querySelectorAll(
+        '[data-living-dna-this]'
+      )
+      .forEach(button => {
+        const active =
+          thisOrThat[
+            button.dataset.livingDnaThis
+          ] ===
+          button.dataset.livingDnaValue;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+    modal
+      .querySelectorAll(
+        '[data-living-dna-scenario]'
+      )
+      .forEach(button => {
+        const active =
+          scenarios[
+            button.dataset
+              .livingDnaScenario
+          ] ===
+          button.dataset.livingDnaValue;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+    modal
+      .querySelectorAll(
+        '[data-living-dna-importance]'
+      )
+      .forEach(button => {
+        const active =
+          current.living_importance?.[
+            button.dataset
+              .livingDnaImportance
+          ] ===
+          button.dataset.livingDnaValue;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+    modal
+      .querySelectorAll(
+        '[data-living-dna-dealbreaker]'
+      )
+      .forEach(button => {
+        const value =
+          Boolean(
+            current.dealbreakers?.[
+              button.dataset
+                .livingDnaDealbreaker
+            ]
+          )
+            ? 'dealbreaker'
+            : 'adapt';
+
+        const active =
+          value ===
+          button.dataset.livingDnaValue;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
 
     modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
+    modal.setAttribute(
+      'aria-hidden',
+      'false'
+    );
+
+    document.body.style.overflow =
+      'hidden';
   }
 
   document.addEventListener('click', event => {
@@ -13334,43 +13730,90 @@
 
 
   function ensureSearchPreferencesModal() {
-    let modal = document.querySelector('#searchPreferencesModal');
+    let modal =
+      document.querySelector(
+        '#searchPreferencesModal'
+      );
+
     if (modal) return modal;
 
-    modal = document.createElement('div');
+    modal =
+      document.createElement('div');
+
     modal.className = 'modal';
-    modal.id = 'searchPreferencesModal';
-    modal.setAttribute('aria-hidden', 'true');
+    modal.id =
+      'searchPreferencesModal';
+
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
 
     modal.innerHTML = `
-      <div class="backdrop" data-close-search-preferences></div>
+      <div
+        class="backdrop"
+        data-close-search-preferences>
+      </div>
 
       <article class="detail search-preferences-shell">
         <header>
           <div>
             <small>TU BÚSQUEDA</small>
             <h2>Qué busco</h2>
-            <p>Estos datos definen lo que estás buscando y se usan en tu perfil y filtros.</p>
+            <p>
+              Puedes cambiar lo que necesitas ahora
+              sin modificar tu Rooms DNA.
+            </p>
           </div>
-          <button type="button" data-close-search-preferences aria-label="Cerrar">×</button>
+
+          <button
+            type="button"
+            data-close-search-preferences
+            aria-label="Cerrar">×</button>
         </header>
 
         <form id="searchPreferencesForm">
 
           <section class="search-editor-section">
-            <small>¿QUÉ BUSCAS?</small>
+            <small>¿QUÉ QUIERES HACER?</small>
+
             <div class="search-editor-options">
-              <button type="button" data-search-seeking="room">Habitación</button>
-              <button type="button" data-search-seeking="home">Piso entero</button>
-              <button type="button" data-search-seeking="mates">Compañeros</button>
+              <button
+                type="button"
+                data-search-intent="find_room">
+                Encontrar una habitación
+              </button>
+
+              <button
+                type="button"
+                data-search-intent="find_apartment">
+                Encontrar un piso
+              </button>
+
+              <button
+                type="button"
+                data-search-intent="find_mates_for_home">
+                Compañeros para mi casa
+              </button>
+
+              <button
+                type="button"
+                data-search-intent="find_mates_to_search">
+                Compañeros para buscar juntos
+              </button>
             </div>
           </section>
 
           <section class="search-editor-section">
             <label>
               Zonas
-              <input id="searchZones" type="text" placeholder="Chamberí, Moncloa, Retiro">
-              <small>Separa varias zonas con comas.</small>
+              <input
+                id="searchZones"
+                type="text"
+                placeholder="Chamberí, Moncloa, Retiro">
+              <small>
+                Separa varias zonas con comas.
+              </small>
             </label>
           </section>
 
@@ -13380,17 +13823,29 @@
             <div class="search-budget-grid">
               <label>
                 Mínimo
-                <input id="searchBudgetMin" type="number" min="0" step="50" placeholder="600">
+                <input
+                  id="searchBudgetMin"
+                  type="number"
+                  min="0"
+                  step="50"
+                  placeholder="600">
               </label>
 
               <label>
                 Máximo
-                <input id="searchBudgetMax" type="number" min="0" step="50" placeholder="1000">
+                <input
+                  id="searchBudgetMax"
+                  type="number"
+                  min="0"
+                  step="50"
+                  placeholder="1000">
               </label>
             </div>
 
             <label class="search-over-budget">
-              <input id="searchBudgetOpen" type="checkbox">
+              <input
+                id="searchBudgetOpen"
+                type="checkbox">
               Estoy abierto/a a más de 4.000 €
             </label>
           </section>
@@ -13401,11 +13856,15 @@
             <div class="search-date-grid">
               <label>
                 Fecha
-                <input id="searchMoveDate" type="date">
+                <input
+                  id="searchMoveDate"
+                  type="date">
               </label>
 
               <label class="search-flexible">
-                <input id="searchMoveFlexible" type="checkbox">
+                <input
+                  id="searchMoveFlexible"
+                  type="checkbox">
                 Soy flexible
               </label>
             </div>
@@ -13423,151 +13882,461 @@
             </div>
           </section>
 
-          <button class="cta" type="submit">Guardar búsqueda</button>
+          <button
+            class="cta"
+            type="submit">
+            Guardar búsqueda
+          </button>
         </form>
       </article>
     `;
 
     document.body.appendChild(modal);
 
-    modal.querySelectorAll('[data-search-seeking]').forEach(button => {
-      button.addEventListener('click', () => {
-        button.classList.toggle('active');
-        button.setAttribute(
-          'aria-pressed',
-          button.classList.contains('active') ? 'true' : 'false'
+    modal
+      .querySelectorAll(
+        '[data-search-intent]'
+      )
+      .forEach(button => {
+        button.addEventListener(
+          'click',
+          () => {
+            const active =
+              !button.classList.contains(
+                'active'
+              );
+
+            button.classList.toggle(
+              'active',
+              active
+            );
+
+            button.setAttribute(
+              'aria-pressed',
+              active ? 'true' : 'false'
+            );
+          }
         );
       });
-    });
 
-    modal.querySelectorAll('[data-search-duration]').forEach(button => {
-      button.addEventListener('click', () => {
-        modal.querySelectorAll('[data-search-duration]').forEach(item => {
-          item.classList.toggle('active', item === button);
-          item.setAttribute('aria-pressed', item === button ? 'true' : 'false');
-        });
+    modal
+      .querySelectorAll(
+        '[data-search-duration]'
+      )
+      .forEach(button => {
+        button.addEventListener(
+          'click',
+          () => {
+            modal
+              .querySelectorAll(
+                '[data-search-duration]'
+              )
+              .forEach(item => {
+                const active =
+                  item === button;
+
+                item.classList.toggle(
+                  'active',
+                  active
+                );
+
+                item.setAttribute(
+                  'aria-pressed',
+                  active
+                    ? 'true'
+                    : 'false'
+                );
+              });
+          }
+        );
       });
-    });
 
-    modal.querySelector('#searchPreferencesForm').addEventListener('submit', async event => {
-      event.preventDefault();
+    modal
+      .querySelector(
+        '#searchPreferencesForm'
+      )
+      .addEventListener(
+        'submit',
+        async event => {
+          event.preventDefault();
 
-      const seeking = [...modal.querySelectorAll('[data-search-seeking].active')]
-        .map(button => button.dataset.searchSeeking);
+          const intents = [
+            ...modal.querySelectorAll(
+              '[data-search-intent].active'
+            )
+          ].map(
+            button =>
+              button.dataset.searchIntent
+          );
 
-      if (!seeking.length) {
-        notify('Selecciona al menos qué estás buscando');
-        return;
-      }
+          if (!intents.length) {
+            notify(
+              'Selecciona al menos qué estás buscando'
+            );
+            return;
+          }
 
-      const zones = modal.querySelector('#searchZones').value
-        .split(',')
-        .map(value => value.trim())
-        .filter(Boolean);
+          const seeking =
+            seekingFromIntents(intents);
 
-      const budgetMinValue = modal.querySelector('#searchBudgetMin').value;
-      const budgetMaxValue = modal.querySelector('#searchBudgetMax').value;
-      const over4000 = modal.querySelector('#searchBudgetOpen').checked;
+          const zones =
+            modal
+              .querySelector('#searchZones')
+              .value
+              .split(',')
+              .map(value => value.trim())
+              .filter(Boolean);
 
-      const budgetMin = budgetMinValue ? Number(budgetMinValue) : null;
-      const budgetMax = over4000
-        ? null
-        : budgetMaxValue
-          ? Number(budgetMaxValue)
-          : null;
+          const minValue =
+            modal.querySelector(
+              '#searchBudgetMin'
+            ).value;
 
-      if (budgetMin && budgetMax && budgetMin > budgetMax) {
-        notify('El presupuesto mínimo no puede superar el máximo');
-        return;
-      }
+          const maxValue =
+            modal.querySelector(
+              '#searchBudgetMax'
+            ).value;
 
-      const moveDate = modal.querySelector('#searchMoveDate').value || null;
-      const flexible = modal.querySelector('#searchMoveFlexible').checked;
+          const over4000 =
+            modal.querySelector(
+              '#searchBudgetOpen'
+            ).checked;
 
-      const duration =
-        modal.querySelector('[data-search-duration].active')?.dataset.searchDuration
-        || null;
+          const budgetMin =
+            minValue
+              ? Number(minValue)
+              : null;
 
-      const answers = {
-        ...(state.preferences?.answers || {}),
-        seeking,
-        zones,
-        budget: {
-          ...(state.preferences?.answers?.budget || {}),
-          min: budgetMin,
-          max: budgetMax,
-          over4000
-        },
-        move: {
-          ...(state.preferences?.answers?.move || {}),
-          date: moveDate,
-          flexible,
-          duration
-        }
-      };
+          const budgetMax =
+            over4000
+              ? null
+              : maxValue
+                ? Number(maxValue)
+                : null;
 
-      const [profileResult, preferencesResult] = await Promise.all([
-        db.from('profiles')
-          .update({
+          if (
+            budgetMin &&
+            budgetMax &&
+            budgetMin > budgetMax
+          ) {
+            notify(
+              'El presupuesto mínimo no puede superar el máximo'
+            );
+            return;
+          }
+
+          const moveDate =
+            modal.querySelector(
+              '#searchMoveDate'
+            ).value || null;
+
+          const flexible =
+            modal.querySelector(
+              '#searchMoveFlexible'
+            ).checked;
+
+          const duration =
+            modal.querySelector(
+              '[data-search-duration].active'
+            )?.dataset.searchDuration ||
+            null;
+
+          const answers = {
+            ...(state.preferences?.answers || {}),
+
             seeking,
             zones,
-            budget_min: budgetMin,
-            budget_max: budgetMax,
-            move_in_date: moveDate,
-            duration
-          })
-          .eq('id', state.user.id)
-          .select()
-          .single(),
 
-        db.from('onboarding_preferences')
-          .upsert({
-            user_id: state.user.id,
+            budget: {
+              ...(
+                state.preferences
+                  ?.answers
+                  ?.budget || {}
+              ),
+
+              min: budgetMin,
+              max: budgetMax,
+              over4000
+            },
+
+            move: {
+              ...(
+                state.preferences
+                  ?.answers
+                  ?.move || {}
+              ),
+
+              date: moveDate,
+              flexible,
+              duration
+            }
+          };
+
+          const deleteResult =
+            await db
+              .from('user_intents')
+              .delete()
+              .eq(
+                'user_id',
+                state.user.id
+              );
+
+          if (deleteResult.error) {
+            console.error(
+              'Rooms: error limpiando intenciones',
+              deleteResult.error
+            );
+
+            notify(
+              'No se pudo actualizar tu búsqueda'
+            );
+
+            return;
+          }
+
+          const insertResult =
+            await db
+              .from('user_intents')
+              .insert(
+                intents.map(intent => ({
+                  user_id:
+                    state.user.id,
+                  intent
+                }))
+              );
+
+          if (insertResult.error) {
+            console.error(
+              'Rooms: error guardando intenciones',
+              insertResult.error
+            );
+
+            notify(
+              'No se pudo actualizar tu búsqueda'
+            );
+
+            return;
+          }
+
+          const [
+            profileResult,
+            preferencesResult
+          ] =
+            await Promise.all([
+              db
+                .from('profiles')
+                .update({
+                  seeking,
+                  zones,
+                  budget_min:
+                    budgetMin,
+                  budget_max:
+                    budgetMax,
+                  move_in_date:
+                    moveDate,
+                  duration
+                })
+                .eq(
+                  'id',
+                  state.user.id
+                )
+                .select()
+                .single(),
+
+              db
+                .from(
+                  'onboarding_preferences'
+                )
+                .upsert({
+                  user_id:
+                    state.user.id,
+                  answers
+                })
+            ]);
+
+          if (
+            profileResult.error ||
+            preferencesResult.error
+          ) {
+            console.error(
+              'Rooms: error actualizando búsqueda',
+              profileResult.error,
+              preferencesResult.error
+            );
+
+            notify(
+              'No se pudo actualizar tu búsqueda'
+            );
+
+            return;
+          }
+
+          state.profile =
+            profileResult.data;
+
+          state.preferences = {
             answers
-          })
-      ]);
+          };
 
-      if (profileResult.error || preferencesResult.error) {
-        console.error(
-          'Rooms: error actualizando búsqueda',
-          profileResult.error,
-          preferencesResult.error
-        );
-        notify('No se pudo actualizar tu búsqueda');
-        return;
-      }
+          state.userIntents =
+            [...new Set(intents)];
 
-      state.profile = profileResult.data;
-      state.preferences = { answers };
+          state.profiles.set(
+            state.profile.id,
+            state.profile
+          );
 
-      state.profiles.set(state.profile.id, state.profile);
-      updateOwnProfile(state.profile, state.preferences);
+          updateOwnProfile(
+            state.profile,
+            state.preferences
+          );
 
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+          modal.classList.remove('open');
+          modal.setAttribute(
+            'aria-hidden',
+            'true'
+          );
 
-      notify('Tu búsqueda se ha actualizado');
-    });
+          document.body.style.overflow =
+            '';
+
+          notify(
+            'Tu búsqueda se ha actualizado'
+          );
+        }
+      );
 
     return modal;
   }
 
+  function openSearchPreferencesEditor() {
+    if (!state.profile) return;
+
+    const modal =
+      ensureSearchPreferencesModal();
+
+    const intents =
+      new Set(
+        state.userIntents || []
+      );
+
+    modal
+      .querySelectorAll(
+        '[data-search-intent]'
+      )
+      .forEach(button => {
+        const active =
+          intents.has(
+            button.dataset.searchIntent
+          );
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+    modal.querySelector(
+      '#searchZones'
+    ).value =
+      (state.profile.zones || [])
+        .join(', ');
+
+    modal.querySelector(
+      '#searchBudgetMin'
+    ).value =
+      state.profile.budget_min ?? '';
+
+    modal.querySelector(
+      '#searchBudgetMax'
+    ).value =
+      state.profile.budget_max ?? '';
+
+    modal.querySelector(
+      '#searchBudgetOpen'
+    ).checked =
+      Boolean(
+        state.preferences
+          ?.answers
+          ?.budget
+          ?.over4000
+      );
+
+    modal.querySelector(
+      '#searchMoveDate'
+    ).value =
+      state.profile.move_in_date ||
+      '';
+
+    modal.querySelector(
+      '#searchMoveFlexible'
+    ).checked =
+      Boolean(
+        state.preferences
+          ?.answers
+          ?.move
+          ?.flexible
+      );
+
+    modal
+      .querySelectorAll(
+        '[data-search-duration]'
+      )
+      .forEach(button => {
+        const active =
+          button.dataset
+            .searchDuration ===
+          state.profile.duration;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+    modal.classList.add('open');
+
+    modal.setAttribute(
+      'aria-hidden',
+      'false'
+    );
+
+    document.body.style.overflow =
+      'hidden';
+  }
+
   document.addEventListener('click', event => {
-    if (event.target.closest('[data-open-search-preferences]')) {
+    if (
+      event.target.closest(
+        '[data-open-search-preferences]'
+      )
+    ) {
       event.preventDefault();
       openSearchPreferencesEditor();
       return;
     }
 
     const completionAction =
-      event.target.closest('[data-profile-completion-action]');
+      event.target.closest(
+        '[data-profile-completion-action]'
+      );
 
     if (completionAction) {
       event.preventDefault();
 
       if (
-        completionAction.dataset.profileCompletionAction === 'search'
+        completionAction.dataset
+          .profileCompletionAction === 'search'
       ) {
         openSearchPreferencesEditor();
       } else {
@@ -13576,48 +14345,6 @@
     }
   });
 
-
-  function openSearchPreferencesEditor() {
-    if (!state.profile) return;
-
-    const modal = ensureSearchPreferencesModal();
-
-    const seeking = new Set(state.profile.seeking || []);
-
-    modal.querySelectorAll('[data-search-seeking]').forEach(button => {
-      const active = seeking.has(button.dataset.searchSeeking);
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-
-    modal.querySelector('#searchZones').value =
-      (state.profile.zones || []).join(', ');
-
-    modal.querySelector('#searchBudgetMin').value =
-      state.profile.budget_min ?? '';
-
-    modal.querySelector('#searchBudgetMax').value =
-      state.profile.budget_max ?? '';
-
-    modal.querySelector('#searchBudgetOpen').checked =
-      Boolean(state.preferences?.answers?.budget?.over4000);
-
-    modal.querySelector('#searchMoveDate').value =
-      state.profile.move_in_date || '';
-
-    modal.querySelector('#searchMoveFlexible').checked =
-      Boolean(state.preferences?.answers?.move?.flexible);
-
-    modal.querySelectorAll('[data-search-duration]').forEach(button => {
-      const active = button.dataset.searchDuration === state.profile.duration;
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
-
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-  }
 
   document.addEventListener('click', event => {
     if (event.target.closest('[data-close-search-preferences]')) {
@@ -13940,28 +14667,29 @@
     if (lowerDuration) lowerDuration.hidden = !showSearch;
     if (lowerBudget) lowerBudget.hidden = !showBudget;
 
-    const living = answers.living || {};
-    const livingRows = Object.entries(living)
-      .map(([index, value]) => {
-        const category = Number(index);
-        const label = livingNames[category];
-        const option = livingOptions[category]?.[value.option];
+    const livingRows =
+      roomsDnaLivingRows(
+        state.matchPreferences
+      );
 
-        if (!label || !option) return '';
-
-        return `
-          <span>
-            <small>${escapeHtml(label)}</small>
-            <b>${escapeHtml(option)}</b>
-          </span>
-        `;
-      })
-      .filter(Boolean);
-
-    modal.querySelector('#ownPublicLiving').innerHTML =
+    modal.querySelector(
+      '#ownPublicLiving'
+    ).innerHTML =
       livingRows.length
-        ? livingRows.join('')
-        : '<span><small>CONVIVENCIA</small><b>Sin datos añadidos</b></span>';
+        ? livingRows
+            .map(([label, option]) => `
+              <span>
+                <small>${escapeHtml(label)}</small>
+                <b>${escapeHtml(option)}</b>
+              </span>
+            `)
+            .join('')
+        : `
+            <span>
+              <small>CONVIVENCIA</small>
+              <b>Sin datos añadidos</b>
+            </span>
+          `;
 
     return modal;
   }
@@ -13995,58 +14723,89 @@
 
 
   function ensureHomePreferencesModal() {
-    let modal = document.querySelector('#homePreferencesModal');
+    let modal =
+      document.querySelector(
+        '#homePreferencesModal'
+      );
+
     if (modal) return modal;
 
-    const features = [
-      'Amueblado',
-      'Exterior',
-      'Buena luz',
-      'Terraza',
-      'Ascensor',
-      'Mascotas',
-      'Cerca del metro',
-      'Zona tranquila',
-      'Teletrabajo',
-      'Baño privado',
-      'Aire acondicionado',
-      'Almacenamiento'
-    ];
+    const dna =
+      window.ROOMS_DNA;
 
-    modal = document.createElement('div');
+    modal =
+      document.createElement('div');
+
     modal.className = 'modal';
-    modal.id = 'homePreferencesModal';
-    modal.setAttribute('aria-hidden', 'true');
+    modal.id =
+      'homePreferencesModal';
+
+    modal.setAttribute(
+      'aria-hidden',
+      'true'
+    );
 
     modal.innerHTML = `
-      <div class="backdrop" data-close-home-preferences></div>
+      <div
+        class="backdrop"
+        data-close-home-preferences>
+      </div>
 
       <article class="detail home-preferences-shell">
         <header>
           <div>
-            <small>PREFERENCIAS</small>
+            <small>ROOMS DNA</small>
             <h2>Tu vivienda ideal</h2>
-            <p>Selecciona las características que valoras en una vivienda.</p>
+            <p>
+              Indica cuánto pesa cada característica
+              para ti.
+            </p>
           </div>
-          <button type="button" data-close-home-preferences aria-label="Cerrar">×</button>
+
+          <button
+            type="button"
+            data-close-home-preferences
+            aria-label="Cerrar">×</button>
         </header>
 
         <form id="homePreferencesForm">
-          <div class="home-preferences-grid">
-            ${features.map(feature => `
-              <button
-                type="button"
-                data-home-preference="${feature}"
-                aria-pressed="false">
-                <span>${feature}</span>
-                <i>＋</i>
-              </button>
-            `).join('')}
+          <div class="living-editor-groups">
+
+            ${dna.homePreferences
+              .map(question => `
+                <section class="living-editor-group">
+                  <small>${question.label}</small>
+
+                  <div>
+                    ${dna.homePreferenceScale
+                      .map(option => `
+                        <button
+                          type="button"
+                          data-home-dna="${question.id}"
+                          data-home-dna-value="${option.id}"
+                          aria-pressed="false">
+                          ${option.label}
+                        </button>
+                      `)
+                      .join('')}
+                  </div>
+                </section>
+              `)
+              .join('')}
+
           </div>
 
           <div class="home-preferences-footer">
-            <small>Puedes cambiar estas preferencias cuando quieras.</small>
-            <button class="cta" type="submit">Guardar preferencias</button>
+            <small>
+              Puedes cambiar estas preferencias
+              cuando quieras.
+            </small>
+
+            <button
+              class="cta"
+              type="submit">
+              Guardar preferencias
+            </button>
           </div>
         </form>
       </article>
@@ -14054,53 +14813,117 @@
 
     document.body.appendChild(modal);
 
-    modal.querySelectorAll('[data-home-preference]').forEach(button => {
-      button.addEventListener('click', () => {
-        const active = !button.classList.contains('active');
+    modal
+      .querySelectorAll(
+        '[data-home-dna]'
+      )
+      .forEach(button => {
+        button.addEventListener(
+          'click',
+          () => {
+            const question =
+              button.dataset.homeDna;
 
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            modal
+              .querySelectorAll(
+                `[data-home-dna="${question}"]`
+              )
+              .forEach(item => {
+                const active =
+                  item === button;
 
-        const icon = button.querySelector('i');
-        if (icon) icon.textContent = active ? '✓' : '＋';
+                item.classList.toggle(
+                  'active',
+                  active
+                );
+
+                item.setAttribute(
+                  'aria-pressed',
+                  active
+                    ? 'true'
+                    : 'false'
+                );
+              });
+          }
+        );
       });
-    });
 
-    modal.querySelector('#homePreferencesForm').addEventListener('submit', async event => {
-      event.preventDefault();
+    modal
+      .querySelector(
+        '#homePreferencesForm'
+      )
+      .addEventListener(
+        'submit',
+        async event => {
+          event.preventDefault();
 
-      const homeFeatures = [...modal.querySelectorAll('[data-home-preference].active')]
-        .map(button => button.dataset.homePreference);
+          const homePreferences = {
+            ...(
+              state.matchPreferences
+                ?.home_preferences ||
+              {}
+            )
+          };
 
-      const answers = {
-        ...(state.preferences?.answers || {}),
-        homeFeatures
-      };
+          modal
+            .querySelectorAll(
+              '[data-home-dna].active'
+            )
+            .forEach(button => {
+              homePreferences[
+                button.dataset.homeDna
+              ] =
+                button.dataset.homeDnaValue;
+            });
 
-      const { error } = await db
-        .from('onboarding_preferences')
-        .upsert({
-          user_id: state.user.id,
-          answers
-        });
+          const { data, error } =
+            await db
+              .from('match_preferences')
+              .update({
+                home_preferences:
+                  homePreferences,
 
-      if (error) {
-        console.error('Rooms: error actualizando preferencias', error);
-        notify('No se pudieron guardar tus preferencias');
-        return;
-      }
+                updated_at:
+                  new Date().toISOString()
+              })
+              .eq(
+                'user_id',
+                state.user.id
+              )
+              .select()
+              .single();
 
-      state.preferences = {
-        ...(state.preferences || {}),
-        answers
-      };
+          if (error) {
+            console.error(
+              'Rooms: error actualizando preferencias de hogar',
+              error
+            );
 
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+            notify(
+              'No se pudieron guardar tus preferencias'
+            );
 
-      notify('Preferencias actualizadas');
-    });
+            return;
+          }
+
+          state.matchPreferences =
+            data;
+
+          modal.classList.remove('open');
+
+          modal.setAttribute(
+            'aria-hidden',
+            'true'
+          );
+
+          document.body.style.overflow =
+            '';
+
+          notify(
+            'Preferencias actualizadas'
+          );
+        }
+      );
 
     return modal;
   }
@@ -14108,24 +14931,44 @@
   function openHomePreferencesEditor() {
     if (!state.user) return;
 
-    const modal = ensureHomePreferencesModal();
-    const selected = new Set(
-      state.preferences?.answers?.homeFeatures || []
-    );
+    const modal =
+      ensureHomePreferencesModal();
 
-    modal.querySelectorAll('[data-home-preference]').forEach(button => {
-      const active = selected.has(button.dataset.homePreference);
+    const selected =
+      state.matchPreferences
+        ?.home_preferences || {};
 
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    modal
+      .querySelectorAll(
+        '[data-home-dna]'
+      )
+      .forEach(button => {
+        const active =
+          selected[
+            button.dataset.homeDna
+          ] ===
+          button.dataset.homeDnaValue;
 
-      const icon = button.querySelector('i');
-      if (icon) icon.textContent = active ? '✓' : '＋';
-    });
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
 
     modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
+
+    modal.setAttribute(
+      'aria-hidden',
+      'false'
+    );
+
+    document.body.style.overflow =
+      'hidden';
   }
 
   document.addEventListener('click', event => {

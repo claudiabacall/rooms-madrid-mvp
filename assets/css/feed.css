@@ -14165,3 +14165,2760 @@ body.rooms-booting main {
     font-size:18px;
   }
 }
+
+/* =========================================================
+   ROOMS DNA — RESPONSIVE QUESTION SYSTEM
+   Desktop: cards/selectors claros
+   Mobile: layout táctil apilado
+   ========================================================= */
+
+#onboarding .dna-question-stack{
+  display:grid;
+  gap:22px;
+  margin-top:28px;
+}
+
+#onboarding .dna-question{
+  padding:22px;
+  border:1px solid rgba(0,0,0,.14);
+  border-radius:22px;
+  background:rgba(255,255,255,.58);
+}
+
+#onboarding .dna-question h2{
+  max-width:none;
+  margin:0 0 16px;
+  font-size:24px;
+  line-height:1.08;
+  letter-spacing:-.03em;
+}
+
+#onboarding .dna-binary{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+}
+
+#onboarding .dna-binary > span{
+  font-size:14px;
+  color:rgba(0,0,0,.42);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-binary button,
+#onboarding .dna-scale button,
+#onboarding #dnaInterests button,
+#onboarding #dnaTraits button,
+#onboarding .onboarding-intent-options button{
+  appearance:none;
+  border:1px solid rgba(0,0,0,.18);
+  border-radius:16px;
+  background:#fff;
+  color:#111;
+  box-shadow:none;
+  cursor:pointer;
+  font:inherit;
+}
+
+#onboarding .dna-binary button{
+  min-height:92px;
+  padding:20px 18px;
+  font-size:18px;
+  font-weight:700;
+  line-height:1.2;
+  text-align:left;
+}
+
+#onboarding .dna-binary button:hover,
+#onboarding .dna-scale button:hover,
+#onboarding #dnaInterests button:hover,
+#onboarding #dnaTraits button:hover,
+#onboarding .onboarding-intent-options button:hover{
+  border-color:#111;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(0,0,0,.06);
+}
+
+#onboarding .dna-binary button[aria-pressed="true"],
+#onboarding .dna-scale button[aria-pressed="true"],
+#onboarding #dnaInterests button[aria-pressed="true"],
+#onboarding #dnaTraits button[aria-pressed="true"],
+#onboarding .onboarding-intent-options button[aria-pressed="true"],
+#onboarding .dna-binary button.selected,
+#onboarding .dna-scale button.selected,
+#onboarding #dnaInterests button.selected,
+#onboarding #dnaTraits button.selected,
+#onboarding .onboarding-intent-options button.selected{
+  border-color:#111;
+  background:var(--acid);
+  color:#111;
+  box-shadow:0 10px 24px rgba(0,0,0,.08);
+  transform:translateY(-1px);
+}
+
+#onboarding .dna-scale{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+#onboarding .dna-scale button{
+  min-height:52px;
+  padding:12px 14px;
+  font-size:15px;
+  font-weight:700;
+}
+
+#onboarding .profile-chip-section{
+  margin-top:28px;
+}
+
+#onboarding .profile-chip-section h2{
+  max-width:none;
+  margin:0 0 10px;
+  font-size:22px;
+  line-height:1.1;
+  letter-spacing:-.025em;
+}
+
+#onboarding #dnaInterests,
+#onboarding #dnaTraits{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+#onboarding #dnaInterests button,
+#onboarding #dnaTraits button{
+  min-height:46px;
+  padding:10px 16px;
+  font-size:15px;
+  font-weight:700;
+}
+
+#onboarding .onboarding-intent-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:28px;
+}
+
+#onboarding .onboarding-intent-options button{
+  min-height:132px;
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:8px;
+  text-align:left;
+}
+
+#onboarding .onboarding-intent-options button b{
+  font-size:20px;
+  line-height:1.1;
+}
+
+#onboarding .onboarding-intent-options button span{
+  font-size:14px;
+  line-height:1.4;
+  color:rgba(0,0,0,.58);
+}
+
+#onboarding .dna-reveal{
+  max-width:760px;
+  padding:34px;
+  border:1px solid rgba(0,0,0,.14);
+  border-radius:28px;
+  background:#fff;
+}
+
+#onboarding .dna-reveal h1{
+  max-width:none;
+}
+
+#onboarding .dna-reveal-mark{
+  display:inline-flex;
+  width:54px;
+  height:54px;
+  margin:0 0 20px;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:var(--acid);
+  font-size:24px;
+}
+
+#onboarding .dna-reveal-descriptor{
+  margin-bottom:20px !important;
+  font-size:22px !important;
+  font-weight:700;
+  color:#111 !important;
+}
+
+#onboarding .dna-reveal-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:22px 0;
+}
+
+#onboarding .dna-reveal-summary span{
+  padding:16px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:16px;
+  background:#f7f6f2;
+}
+
+#onboarding .dna-reveal-summary b,
+#onboarding .dna-reveal-summary small{
+  display:block;
+}
+
+#onboarding .dna-reveal-summary b{
+  margin-bottom:4px;
+  font-size:24px;
+}
+
+#onboarding .dna-reveal-summary small{
+  letter-spacing:0;
+  text-transform:none;
+  color:rgba(0,0,0,.52);
+}
+
+/* Los h2 dentro de preguntas no son titulares de página */
+#onboarding #onboardingStep2 h2,
+#onboarding #onboardingStep3 h2,
+#onboarding #onboardingStep4 h2,
+#onboarding #onboardingStep5 h2,
+#onboarding #onboardingStep6 h2,
+#onboarding #onboardingStep7 h2{
+  max-width:none;
+}
+
+/* Desktop */
+@media (min-width: 768px){
+  #onboarding #onboardingStep2,
+  #onboarding #onboardingStep3,
+  #onboarding #onboardingStep4,
+  #onboarding #onboardingStep5,
+  #onboarding #onboardingStep6,
+  #onboarding #onboardingStep7,
+  #onboarding #onboardingStep10{
+    width:min(1180px, calc(100vw - 96px));
+  }
+
+  #onboarding #onboardingStep2 > h1,
+  #onboarding #onboardingStep3 > h1,
+  #onboarding #onboardingStep4 > h1,
+  #onboarding #onboardingStep5 > h1,
+  #onboarding #onboardingStep6 > h1,
+  #onboarding #onboardingStep7 > h1,
+  #onboarding #onboardingStep10 > h1{
+    max-width:12ch;
+    font-size:clamp(48px, 5vw, 78px);
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px){
+  #onboarding .dna-question-stack{
+    gap:14px;
+    margin-top:20px;
+  }
+
+  #onboarding .dna-question{
+    padding:16px;
+    border-radius:18px;
+  }
+
+  #onboarding .dna-question h2{
+    margin-bottom:12px;
+    font-size:19px;
+  }
+
+  #onboarding .dna-binary{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  #onboarding .dna-binary > span{
+    display:none;
+  }
+
+  #onboarding .dna-binary button{
+    min-height:68px;
+    padding:16px;
+    font-size:16px;
+  }
+
+  #onboarding .dna-scale{
+    grid-template-columns:1fr;
+  }
+
+  #onboarding .dna-scale button{
+    min-height:48px;
+  }
+
+  #onboarding .onboarding-intent-options{
+    grid-template-columns:1fr;
+  }
+
+  #onboarding .onboarding-intent-options button{
+    min-height:108px;
+  }
+
+  #onboarding .dna-reveal{
+    padding:22px 18px;
+    border-radius:22px;
+  }
+
+  #onboarding .dna-reveal-summary{
+    grid-template-columns:1fr;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — THIS OR THAT GAME
+   ========================================================= */
+
+#onboarding #dnaThisOrThat{
+  max-width:920px;
+  margin-top:26px;
+}
+
+#onboarding .dna-swipe-stage{
+  position:relative;
+}
+
+#onboarding .dna-swipe-meta{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+#onboarding .dna-swipe-meta > span{
+  flex:0 0 auto;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-swipe-meta > div{
+  width:120px;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.1);
+}
+
+#onboarding .dna-swipe-meta i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:#111;
+  transition:width .25s ease;
+}
+
+#onboarding .dna-swipe-deck{
+  position:relative;
+  min-height:330px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  align-items:stretch;
+}
+
+#onboarding .dna-swipe-choice{
+  min-height:330px;
+  padding:28px;
+  border:1px dashed rgba(0,0,0,.18);
+  border-radius:28px;
+  background:rgba(255,255,255,.24);
+  color:rgba(0,0,0,.52);
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  font:inherit;
+  cursor:pointer;
+  transition:
+    background .2s ease,
+    border-color .2s ease,
+    color .2s ease,
+    transform .2s ease;
+}
+
+#onboarding .dna-swipe-choice b{
+  max-width:240px;
+  font-size:18px;
+  line-height:1.15;
+}
+
+#onboarding .dna-swipe-choice span{
+  font-size:20px;
+}
+
+#onboarding .dna-swipe-choice-left{
+  justify-content:flex-start;
+  text-align:left;
+}
+
+#onboarding .dna-swipe-choice-right{
+  justify-content:flex-end;
+  text-align:right;
+}
+
+#onboarding .dna-swipe-choice:hover{
+  border-color:rgba(0,0,0,.42);
+  background:rgba(255,255,255,.52);
+  color:#111;
+}
+
+#onboarding .dna-swipe-card{
+  position:absolute;
+  z-index:5;
+  inset:0;
+  width:min(460px,52%);
+  height:280px;
+  margin:auto;
+  padding:34px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:30px;
+  background:#fff;
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.12);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  transform-origin:center bottom;
+  transition:
+    transform .3s cubic-bezier(.2,.8,.2,1),
+    opacity .3s ease,
+    box-shadow .2s ease;
+}
+
+#onboarding .dna-swipe-card:hover{
+  box-shadow:
+    0 30px 80px rgba(0,0,0,.15);
+}
+
+#onboarding .dna-swipe-card.is-dragging{
+  cursor:grabbing;
+  transition:none;
+}
+
+#onboarding .dna-swipe-card > small{
+  margin-bottom:16px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+}
+
+#onboarding .dna-swipe-card h2{
+  max-width:11ch !important;
+  margin:0 0 14px !important;
+  font-size:clamp(36px,4vw,58px) !important;
+  line-height:.95 !important;
+  letter-spacing:-.05em !important;
+}
+
+#onboarding .dna-swipe-card p{
+  margin:0 !important;
+  font-size:15px !important;
+  color:rgba(0,0,0,.46) !important;
+}
+
+#onboarding .dna-swipe-card-hint{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:26px;
+  color:rgba(0,0,0,.34);
+}
+
+#onboarding .dna-swipe-card-hint em{
+  font-size:11px;
+  font-style:normal;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+#onboarding
+.dna-swipe-stage[data-swipe-direction="left"]
+.dna-swipe-choice-left,
+#onboarding
+.dna-swipe-stage[data-swipe-direction="right"]
+.dna-swipe-choice-right{
+  border-style:solid;
+  border-color:#111;
+  background:var(--acid);
+  color:#111;
+  transform:scale(1.015);
+}
+
+#onboarding .dna-swipe-card.swipe-out-left{
+  transform:
+    translateX(-120%)
+    rotate(-14deg) !important;
+  opacity:0;
+}
+
+#onboarding .dna-swipe-card.swipe-out-right{
+  transform:
+    translateX(120%)
+    rotate(14deg) !important;
+  opacity:0;
+}
+
+#onboarding .dna-swipe-mobile-labels{
+  display:none;
+}
+
+#onboarding .dna-swipe-saved{
+  display:block;
+  margin-top:12px;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-swipe-complete{
+  min-height:320px;
+  padding:44px;
+  border:1px solid rgba(0,0,0,.14);
+  border-radius:30px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+#onboarding .dna-swipe-complete > span{
+  width:62px;
+  height:62px;
+  margin-bottom:18px;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  font-size:26px;
+}
+
+#onboarding .dna-swipe-complete strong{
+  font-size:30px;
+  letter-spacing:-.04em;
+}
+
+#onboarding .dna-swipe-complete small{
+  margin-top:6px;
+  color:rgba(0,0,0,.46);
+  letter-spacing:0;
+}
+
+#onboarding .dna-swipe-complete button{
+  margin-top:24px;
+  padding:11px 16px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:999px;
+  background:transparent;
+  font-weight:700;
+  cursor:pointer;
+}
+
+@media (max-width:767px){
+
+  #onboarding #dnaThisOrThat{
+    margin-top:18px;
+  }
+
+  #onboarding .dna-swipe-deck{
+    min-height:410px;
+    display:block;
+  }
+
+  #onboarding .dna-swipe-choice{
+    position:absolute;
+    inset:0;
+    min-height:390px;
+    padding:18px;
+    border-radius:24px;
+    align-items:flex-end;
+  }
+
+  #onboarding .dna-swipe-choice-left{
+    padding-right:56%;
+  }
+
+  #onboarding .dna-swipe-choice-right{
+    padding-left:56%;
+  }
+
+  #onboarding .dna-swipe-choice b,
+  #onboarding .dna-swipe-choice span{
+    display:none;
+  }
+
+  #onboarding .dna-swipe-card{
+    width:calc(100% - 30px);
+    height:350px;
+    padding:28px 24px;
+    border-radius:26px;
+  }
+
+  #onboarding .dna-swipe-card h2{
+    max-width:9ch !important;
+    font-size:clamp(
+      40px,
+      12vw,
+      58px
+    ) !important;
+  }
+
+  #onboarding .dna-swipe-mobile-labels{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-top:10px;
+  }
+
+  #onboarding
+  .dna-swipe-mobile-labels span{
+    font-size:13px;
+    font-weight:700;
+    line-height:1.2;
+    color:rgba(0,0,0,.52);
+  }
+
+  #onboarding
+  .dna-swipe-mobile-labels span:last-child{
+    text-align:right;
+  }
+
+  #onboarding .dna-swipe-complete{
+    min-height:360px;
+    padding:30px 22px;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — THIS OR THAT / DESKTOP SPLIT
+   ========================================================= */
+
+@media (min-width:768px){
+
+  #onboarding #dnaThisOrThat{
+    position:relative;
+    left:50%;
+    width:min(1120px,calc(100vw - 80px));
+    max-width:none;
+    transform:translateX(-50%);
+    margin-top:20px;
+  }
+
+  #onboarding .dna-swipe-stage{
+    outline:none;
+  }
+
+  #onboarding .dna-swipe-meta{
+    max-width:1120px;
+    margin:0 auto 26px;
+  }
+
+  #onboarding .dna-split-question{
+    margin:0 auto 28px;
+    text-align:center;
+  }
+
+  #onboarding .dna-split-question small{
+    display:block;
+    margin-bottom:10px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.14em;
+    color:rgba(0,0,0,.42);
+  }
+
+  #onboarding .dna-split-question h2{
+    max-width:none !important;
+    margin:0 !important;
+    font-size:clamp(38px,4.5vw,64px) !important;
+    line-height:.95 !important;
+    letter-spacing:-.055em !important;
+  }
+
+  #onboarding .dna-split-question p{
+    margin:13px 0 0 !important;
+    font-size:14px !important;
+    color:rgba(0,0,0,.45) !important;
+  }
+
+  #onboarding .dna-swipe-deck{
+    display:flex;
+    gap:10px;
+    min-height:390px;
+  }
+
+  #onboarding .dna-swipe-choice{
+    position:relative;
+    flex:1 1 50%;
+    min-width:0;
+    min-height:390px;
+    padding:38px;
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:28px;
+    background:rgba(255,255,255,.48);
+    color:#111;
+    overflow:hidden;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    transition:
+      flex .32s cubic-bezier(.2,.8,.2,1),
+      transform .25s ease,
+      background .25s ease,
+      border-color .25s ease,
+      opacity .2s ease;
+  }
+
+  #onboarding .dna-swipe-choice::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        rgba(255,255,255,.65),
+        rgba(255,255,255,0) 62%
+      );
+    opacity:0;
+    transition:opacity .25s ease;
+    pointer-events:none;
+  }
+
+  #onboarding .dna-swipe-choice b{
+    position:relative;
+    z-index:1;
+    max-width:12ch;
+    font-size:clamp(28px,3vw,44px);
+    line-height:1;
+    letter-spacing:-.045em;
+  }
+
+  #onboarding .dna-swipe-choice span{
+    position:absolute;
+    z-index:1;
+    bottom:30px;
+    font-size:24px;
+    opacity:.35;
+    transition:
+      opacity .2s ease,
+      transform .2s ease;
+  }
+
+  #onboarding .dna-swipe-choice-left span{
+    left:34px;
+  }
+
+  #onboarding .dna-swipe-choice-right span{
+    right:34px;
+  }
+
+  #onboarding .dna-swipe-choice-left:hover,
+  #onboarding .dna-swipe-choice-right:hover{
+    flex:1.12 1 50%;
+    border-color:#111;
+    background:var(--acid);
+    transform:translateY(-3px);
+  }
+
+  #onboarding .dna-swipe-choice:hover::before{
+    opacity:1;
+  }
+
+  #onboarding .dna-swipe-choice:hover span{
+    opacity:1;
+  }
+
+  #onboarding .dna-swipe-choice-left:hover span{
+    transform:translateX(-5px);
+  }
+
+  #onboarding .dna-swipe-choice-right:hover span{
+    transform:translateX(5px);
+  }
+
+  #onboarding .dna-swipe-choice.is-selected{
+    flex:1.18 1 50%;
+    border-color:#111;
+    background:var(--acid);
+    transform:scale(1.015);
+  }
+
+  #onboarding
+  .dna-swipe-stage.is-committed-left
+  .dna-swipe-choice-right,
+  #onboarding
+  .dna-swipe-stage.is-committed-right
+  .dna-swipe-choice-left{
+    opacity:.28;
+  }
+
+  /*
+    La tarjeta swipe no existe visualmente en desktop.
+    Sigue en DOM para compartir la misma lógica.
+  */
+  #onboarding .dna-swipe-card{
+    display:none;
+  }
+
+  #onboarding .dna-swipe-mobile-labels{
+    display:none;
+  }
+}
+
+/* =========================================================
+   MOBILE — mantener experiencia swipe
+   ========================================================= */
+
+@media (max-width:767px){
+
+  #onboarding .dna-split-question{
+    display:none;
+  }
+
+  #onboarding .dna-swipe-stage{
+    outline:none;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — CENTRADO GLOBAL DESKTOP
+   ========================================================= */
+
+@media (min-width:768px){
+
+  #onboarding .onboarding-content{
+    width:min(1120px,calc(100vw - 144px));
+    max-width:none;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  #onboarding .onboarding-step{
+    width:100%;
+    max-width:none;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  /*
+    El This or That ya vive dentro del contenedor centrado.
+    Eliminamos el desplazamiento manual anterior.
+  */
+  #onboarding #dnaThisOrThat{
+    position:relative;
+    left:auto;
+    width:100%;
+    max-width:1120px;
+    transform:none;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  #onboarding .dna-swipe-meta,
+  #onboarding .dna-split-question{
+    width:100%;
+    max-width:1120px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  #onboarding .dna-swipe-deck{
+    width:100%;
+    max-width:1120px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — SCENARIO REACTION METER
+   ========================================================= */
+
+#onboarding #dnaScenarios{
+  width:100%;
+  margin-top:24px;
+}
+
+#onboarding .dna-reaction-stage{
+  width:100%;
+  max-width:1120px;
+  margin:0 auto;
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
+}
+
+#onboarding .dna-reaction-stage.is-committed{
+  opacity:.3;
+  transform:scale(.985);
+}
+
+#onboarding .dna-reaction-meta{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:42px;
+}
+
+#onboarding .dna-reaction-meta > span{
+  flex:0 0 auto;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-reaction-meta > div{
+  width:120px;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.1);
+}
+
+#onboarding .dna-reaction-meta i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:#111;
+}
+
+#onboarding .dna-reaction-copy{
+  max-width:900px;
+  margin:0 auto 58px;
+  text-align:center;
+}
+
+#onboarding .dna-reaction-copy > small{
+  display:block;
+  margin-bottom:14px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.14em;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-reaction-copy h2{
+  max-width:16ch !important;
+  margin:0 auto !important;
+  font-size:clamp(
+    44px,
+    5.5vw,
+    82px
+  ) !important;
+  line-height:.94 !important;
+  letter-spacing:-.06em !important;
+}
+
+#onboarding .dna-reaction-copy p{
+  margin:18px 0 0 !important;
+  font-size:15px !important;
+  color:rgba(0,0,0,.46) !important;
+}
+
+#onboarding .dna-reaction-meter{
+  --reaction-position:50%;
+  position:relative;
+  width:min(900px,100%);
+  min-height:190px;
+  margin:0 auto;
+  padding:50px 12px 0;
+  outline:none;
+  cursor:pointer;
+  touch-action:none;
+  user-select:none;
+}
+
+#onboarding .dna-reaction-track{
+  position:absolute;
+  top:74px;
+  left:12px;
+  right:12px;
+  height:8px;
+  border-radius:999px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.12),
+      rgba(0,0,0,.24)
+    );
+}
+
+#onboarding .dna-reaction-track::before,
+#onboarding .dna-reaction-track::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  width:16px;
+  height:16px;
+  border:2px solid #111;
+  border-radius:50%;
+  background:#f4f4ef;
+  transform:translateY(-50%);
+}
+
+#onboarding .dna-reaction-track::before{
+  left:0;
+}
+
+#onboarding .dna-reaction-track::after{
+  right:0;
+}
+
+#onboarding .dna-reaction-track span{
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:16px;
+  height:16px;
+  border:2px solid #111;
+  border-radius:50%;
+  background:#f4f4ef;
+  transform:
+    translate(-50%,-50%);
+}
+
+#onboarding .dna-reaction-orb{
+  position:absolute;
+  z-index:5;
+  top:48px;
+  left:
+    calc(
+      12px +
+      (
+        100% - 24px
+      ) *
+      var(--reaction-position) /
+      100
+    );
+  width:58px;
+  height:58px;
+  border:2px solid #111;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  transform:translateX(-50%);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.12);
+  transition:
+    left .16s cubic-bezier(.2,.8,.2,1),
+    transform .16s ease;
+  pointer-events:none;
+}
+
+#onboarding .dna-reaction-meter.is-dragging
+.dna-reaction-orb{
+  transform:
+    translateX(-50%)
+    scale(1.12);
+}
+
+#onboarding .dna-reaction-orb span{
+  font-size:20px;
+}
+
+#onboarding .dna-reaction-current{
+  position:absolute;
+  top:0;
+  left:
+    calc(
+      12px +
+      (
+        100% - 24px
+      ) *
+      var(--reaction-position) /
+      100
+    );
+  transform:translateX(-50%);
+  white-space:nowrap;
+  font-size:15px;
+  transition:left .16s ease;
+}
+
+#onboarding .dna-reaction-stops{
+  position:absolute;
+  top:105px;
+  left:12px;
+  right:12px;
+  display:grid;
+  grid-template-columns:
+    repeat(3,1fr);
+}
+
+#onboarding .dna-reaction-stop{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  font-size:13px;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-reaction-stop:first-child{
+  align-items:flex-start;
+  text-align:left;
+}
+
+#onboarding .dna-reaction-stop:nth-child(2){
+  align-items:center;
+  text-align:center;
+}
+
+#onboarding .dna-reaction-stop:last-child{
+  align-items:flex-end;
+  text-align:right;
+}
+
+#onboarding .dna-reaction-stop i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:rgba(0,0,0,.25);
+}
+
+#onboarding .dna-reaction-stop b{
+  font-weight:650;
+  transition:
+    color .15s ease,
+    transform .15s ease;
+}
+
+#onboarding .dna-reaction-stop.is-active{
+  color:#111;
+}
+
+#onboarding .dna-reaction-stop.is-active b{
+  transform:translateY(-2px);
+}
+
+#onboarding .dna-reaction-tip{
+  display:block;
+  margin-top:4px;
+  text-align:center;
+  color:rgba(0,0,0,.36);
+  font-size:12px;
+}
+
+#onboarding .dna-reaction-complete{
+  min-height:330px;
+  border:1px solid rgba(0,0,0,.13);
+  border-radius:30px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+#onboarding .dna-reaction-complete > span{
+  width:62px;
+  height:62px;
+  margin-bottom:18px;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  font-size:26px;
+}
+
+#onboarding .dna-reaction-complete strong{
+  max-width:16ch;
+  font-size:30px;
+  line-height:1;
+  letter-spacing:-.04em;
+}
+
+#onboarding .dna-reaction-complete small{
+  margin-top:9px;
+  color:rgba(0,0,0,.46);
+}
+
+#onboarding .dna-reaction-review{
+  margin-top:24px;
+  padding:11px 16px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:999px;
+  background:transparent;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
+@media (max-width:767px){
+
+  #onboarding .dna-reaction-meta{
+    margin-bottom:30px;
+  }
+
+  #onboarding .dna-reaction-copy{
+    margin-bottom:42px;
+    text-align:left;
+  }
+
+  #onboarding .dna-reaction-copy h2{
+    max-width:10ch !important;
+    margin-left:0 !important;
+    font-size:clamp(
+      42px,
+      12vw,
+      62px
+    ) !important;
+  }
+
+  #onboarding .dna-reaction-copy p{
+    max-width:28ch;
+  }
+
+  #onboarding .dna-reaction-meter{
+    min-height:210px;
+    padding-left:6px;
+    padding-right:6px;
+  }
+
+  #onboarding .dna-reaction-track{
+    left:6px;
+    right:6px;
+  }
+
+  #onboarding .dna-reaction-orb{
+    left:
+      calc(
+        6px +
+        (
+          100% - 12px
+        ) *
+        var(--reaction-position) /
+        100
+      );
+  }
+
+  #onboarding .dna-reaction-current{
+    left:
+      calc(
+        6px +
+        (
+          100% - 12px
+        ) *
+        var(--reaction-position) /
+        100
+      );
+  }
+
+  #onboarding .dna-reaction-stops{
+    left:6px;
+    right:6px;
+  }
+
+  #onboarding .dna-reaction-stop b{
+    max-width:88px;
+    font-size:12px;
+  }
+
+  #onboarding .dna-reaction-tip{
+    margin-top:0;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — ADAPTIVE IMPORTANCE
+   ========================================================= */
+
+#onboarding #dnaImportance{
+  width:100%;
+  margin-top:24px;
+}
+
+#onboarding .dna-importance-stage{
+  width:100%;
+  max-width:1120px;
+  margin:0 auto;
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
+}
+
+#onboarding .dna-importance-stage.is-committed{
+  opacity:.25;
+  transform:scale(.985);
+}
+
+#onboarding .dna-importance-meta{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:40px;
+}
+
+#onboarding .dna-importance-meta > span{
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-importance-meta > div{
+  width:120px;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.1);
+}
+
+#onboarding .dna-importance-meta i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:#111;
+}
+
+#onboarding .dna-importance-insight{
+  width:min(900px,100%);
+  margin:0 auto 54px;
+  text-align:center;
+}
+
+#onboarding .dna-importance-signal{
+  width:54px;
+  height:54px;
+  margin:0 auto 18px;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  font-size:20px;
+}
+
+#onboarding .dna-importance-insight small{
+  display:block;
+  margin-bottom:13px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.14em;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-importance-insight h2{
+  max-width:20ch !important;
+  margin:0 auto !important;
+  font-size:clamp(
+    34px,
+    4vw,
+    58px
+  ) !important;
+  line-height:1 !important;
+  letter-spacing:-.05em !important;
+}
+
+#onboarding .dna-importance-slider{
+  --importance-position:50%;
+  position:relative;
+  width:min(840px,100%);
+  min-height:190px;
+  margin:0 auto;
+  padding-top:54px;
+  outline:none;
+  cursor:pointer;
+  user-select:none;
+  touch-action:none;
+}
+
+#onboarding .dna-importance-current{
+  position:absolute;
+  top:0;
+  left:var(--importance-position);
+  transform:translateX(-50%);
+  white-space:nowrap;
+  font-size:15px;
+}
+
+#onboarding .dna-importance-line{
+  position:absolute;
+  top:70px;
+  left:0;
+  right:0;
+  height:2px;
+  background:rgba(0,0,0,.18);
+}
+
+#onboarding .dna-importance-line span{
+  position:absolute;
+  top:0;
+  left:0;
+  width:var(--importance-position);
+  height:100%;
+  background:#111;
+}
+
+#onboarding .dna-importance-knob{
+  position:absolute;
+  z-index:4;
+  top:48px;
+  left:var(--importance-position);
+  width:46px;
+  height:46px;
+  border:2px solid #111;
+  border-radius:50%;
+  background:var(--acid);
+  transform:translateX(-50%);
+  display:grid;
+  place-items:center;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.12);
+  transition:
+    left .16s ease,
+    transform .16s ease;
+  pointer-events:none;
+}
+
+#onboarding
+.dna-importance-slider.is-dragging
+.dna-importance-knob{
+  transform:
+    translateX(-50%)
+    scale(1.12);
+}
+
+#onboarding .dna-importance-knob span{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#111;
+}
+
+#onboarding .dna-importance-stops{
+  position:absolute;
+  top:106px;
+  left:0;
+  right:0;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+}
+
+#onboarding .dna-importance-stop{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  color:rgba(0,0,0,.38);
+}
+
+#onboarding .dna-importance-stop:first-child{
+  align-items:flex-start;
+  text-align:left;
+}
+
+#onboarding .dna-importance-stop:nth-child(2){
+  align-items:center;
+  text-align:center;
+}
+
+#onboarding .dna-importance-stop:last-child{
+  align-items:flex-end;
+  text-align:right;
+}
+
+#onboarding .dna-importance-stop i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:rgba(0,0,0,.25);
+}
+
+#onboarding .dna-importance-stop b{
+  max-width:150px;
+  font-size:13px;
+  line-height:1.15;
+}
+
+#onboarding .dna-importance-stop.is-active{
+  color:#111;
+}
+
+#onboarding .dna-importance-stop.is-active i{
+  background:#111;
+}
+
+#onboarding .dna-importance-tip{
+  margin:2px 0 0 !important;
+  text-align:center;
+  font-size:12px !important;
+  color:rgba(0,0,0,.36) !important;
+}
+
+#onboarding .dna-importance-complete{
+  min-height:350px;
+  padding:40px;
+  border:1px solid rgba(0,0,0,.13);
+  border-radius:30px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+#onboarding .dna-importance-complete > span{
+  width:62px;
+  height:62px;
+  margin-bottom:18px;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  font-size:25px;
+}
+
+#onboarding .dna-importance-complete > small{
+  margin-bottom:10px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.13em;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-importance-complete strong{
+  max-width:15ch;
+  font-size:32px;
+  line-height:1;
+  letter-spacing:-.045em;
+}
+
+#onboarding .dna-importance-review{
+  margin-top:25px;
+  padding:11px 16px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:999px;
+  background:transparent;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
+@media (max-width:767px){
+
+  #onboarding .dna-importance-insight{
+    margin-bottom:42px;
+    text-align:left;
+  }
+
+  #onboarding .dna-importance-signal{
+    margin-left:0;
+  }
+
+  #onboarding .dna-importance-insight h2{
+    max-width:12ch !important;
+    margin-left:0 !important;
+    font-size:clamp(
+      34px,
+      9.5vw,
+      48px
+    ) !important;
+  }
+
+  #onboarding .dna-importance-slider{
+    min-height:210px;
+  }
+
+  #onboarding .dna-importance-stop b{
+    max-width:92px;
+    font-size:12px;
+  }
+
+  #onboarding .dna-importance-complete{
+    min-height:360px;
+    padding:28px 22px;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — DEALBREAKERS
+   ========================================================= */
+
+#onboarding #dnaDealbreakers{
+  width:100%;
+  margin-top:24px;
+}
+
+#onboarding .dna-dealbreaker-stage{
+  width:100%;
+  max-width:1120px;
+  margin:0 auto;
+}
+
+#onboarding .dna-dealbreaker-meta{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:32px;
+}
+
+#onboarding .dna-dealbreaker-meta > span{
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-dealbreaker-meta > div{
+  width:120px;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.1);
+}
+
+#onboarding .dna-dealbreaker-meta i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:#111;
+}
+
+#onboarding .dna-dealbreaker-copy{
+  margin-bottom:28px;
+  text-align:center;
+}
+
+#onboarding .dna-dealbreaker-copy small{
+  display:block;
+  margin-bottom:8px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.14em;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-dealbreaker-copy p{
+  margin:0 !important;
+  font-size:14px !important;
+  color:rgba(0,0,0,.46) !important;
+}
+
+#onboarding .dna-dealbreaker-board{
+  position:relative;
+  min-height:390px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+#onboarding .dna-dealbreaker-zone{
+  min-height:390px;
+  padding:34px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:28px;
+  background:rgba(255,255,255,.42);
+  color:rgba(0,0,0,.42);
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  font:inherit;
+  cursor:pointer;
+  transition:
+    background .2s ease,
+    color .2s ease,
+    border-color .2s ease,
+    transform .2s ease;
+}
+
+#onboarding .dna-dealbreaker-zone-left{
+  align-items:flex-start;
+  text-align:left;
+}
+
+#onboarding .dna-dealbreaker-zone-right{
+  align-items:flex-end;
+  text-align:right;
+}
+
+#onboarding .dna-dealbreaker-zone small{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+}
+
+#onboarding .dna-dealbreaker-zone b{
+  margin-top:4px;
+  font-size:26px;
+  line-height:.95;
+  letter-spacing:-.04em;
+}
+
+#onboarding .dna-dealbreaker-zone span{
+  margin-bottom:12px;
+  font-size:22px;
+}
+
+#onboarding .dna-dealbreaker-card{
+  position:absolute;
+  z-index:4;
+  inset:0;
+  width:min(430px,48%);
+  height:280px;
+  margin:auto;
+  padding:34px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:30px;
+  background:#fff;
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.12);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  transition:
+    transform .3s cubic-bezier(.2,.8,.2,1),
+    opacity .3s ease;
+}
+
+#onboarding .dna-dealbreaker-card.is-dragging{
+  cursor:grabbing;
+  transition:none;
+}
+
+#onboarding .dna-dealbreaker-card > small{
+  margin-bottom:15px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.13em;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .dna-dealbreaker-card h2{
+  max-width:10ch !important;
+  margin:0 !important;
+  font-size:clamp(
+    40px,
+    4vw,
+    60px
+  ) !important;
+  line-height:.94 !important;
+  letter-spacing:-.055em !important;
+}
+
+#onboarding .dna-dealbreaker-card > div{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:28px;
+  color:rgba(0,0,0,.34);
+}
+
+#onboarding .dna-dealbreaker-card em{
+  font-size:11px;
+  font-style:normal;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+#onboarding
+.dna-dealbreaker-stage.is-preview-left
+.dna-dealbreaker-zone-left,
+#onboarding
+.dna-dealbreaker-stage.is-adapt
+.dna-dealbreaker-zone-left{
+  border-color:#111;
+  background:var(--acid);
+  color:#111;
+  transform:scale(1.01);
+}
+
+#onboarding
+.dna-dealbreaker-stage.is-preview-right
+.dna-dealbreaker-zone-right,
+#onboarding
+.dna-dealbreaker-stage.is-out
+.dna-dealbreaker-zone-right{
+  border-color:#111;
+  background:#111;
+  color:#fff;
+  transform:scale(1.01);
+}
+
+#onboarding .dealbreaker-out-left{
+  transform:
+    translateX(-120%)
+    rotate(-12deg) !important;
+  opacity:0;
+}
+
+#onboarding .dealbreaker-out-right{
+  transform:
+    translateX(120%)
+    rotate(12deg) !important;
+  opacity:0;
+}
+
+#onboarding .dna-dealbreaker-complete{
+  min-height:340px;
+  padding:40px;
+  border:1px solid rgba(0,0,0,.13);
+  border-radius:30px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+#onboarding .dna-dealbreaker-complete > span{
+  width:62px;
+  height:62px;
+  margin-bottom:18px;
+  border-radius:50%;
+  background:var(--acid);
+  display:grid;
+  place-items:center;
+  font-size:26px;
+}
+
+#onboarding .dna-dealbreaker-complete strong{
+  font-size:32px;
+  letter-spacing:-.045em;
+}
+
+#onboarding .dna-dealbreaker-complete small{
+  margin-top:8px;
+  color:rgba(0,0,0,.46);
+}
+
+#onboarding .dna-dealbreaker-review{
+  margin-top:24px;
+  padding:11px 16px;
+  border:1px solid rgba(0,0,0,.16);
+  border-radius:999px;
+  background:transparent;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
+@media (max-width:767px){
+
+  #onboarding .dna-dealbreaker-copy{
+    text-align:left;
+  }
+
+  #onboarding .dna-dealbreaker-board{
+    min-height:410px;
+    display:block;
+  }
+
+  #onboarding .dna-dealbreaker-zone{
+    position:absolute;
+    inset:0;
+    min-height:390px;
+    padding:20px;
+  }
+
+  #onboarding .dna-dealbreaker-zone-left{
+    padding-right:58%;
+  }
+
+  #onboarding .dna-dealbreaker-zone-right{
+    padding-left:58%;
+  }
+
+  #onboarding .dna-dealbreaker-zone b,
+  #onboarding .dna-dealbreaker-zone small,
+  #onboarding .dna-dealbreaker-zone span{
+    display:none;
+  }
+
+  #onboarding .dna-dealbreaker-card{
+    width:calc(100% - 30px);
+    height:350px;
+    padding:28px 24px;
+    border-radius:26px;
+  }
+
+  #onboarding .dna-dealbreaker-card h2{
+    max-width:9ch !important;
+    font-size:clamp(
+      42px,
+      12vw,
+      60px
+    ) !important;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — HOME PRIORITY BOARD
+   ========================================================= */
+
+#onboarding #dnaHomePreferences{
+  width:100%;
+  margin-top:26px;
+}
+
+#onboarding .dna-home-experience{
+  width:100%;
+  max-width:1120px;
+  margin:0 auto;
+}
+
+#onboarding .dna-home-status{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:22px;
+}
+
+#onboarding .dna-home-status > span{
+  flex:0 0 auto;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#onboarding .dna-home-status > div{
+  width:120px;
+  height:4px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(0,0,0,.1);
+}
+
+#onboarding .dna-home-status i{
+  display:block;
+  height:100%;
+  background:#111;
+  border-radius:inherit;
+  transition:width .25s ease;
+}
+
+#onboarding .dna-home-shelf{
+  margin-bottom:14px;
+  padding:20px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:24px;
+  background:#fff;
+}
+
+#onboarding .dna-home-shelf-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:20px;
+  margin-bottom:16px;
+}
+
+#onboarding .dna-home-shelf-head > div{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+#onboarding .dna-home-shelf-head small{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.13em;
+  color:rgba(0,0,0,.4);
+}
+
+#onboarding .dna-home-shelf-head strong{
+  font-size:18px;
+  letter-spacing:-.025em;
+}
+
+#onboarding .dna-home-selected-note{
+  font-size:12px;
+  color:rgba(0,0,0,.4);
+}
+
+#onboarding .dna-home-unassigned{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  min-height:72px;
+}
+
+#onboarding .dna-home-empty{
+  width:100%;
+  min-height:68px;
+  border:1px dashed rgba(0,0,0,.16);
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  font-size:13px;
+  color:rgba(0,0,0,.38);
+}
+
+#onboarding .dna-home-board{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+#onboarding .dna-home-zone{
+  min-height:275px;
+  padding:16px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:24px;
+  background:rgba(255,255,255,.4);
+  outline:none;
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    transform .18s ease;
+}
+
+#onboarding .dna-home-zone:focus-visible{
+  border-color:#111;
+}
+
+#onboarding .dna-home-zone:hover{
+  border-color:rgba(0,0,0,.3);
+}
+
+#onboarding .dna-home-zone-need{
+  background:
+    color-mix(
+      in srgb,
+      var(--acid) 20%,
+      white
+    );
+}
+
+#onboarding .dna-home-zone header{
+  min-height:62px;
+  display:grid;
+  grid-template-columns:
+    auto 1fr auto;
+  gap:11px;
+  align-items:start;
+  padding-bottom:14px;
+  border-bottom:1px solid rgba(0,0,0,.1);
+}
+
+#onboarding .dna-home-zone header > span{
+  font-size:11px;
+  font-weight:850;
+  color:rgba(0,0,0,.34);
+}
+
+#onboarding .dna-home-zone header > div{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+#onboarding .dna-home-zone header small{
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.12em;
+  color:rgba(0,0,0,.36);
+}
+
+#onboarding .dna-home-zone header strong{
+  font-size:18px;
+  line-height:1;
+  letter-spacing:-.035em;
+}
+
+#onboarding .dna-home-zone header > b{
+  min-width:26px;
+  height:26px;
+  padding:0 7px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+}
+
+#onboarding .dna-home-zone-items{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-height:180px;
+  padding-top:12px;
+}
+
+#onboarding .dna-home-drop-hint{
+  flex:1;
+  min-height:112px;
+  border:1px dashed rgba(0,0,0,.13);
+  border-radius:15px;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+  font-weight:700;
+  color:rgba(0,0,0,.25);
+}
+
+#onboarding .dna-home-card{
+  position:relative;
+  z-index:2;
+  min-height:64px;
+  padding:11px 13px;
+  border:1px solid rgba(0,0,0,.13);
+  border-radius:16px;
+  background:#fff;
+  color:#111;
+  display:grid;
+  grid-template-columns:
+    36px 1fr auto;
+  align-items:center;
+  gap:10px;
+  text-align:left;
+  font:inherit;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  box-shadow:
+    0 5px 18px rgba(0,0,0,.04);
+  transition:
+    border-color .15s ease,
+    box-shadow .15s ease,
+    transform .15s ease,
+    background .15s ease;
+}
+
+#onboarding
+.dna-home-unassigned
+.dna-home-card{
+  width:auto;
+  min-width:185px;
+  flex:1 1 185px;
+}
+
+#onboarding .dna-home-card:hover{
+  border-color:#111;
+  transform:translateY(-2px);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.08);
+}
+
+#onboarding .dna-home-card.is-selected{
+  border-color:#111;
+  background:var(--acid);
+  box-shadow:
+    0 0 0 2px #111;
+}
+
+#onboarding .dna-home-card.is-dragging{
+  z-index:30;
+  cursor:grabbing;
+  opacity:.92;
+  transition:none;
+  box-shadow:
+    0 22px 55px rgba(0,0,0,.18);
+}
+
+#onboarding .dna-home-card > span{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:#f1f1ec;
+  display:grid;
+  place-items:center;
+  font-size:17px;
+}
+
+#onboarding .dna-home-card.is-selected > span{
+  background:rgba(255,255,255,.55);
+}
+
+#onboarding .dna-home-card strong{
+  font-size:14px;
+  line-height:1.05;
+  letter-spacing:-.02em;
+}
+
+#onboarding .dna-home-card small{
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(0,0,0,.32);
+}
+
+#onboarding .dna-home-board-tip{
+  margin:14px 0 0 !important;
+  text-align:center;
+  font-size:11px !important;
+  color:rgba(0,0,0,.34) !important;
+}
+
+@media (max-width:767px){
+
+  #onboarding .dna-home-shelf{
+    padding:15px;
+    border-radius:20px;
+  }
+
+  #onboarding .dna-home-shelf-head{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:7px;
+  }
+
+  #onboarding .dna-home-unassigned{
+    display:grid;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  #onboarding
+  .dna-home-unassigned
+  .dna-home-card{
+    width:100%;
+    min-width:0;
+  }
+
+  #onboarding .dna-home-board{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  #onboarding .dna-home-zone{
+    min-height:132px;
+    padding:13px;
+    border-radius:20px;
+  }
+
+  #onboarding .dna-home-zone header{
+    min-height:auto;
+    padding-bottom:10px;
+  }
+
+  #onboarding .dna-home-zone-items{
+    min-height:54px;
+    display:grid;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  #onboarding .dna-home-drop-hint{
+    grid-column:1/-1;
+    min-height:54px;
+  }
+
+  #onboarding .dna-home-card{
+    min-height:58px;
+    padding:9px;
+    grid-template-columns:
+      32px 1fr;
+  }
+
+  #onboarding .dna-home-card > span{
+    width:32px;
+    height:32px;
+  }
+
+  #onboarding .dna-home-card small{
+    display:none;
+  }
+
+  #onboarding .dna-home-board-tip{
+    text-align:left;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — IDENTITY PLAYGROUND
+   ========================================================= */
+
+#onboarding #dnaInterests,
+#onboarding #dnaTraits{
+  width:100%;
+}
+
+#onboarding .dna-identity-block{
+  width:100%;
+  max-width:1120px;
+  margin:38px auto 0;
+}
+
+#onboarding .dna-identity-section-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+  margin-bottom:18px;
+}
+
+#onboarding .dna-identity-section-head > div{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+#onboarding .dna-identity-section-head small{
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.13em;
+  color:rgba(0,0,0,.4);
+}
+
+#onboarding .dna-identity-section-head h2{
+  margin:0 !important;
+  font-size:26px !important;
+  line-height:1 !important;
+  letter-spacing:-.04em !important;
+}
+
+#onboarding .dna-identity-section-head > span{
+  padding:7px 10px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:999px;
+  font-size:11px;
+  font-weight:750;
+  color:rgba(0,0,0,.48);
+}
+
+
+/* -------------------------
+   INTEREST MOSAIC
+   ------------------------- */
+
+#onboarding .dna-interest-mosaic{
+  display:grid;
+  grid-template-columns:
+    repeat(12,minmax(0,1fr));
+  grid-auto-rows:92px;
+  gap:9px;
+}
+
+#onboarding .dna-interest-tile{
+  position:relative;
+  overflow:hidden;
+  padding:16px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:22px;
+  background:#fff;
+  color:#111;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:flex-start;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+  transition:
+    transform .18s ease,
+    background .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+#onboarding .dna-interest-size-1{
+  grid-column:span 3;
+}
+
+#onboarding .dna-interest-size-2{
+  grid-column:span 4;
+}
+
+#onboarding .dna-interest-size-3{
+  grid-column:span 2;
+}
+
+#onboarding .dna-interest-size-4{
+  grid-column:span 3;
+}
+
+#onboarding .dna-interest-tile:nth-child(3n+1){
+  grid-row:span 2;
+}
+
+#onboarding .dna-interest-tile:hover{
+  z-index:2;
+  transform:
+    translateY(-3px)
+    rotate(-.4deg);
+  border-color:#111;
+  box-shadow:
+    0 13px 30px rgba(0,0,0,.08);
+}
+
+#onboarding .dna-interest-tile.is-selected{
+  background:var(--acid);
+  border-color:#111;
+}
+
+#onboarding .dna-interest-tile > span{
+  font-size:24px;
+  line-height:1;
+}
+
+#onboarding .dna-interest-tile strong{
+  max-width:9ch;
+  font-size:18px;
+  line-height:.95;
+  letter-spacing:-.035em;
+}
+
+#onboarding .dna-interest-tile > i{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:26px;
+  height:26px;
+  border:1px solid rgba(0,0,0,.14);
+  border-radius:50%;
+  background:rgba(255,255,255,.5);
+  display:grid;
+  place-items:center;
+  font-size:13px;
+  font-style:normal;
+  font-weight:800;
+}
+
+#onboarding .dna-identity-note{
+  margin:12px 0 0 !important;
+  font-size:11px !important;
+  color:rgba(0,0,0,.35) !important;
+}
+
+
+/* -------------------------
+   TRAITS WORKSPACE
+   ------------------------- */
+
+#onboarding .dna-traits-block{
+  margin-top:52px;
+}
+
+#onboarding .dna-trait-workspace{
+  display:grid;
+  grid-template-columns:
+    minmax(0,.9fr)
+    minmax(0,1.1fr);
+  gap:12px;
+}
+
+#onboarding .dna-trait-pool{
+  min-height:330px;
+  padding:18px;
+  border:1px solid rgba(0,0,0,.11);
+  border-radius:26px;
+  background:#fff;
+}
+
+#onboarding .dna-trait-pool > small{
+  display:block;
+  margin-bottom:14px;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.13em;
+  color:rgba(0,0,0,.35);
+}
+
+#onboarding .dna-trait-pool > div{
+  display:flex;
+  flex-wrap:wrap;
+  align-content:flex-start;
+  gap:9px;
+}
+
+#onboarding .dna-trait-card{
+  position:relative;
+  z-index:2;
+  min-height:70px;
+  padding:11px 13px;
+  border:1px solid rgba(0,0,0,.13);
+  border-radius:17px;
+  background:#f7f7f2;
+  color:#111;
+  display:grid;
+  grid-template-columns:
+    34px 1fr;
+  gap:1px 10px;
+  align-items:center;
+  text-align:left;
+  font:inherit;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  transition:
+    transform .16s ease,
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+}
+
+#onboarding .dna-trait-pool .dna-trait-card{
+  flex:
+    1 1
+    calc(50% - 9px);
+}
+
+#onboarding .dna-trait-card:hover{
+  border-color:#111;
+  transform:translateY(-2px);
+}
+
+#onboarding .dna-trait-card.is-dragging{
+  z-index:50;
+  cursor:grabbing;
+  transition:none;
+  box-shadow:
+    0 20px 45px rgba(0,0,0,.16);
+}
+
+#onboarding .dna-trait-card > span{
+  grid-row:1 / span 2;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#fff;
+  display:grid;
+  place-items:center;
+  font-size:16px;
+}
+
+#onboarding .dna-trait-card strong{
+  font-size:14px;
+  line-height:1;
+}
+
+#onboarding .dna-trait-card small{
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:rgba(0,0,0,.35);
+}
+
+#onboarding .dna-trait-identity-zone{
+  position:relative;
+  min-height:330px;
+  padding:20px;
+  overflow:hidden;
+  border:2px solid #111;
+  border-radius:26px;
+  background:#111;
+  color:#fff;
+  outline:none;
+  transition:
+    background .2s ease,
+    transform .2s ease;
+}
+
+#onboarding .dna-trait-identity-zone::before{
+  content:"";
+  position:absolute;
+  width:260px;
+  height:260px;
+  right:-90px;
+  top:-90px;
+  border-radius:50%;
+  background:var(--acid);
+  opacity:.95;
+}
+
+#onboarding .dna-trait-identity-zone.is-hovered{
+  background:
+    color-mix(
+      in srgb,
+      #111 84%,
+      var(--acid)
+    );
+  transform:scale(1.012);
+}
+
+#onboarding .dna-trait-zone-title{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:22px;
+}
+
+#onboarding .dna-trait-zone-title > span{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:var(--acid);
+  color:#111;
+  display:grid;
+  place-items:center;
+}
+
+#onboarding .dna-trait-zone-title > div{
+  display:flex;
+  flex-direction:column;
+}
+
+#onboarding .dna-trait-zone-title small{
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.15em;
+  opacity:.55;
+}
+
+#onboarding .dna-trait-zone-title strong{
+  font-size:26px;
+  line-height:.9;
+  letter-spacing:-.04em;
+}
+
+#onboarding .dna-trait-zone-items{
+  position:relative;
+  z-index:2;
+  display:grid;
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+
+#onboarding
+.dna-trait-identity-zone
+.dna-trait-card{
+  width:100%;
+  background:rgba(255,255,255,.96);
+}
+
+#onboarding .dna-trait-empty{
+  grid-column:1/-1;
+  min-height:190px;
+  padding:30px;
+  border:1px dashed rgba(255,255,255,.3);
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  font-size:13px;
+  line-height:1.4;
+  color:rgba(255,255,255,.5);
+}
+
+#onboarding .dna-trait-pool-empty{
+  width:100%;
+  min-height:180px;
+  border:1px dashed rgba(0,0,0,.14);
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  font-size:12px;
+  color:rgba(0,0,0,.36);
+}
+
+
+/* -------------------------
+   MOBILE
+   ------------------------- */
+
+@media (max-width:767px){
+
+  #onboarding .dna-identity-block{
+    margin-top:30px;
+  }
+
+  #onboarding .dna-identity-section-head{
+    align-items:flex-start;
+  }
+
+  #onboarding .dna-interest-mosaic{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+    grid-auto-rows:110px;
+  }
+
+  #onboarding .dna-interest-size-1,
+  #onboarding .dna-interest-size-2,
+  #onboarding .dna-interest-size-3,
+  #onboarding .dna-interest-size-4{
+    grid-column:span 1;
+  }
+
+  #onboarding .dna-interest-tile:nth-child(3n+1){
+    grid-row:span 1;
+  }
+
+  #onboarding .dna-interest-tile:nth-child(4n+1){
+    grid-column:1/-1;
+  }
+
+  #onboarding .dna-trait-workspace{
+    grid-template-columns:1fr;
+  }
+
+  #onboarding .dna-trait-pool{
+    min-height:auto;
+  }
+
+  #onboarding .dna-trait-identity-zone{
+    min-height:300px;
+  }
+
+  #onboarding .dna-trait-zone-items{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #onboarding .dna-trait-card{
+    min-height:64px;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA — HOME DRAG FIX
+   ========================================================= */
+
+body.dna-home-is-dragging{
+  cursor:grabbing;
+  user-select:none;
+}
+
+#onboarding .dna-home-card.is-dragging{
+  position:fixed;
+  z-index:9999 !important;
+  cursor:grabbing;
+  transform-origin:center;
+  box-shadow:
+    0 26px 70px rgba(0,0,0,.2);
+  opacity:.96;
+}
+
+#onboarding .dna-home-zone.is-drop-target{
+  border-color:#111;
+  transform:scale(1.015);
+  box-shadow:
+    inset 0 0 0 2px #111;
+}
+
+#onboarding .dna-home-zone-neutral.is-drop-target{
+  background:#fff;
+}
+
+#onboarding .dna-home-zone-like.is-drop-target{
+  background:#ecece6;
+}
+
+#onboarding .dna-home-zone-need.is-drop-target{
+  background:var(--acid);
+}
+
+/* ROOMS DNA — drag pointer stability */
+#onboarding .dna-home-card{
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-user-drag:none;
+}

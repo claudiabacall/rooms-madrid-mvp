@@ -23,231 +23,176 @@
         <span class="progress-track"><span></span></span>
       </div>
     </header>
+
     <div class="onboarding-content">
+
       <div class="onboarding-step active" id="onboardingStep1">
-        <h1 id="onboardingTitle">¿Qué quieres hacer<br>en Rooms?</h1>
-        <p class="onboarding-help">Puedes elegir una opción o las dos.</p>
-
-        <div class="onboarding-options onboarding-intent-options" role="group" aria-label="Qué quieres hacer en Rooms">
-          <button class="onboarding-option onboarding-intent-card" type="button" aria-pressed="false" data-onboarding-intent="housing">
-            <b>Encontrar dónde vivir</b>
-            <span>Busca una habitación o un piso entero.</span>
-          </button>
-
-          <button class="onboarding-option onboarding-intent-card" type="button" aria-pressed="false" data-onboarding-intent="mates">
-            <b>Encontrar compañeros</b>
-            <span>Conoce personas para compartir casa o buscar juntos.</span>
-          </button>
+        <p class="eyebrow">ROOMS DNA</p>
+        <h1 id="onboardingTitle">Antes del piso,<br>está la persona.</h1>
+        <p class="onboarding-help">
+          Todos en Rooms responden al mismo núcleo. Así podemos calcular
+          compatibilidad de convivencia aunque lo que busques cambie mañana.
+        </p>
+        <div class="dna-intro-card">
+          <strong>Find. Match. Live.</strong>
+          <span>Unos minutos. Sin respuestas perfectas.</span>
         </div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep2" hidden>
-        <h1>Cuéntanos un poco<br>más sobre tu búsqueda</h1>
-
-        <div id="housingIntentDetails" class="onboarding-branch-block" hidden>
-          <h2>¿Qué tipo de vivienda buscas?</h2>
-          <p class="onboarding-help">Puedes elegir una o las dos.</p>
-
-          <div class="onboarding-options search-type-options" role="group" aria-label="Tipo de vivienda que buscas">
-            <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="room">
-              <b>Habitación</b>
-              <span>Una habitación en un piso compartido.</span>
-            </button>
-
-            <button class="onboarding-option" type="button" aria-pressed="false" data-search-type="home">
-              <b>Piso entero</b>
-              <span>Un piso completo para ti o para compartir.</span>
-            </button>
-          </div>
-        </div>
-
-        <div id="matesIntentDetails" class="onboarding-branch-block" hidden>
-          <h2>¿Cuál es tu situación?</h2>
-          <p class="onboarding-help">Elige la opción que más se parezca a lo que buscas ahora.</p>
-
-          <div class="onboarding-options mates-mode-options" role="group" aria-label="Situación para buscar compañeros">
-            <button class="onboarding-option" type="button" aria-pressed="false" data-mates-mode="have-home">
-              <b>Ya tengo casa</b>
-              <span>Busco a alguien para vivir conmigo.</span>
-            </button>
-
-            <button class="onboarding-option" type="button" aria-pressed="false" data-mates-mode="search-together">
-              <b>Quiero buscar con alguien</b>
-              <span>Quiero conocer personas para encontrar vivienda juntos.</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="onboarding-branch-block onboarding-zone-block" id="searchZonesBlock" hidden>
-          <h2>¿Dónde te gustaría vivir?</h2>
-          <p class="onboarding-help">Elige todas las zonas que te encajen.</p>
-
-          <label class="zone-search">
-            <span aria-hidden="true">⌕</span>
-            <input id="onboardingZoneSearch" type="search" placeholder="Buscar barrio o zona" autocomplete="off" aria-label="Buscar barrio o zona">
-          </label>
-
-          <div class="zone-options" id="onboardingZones" role="group" aria-label="Zonas donde te gustaría vivir"></div>
-          <p class="zone-empty" id="zoneEmpty" hidden>No encontramos esa zona.</p>
-        </div>
-
-        <div class="onboarding-branch-block onboarding-home-zone-block" id="homeZoneBlock" hidden>
-          <h2>¿Dónde está tu vivienda?</h2>
-          <p class="onboarding-help">Indica la zona de la casa donde buscas compañero.</p>
-
-          <label class="onboarding-select-label">
-            <span>Zona de la vivienda</span>
-            <select id="onboardingHomeZone" aria-label="Zona de tu vivienda">
-              <option value="">Selecciona una zona</option>
-              <option value="Chamberí">Chamberí</option>
-              <option value="Malasaña">Malasaña</option>
-              <option value="Salamanca">Salamanca</option>
-              <option value="Retiro">Retiro</option>
-              <option value="Moncloa">Moncloa</option>
-              <option value="La Latina">La Latina</option>
-              <option value="Lavapiés">Lavapiés</option>
-              <option value="Argüelles">Argüelles</option>
-              <option value="Chamartín">Chamartín</option>
-              <option value="Centro">Centro</option>
-              <option value="Otra zona">Otra zona</option>
-            </select>
-          </label>
-        </div>
+        <p class="eyebrow">THIS OR THAT</p>
+        <h1>Elige lo que más<br>se parece a ti</h1>
+        <p class="onboarding-help">No lo pienses demasiado.</p>
+        <div id="dnaThisOrThat" class="dna-question-stack"></div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep3" hidden>
-        <h1>¿Cuál es tu<br>presupuesto mensual?</h1>
-        <div class="budget-editor">
-          <label><span>Mínimo</span><span class="budget-input"><input id="onboardingBudgetMin" type="number" min="300" max="3950" step="50" value="600" inputmode="numeric" aria-label="Presupuesto mínimo"><i>€</i></span></label>
-          <label><span>Máximo</span><span class="budget-input"><input id="onboardingBudgetMax" type="number" min="350" max="4000" step="50" value="1000" inputmode="numeric" aria-label="Presupuesto máximo"><i id="onboardingBudgetMaxSuffix">€</i></span></label>
-        </div>
-        <div class="onboarding-budget-range" id="onboardingBudgetRange">
-          <input id="onboardingBudgetMinRange" type="range" min="300" max="4000" step="50" value="600" aria-label="Ajustar presupuesto mínimo">
-          <input id="onboardingBudgetMaxRange" type="range" min="300" max="4000" step="50" value="1000" aria-label="Ajustar presupuesto máximo">
-        </div>
-        <button class="budget-over" id="budgetOver4000" type="button" aria-pressed="false">Más de 4.000 €</button>
-        <p class="budget-support"><span aria-hidden="true">✦</span> Indica el rango mensual que quieres tener como referencia.</p>
+        <p class="eyebrow">CONVIVENCIA</p>
+        <h1>Ahora, vida real.</h1>
+        <p class="onboarding-help">
+          ¿Cómo te sientan estas situaciones en casa?
+        </p>
+        <div id="dnaScenarios" class="dna-question-stack"></div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep4" hidden>
-        <h1>¿Cuándo te<br>quieres mudar?</h1>
-        <div class="move-date-block">
-          <label class="move-date-label"><span>Fecha de entrada</span><input id="onboardingMoveDate" type="date" value="2026-09-15" aria-label="Fecha de entrada"></label>
-          <button class="soft-chip" id="flexibleDate" type="button" aria-pressed="false">Soy flexible</button>
-        </div>
-        <div class="duration-block">
-          <h2>¿Cuánto tiempo quieres quedarte?</h2>
-          <div class="duration-options" role="group" aria-label="Duración de la estancia">
-            <button class="duration-chip" type="button" aria-pressed="false" data-duration="1-3">1–3 meses</button>
-            <button class="duration-chip" type="button" aria-pressed="false" data-duration="3-6">3–6 meses</button>
-            <button class="duration-chip" type="button" aria-pressed="false" data-duration="6-12">6–12 meses</button>
-            <button class="duration-chip" type="button" aria-pressed="false" data-duration="12+">Más de 1 año</button>
-            <button class="duration-chip" type="button" aria-pressed="false" data-duration="unknown">No lo sé todavía</button>
-          </div>
-        </div>
+        <p class="eyebrow">LO QUE TE IMPORTA</p>
+        <h1>No todo pesa<br>lo mismo.</h1>
+        <p class="onboarding-help">
+          Aquí distinguimos una preferencia de algo que de verdad necesitas.
+        </p>
+        <div id="dnaImportance" class="dna-question-stack"></div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep5" hidden>
-        <h1>¿Qué buscas<br>en una vivienda?</h1>
-        <p class="onboarding-help">Marca todo lo que te importe.</p>
-        <div class="home-feature-options" role="group" aria-label="Preferencias de vivienda">
-          <button type="button" aria-pressed="false" data-home-feature="furnished">Amueblado</button>
-          <button type="button" aria-pressed="false" data-home-feature="outside">Exterior</button>
-          <button type="button" aria-pressed="false" data-home-feature="light">Buena luz</button>
-          <button type="button" aria-pressed="false" data-home-feature="terrace">Terraza</button>
-          <button type="button" aria-pressed="false" data-home-feature="lift">Ascensor</button>
-          <button type="button" aria-pressed="false" data-home-feature="pets">Mascotas</button>
-          <button type="button" aria-pressed="false" data-home-feature="metro">Cerca del metro</button>
-          <button type="button" aria-pressed="false" data-home-feature="quiet">Zona tranquila</button>
-          <button type="button" aria-pressed="false" data-home-feature="workspace">Espacio para teletrabajar</button>
-          <button type="button" aria-pressed="false" data-home-feature="bathroom">Baño privado</button>
-          <button type="button" aria-pressed="false" data-home-feature="air">Aire acondicionado</button>
-          <button type="button" aria-pressed="false" data-home-feature="storage">Mucho almacenamiento</button>
-        </div>
-        <p class="preference-microcopy">Puedes ajustar estas preferencias cuando quieras.</p>
+        <p class="eyebrow">DEALBREAKERS</p>
+        <h1>¿Con qué no<br>negociarías?</h1>
+        <p class="onboarding-help">
+          Marcar algo como dealbreaker tendrá más peso en tu compatibilidad.
+        </p>
+        <div id="dnaDealbreakers" class="dna-question-stack"></div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep6" hidden>
-        <h1>¿Cómo te gusta<br>vivir en casa?</h1>
-        <p class="onboarding-help">Esto nos ayuda a calcular tu compatibilidad con otras personas.</p>
-        <div class="living-categories" id="livingCategories"></div>
+        <p class="eyebrow">TU CASA</p>
+        <h1>¿Qué hace que una casa<br>te encaje de verdad?</h1>
+        <p class="onboarding-help">
+          No hablamos todavía de precio ni de barrio concreto.
+        </p>
+        <div id="dnaHomePreferences" class="dna-question-stack"></div>
       </div>
+
       <div class="onboarding-step" id="onboardingStep7" hidden>
-        <h1>Cuéntanos un poco<br>sobre ti</h1>
-        <p class="onboarding-help">Tu perfil ayuda a que otros sepan con quién podrían vivir.</p>
+        <p class="eyebrow">UN POCO MÁS DE TI</p>
+        <h1>Fuera de casa,<br>¿quién eres?</h1>
+        <p class="onboarding-help">
+          No buscamos un currículum. Solo las cosas que hacen que tú seas tú.
+        </p>
+
+        <div id="dnaInterests" aria-label="Intereses"></div>
+        <div id="dnaTraits" aria-label="Rasgos personales"></div>
+      </div>
+
+      <div class="onboarding-step" id="onboardingStep8" hidden>
+        <p class="eyebrow">TU PERFIL</p>
+        <h1>Ahora sí,<br>ponte cara.</h1>
+        <p class="onboarding-help">
+          Lo mínimo para que otros sepan quién hay detrás de tu Rooms DNA.
+        </p>
+
         <div class="profile-basics">
           <label class="profile-photo-upload">
             <input id="profilePhotoInput" type="file" accept="image/*" aria-label="Añadir foto de perfil">
-            <span class="profile-photo-preview" id="profilePhotoPreview"><b id="profilePhotoPlus">+</b><img id="profilePhotoImage" alt="Vista previa de tu foto de perfil" hidden></span>
-            <span><strong id="profilePhotoText">Añadir foto</strong><small>Opcional, pero muy recomendada</small></span>
+            <span class="profile-photo-preview" id="profilePhotoPreview">
+              <b id="profilePhotoPlus">+</b>
+              <img id="profilePhotoImage" alt="Vista previa de tu foto de perfil" hidden>
+            </span>
+            <span>
+              <strong id="profilePhotoText">Añadir foto</strong>
+              <small>Opcional, pero recomendada</small>
+            </span>
           </label>
+
           <div class="profile-fields">
-            <label><span>Nombre o alias</span><input id="profileName" type="text" maxlength="40" placeholder="¿Cómo quieres que te llamemos?" autocomplete="name"></label>
-            <label><span>Bio corta <i>Opcional</i></span><textarea id="profileBio" maxlength="180" rows="3" placeholder="Trabajo en publicidad, me encanta cocinar y busco un piso tranquilo por Chamberí."></textarea></label>
+            <label>
+              <span>Nombre o alias</span>
+              <input id="profileName" type="text" maxlength="40"
+                placeholder="¿Cómo quieres que te llamemos?" autocomplete="name">
+            </label>
+
+            <label>
+              <span>Bio corta <i>Opcional</i></span>
+              <textarea id="profileBio" maxlength="180" rows="3"
+                placeholder="Cuéntanos algo sobre ti."></textarea>
+            </label>
           </div>
         </div>
-        <div class="profile-chip-section">
-          <h2>Intereses</h2>
-          <div class="profile-chips" role="group" aria-label="Intereses">
-            <button type="button" aria-pressed="false" data-interest="sport">Deporte</button><button type="button" aria-pressed="false" data-interest="music">Música</button><button type="button" aria-pressed="false" data-interest="cooking">Cocina</button><button type="button" aria-pressed="false" data-interest="travel">Viajes</button><button type="button" aria-pressed="false" data-interest="gym">Gym</button><button type="button" aria-pressed="false" data-interest="gaming">Gaming</button><button type="button" aria-pressed="false" data-interest="reading">Lectura</button><button type="button" aria-pressed="false" data-interest="going-out">Salir</button><button type="button" aria-pressed="false" data-interest="quiet-plans">Planes tranquilos</button><button type="button" aria-pressed="false" data-interest="pets">Mascotas</button>
-          </div>
-        </div>
-        <div class="profile-chip-section">
-          <h2>Cómo te describirías</h2>
-          <div class="profile-chips" role="group" aria-label="Cómo te describirías">
-            <button type="button" aria-pressed="false" data-self-description="tidy">Ordenado</button><button type="button" aria-pressed="false" data-self-description="social">Sociable</button><button type="button" aria-pressed="false" data-self-description="calm">Tranquilo</button><button type="button" aria-pressed="false" data-self-description="independent">Independiente</button><button type="button" aria-pressed="false" data-self-description="cook">Cocinillas</button><button type="button" aria-pressed="false" data-self-description="early">Madrugador</button><button type="button" aria-pressed="false" data-self-description="night">Nocturno</button>
-          </div>
-        </div>
-        <p class="profile-note">Esto ayuda a que otras personas conozcan mejor tu perfil.</p>
       </div>
-      <div class="onboarding-step" id="onboardingStep8" hidden>
-        <h1>Tú decides<br>qué compartes</h1>
-        <p class="onboarding-help">Elige el nivel de privacidad que prefieras. Puedes cambiarlo cuando quieras.</p>
-        <div class="privacy-levels" role="radiogroup" aria-label="Nivel de privacidad">
-          <button type="button" role="radio" aria-checked="false" data-privacy-level="public"><b>Público</b><span>Más fácil que otros te descubran.</span></button>
-          <button type="button" role="radio" aria-checked="true" data-privacy-level="balanced"><b>Equilibrado</b><span>Perfil visible e información sensible limitada.</span></button>
-          <button type="button" role="radio" aria-checked="false" data-privacy-level="private"><b>Privado</b><span>Mayor control sobre quién puede verte.</span></button>
-        </div>
-        <div class="privacy-controls">
-          <h2>Qué quieres mostrar</h2>
-          <button type="button" role="switch" aria-checked="true" data-privacy-control="habits"><span>Mostrar hábitos de convivencia</span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked="true" data-privacy-control="searching"><span>Mostrar que estoy buscando vivienda</span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked="true" data-privacy-control="posts"><span>Mostrar mis publicaciones</span><i aria-hidden="true"></i></button>
-          <button type="button" role="switch" aria-checked="false" disabled aria-disabled="true"><span>Visibilidad de Hogares/Comunidades <small>PRÓXIMAMENTE</small></span><i aria-hidden="true"></i></button>
-        </div>
-        <p class="privacy-note"><span aria-hidden="true">⌁</span> Nunca mostraremos por defecto datos como tus viviendas anteriores concretas.</p>
-      </div>
+
       <div class="onboarding-step" id="onboardingStep9" hidden>
-        <h1>Añade señales<br>de confianza</h1>
-        <p class="onboarding-help">No es obligatorio, pero ayuda a generar confianza dentro de Rooms.</p>
-        <div class="verification-panel" id="verificationPanel" aria-label="Estado de verificación">
-          <div class="verification-item" data-verification="email"><span class="verification-icon" aria-hidden="true">1</span><span><b>Email</b><small>Comprobando estado…</small></span><em>…</em></div>
-          <div class="verification-item optional" data-verification="phone"><span class="verification-icon" aria-hidden="true">2</span><span><b>Teléfono</b><small>La verificación por código estará disponible próximamente.</small></span><em>PRÓX.</em></div>
-          <div class="verification-item optional" data-verification="photo"><span class="verification-icon" aria-hidden="true">3</span><span><b>Verificación de foto</b><small>La comprobación de identidad mediante foto estará disponible próximamente.</small></span><em>PRÓX.</em></div>
-          <div class="verification-item optional" data-verification="selfie"><span class="verification-icon" aria-hidden="true">4</span><span><b>Selfie de verificación</b><small>Función opcional en preparación.</small></span><em>PRÓX.</em></div>
+        <div class="dna-reveal">
+          <p class="eyebrow">YOUR ROOMS DNA</p>
+          <span class="dna-reveal-mark" aria-hidden="true">✦</span>
+          <h1 id="dnaRevealTitle">Tu DNA está listo</h1>
+          <p id="dnaRevealDescriptor" class="dna-reveal-descriptor"></p>
+          <div id="dnaRevealSummary" class="dna-reveal-summary"></div>
+          <p class="onboarding-help">
+            Esto no es una etiqueta. Es la base que Rooms utilizará para
+            comparar convivencia y se puede actualizar cuando quieras.
+          </p>
         </div>
-        <p class="verification-note">Sin documentos ni procesos pesados.</p>
       </div>
+
       <div class="onboarding-step" id="onboardingStep10" hidden>
-        <div class="ready-heading"><span aria-hidden="true">✦</span><h1>Tu Rooms<br>está listo</h1></div>
-        <p class="onboarding-help">Ya tenemos lo necesario para empezar a mostrarte viviendas y personas en Rooms.</p>
-        <div class="match-previews" aria-label="Qué encontrarás en Rooms">
-          <article class="match-preview home-match">
-            <img src="assets/images/chamberi-villanueva.jpg" alt="Ejemplo visual de una vivienda en Rooms">
-            <div><span>VIVIENDAS</span><b>Explora viviendas según lo que buscas</b><small>Revisa zona, precio, disponibilidad y características de convivencia.</small></div>
-          </article>
-          <article class="match-preview person-match">
-            <div class="preview-avatar" aria-hidden="true">R</div>
-            <div><span>PERSONAS</span><b>Conoce posibles compañeros</b><small>Rooms utilizará los datos reales de cada perfil para mostrar compatibilidad.</small></div>
-          </article>
-          <article class="match-preview community-match">
-            <div class="community-mark" aria-hidden="true">#</div>
-            <div><span>COMUNIDADES</span><b>Descubre grupos que te interesen</b><small>Las comunidades reales aparecerán cuando empieces a explorar Rooms.</small></div>
-          </article>
+        <p class="eyebrow">AHORA SÍ</p>
+        <h1>¿Qué quieres hacer<br>ahora en Rooms?</h1>
+        <p class="onboarding-help">
+          Tu Rooms DNA no cambia por esto. Solo nos dice qué necesitas ahora.
+        </p>
+
+        <div class="onboarding-options onboarding-intent-options"
+          id="dnaIntentOptions"
+          role="group"
+          aria-label="Qué quieres hacer ahora en Rooms">
+
+          <button class="onboarding-option" type="button"
+            aria-pressed="false"
+            data-onboarding-intent="find_room">
+            <b>Encontrar una habitación</b>
+            <span>Quiero vivir en un piso compartido.</span>
+          </button>
+
+          <button class="onboarding-option" type="button"
+            aria-pressed="false"
+            data-onboarding-intent="find_apartment">
+            <b>Encontrar un piso</b>
+            <span>Busco una vivienda completa.</span>
+          </button>
+
+          <button class="onboarding-option" type="button"
+            aria-pressed="false"
+            data-onboarding-intent="find_mates_for_home">
+            <b>Encontrar compañeros para mi casa</b>
+            <span>Ya tengo vivienda y quiero encontrar a quién vivir conmigo.</span>
+          </button>
+
+          <button class="onboarding-option" type="button"
+            aria-pressed="false"
+            data-onboarding-intent="find_mates_to_search">
+            <b>Encontrar compañeros para buscar juntos</b>
+            <span>Primero quiero encontrar personas compatibles.</span>
+          </button>
         </div>
-        <p class="learning-note">Puedes actualizar tus preferencias cuando quieras.</p>
       </div>
+
     </div>
+
     <footer class="onboarding-footer">
       <button class="onboarding-back" id="onboardingBack" type="button" hidden>← Atrás</button>
       <p id="onboardingTagline"><strong>Find.</strong> Match. Live.</p>
-      <button class="onboarding-later" id="onboardingLater" type="button" hidden>Más tarde</button>
-      <button class="onboarding-continue" id="onboardingContinue" type="button" disabled>Continuar <span aria-hidden="true">→</span></button>
+      <button class="onboarding-continue" id="onboardingContinue" type="button">
+        Empezar <span aria-hidden="true">→</span>
+      </button>
     </footer>
   </section>
 
@@ -922,6 +867,7 @@
   <div class="toast" id="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/supabase-config.js"></script>
+  <script src="assets/js/rooms-dna-config.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/vendor/leaflet/leaflet.js"></script>
   <script src="assets/js/supabase-app.js"></script>

@@ -989,22 +989,75 @@ if (
   }
 }
 
-title('RUTAS DE ONBOARDING');
+title('ROOMS DNA V2');
+
+try {
+  const outputV2 =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-rooms-dna-v2.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputV2.trim()
+  );
+
+  const outputEngine =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-rooms-dna-engine.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputEngine.trim()
+  );
+
+  const outputArchetypes =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-rooms-dna-archetypes.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputArchetypes.trim()
+  );
+
+  ok('Arquitectura ROOMS DNA V2');
+} catch (error) {
+  fail('Arquitectura ROOMS DNA V2');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+title('ROOMS DNA UNIVERSAL');
 
 try {
   const output =
     execFileSync(
       process.execPath,
-      ['scripts/test-onboarding.mjs'],
+      ['scripts/test-rooms-dna.mjs'],
       {
         encoding: 'utf8'
       }
     );
 
   console.log(output.trim());
-  ok('Rutas de onboarding');
+  ok('Arquitectura ROOMS DNA');
 } catch (error) {
-  fail('Rutas de onboarding');
+  fail('Arquitectura ROOMS DNA');
 
   console.error(
     error.stdout?.toString() ||
