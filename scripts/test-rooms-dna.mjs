@@ -1,141 +1,226 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const html = fs.readFileSync('index.html', 'utf8');
-const app = fs.readFileSync('assets/js/app.js', 'utf8');
-const configSource =
-  fs.readFileSync('assets/js/rooms-dna-config.js', 'utf8');
+const html =
+  fs.readFileSync(
+    'index.html',
+    'utf8'
+  );
 
-const context = { window: {} };
+const app =
+  fs.readFileSync(
+    'assets/js/app.js',
+    'utf8'
+  );
+
+const legacyConfigSource =
+  fs.readFileSync(
+    'assets/js/rooms-dna-config.js',
+    'utf8'
+  );
+
+const v2ConfigSource =
+  fs.readFileSync(
+    'assets/js/rooms-dna-v2-config.js',
+    'utf8'
+  );
+
+const context = {
+  window: {},
+  globalThis: {}
+};
+
+context.globalThis =
+  context.window;
+
 vm.createContext(context);
-vm.runInContext(configSource, context);
 
-const dna = context.window.ROOMS_DNA;
+vm.runInContext(
+  legacyConfigSource,
+  context
+);
 
-function assert(condition, message) {
-  if (!condition) {
+vm.runInContext(
+  v2ConfigSource,
+  context
+);
+
+const legacy =
+  context.window.ROOMS_DNA;
+
+const v2 =
+  context.window.ROOMS_DNA_V2;
+
+function assert(
+  condition,
+  message
+){
+  if(!condition){
     throw new Error(message);
   }
 
-  console.log(`OK  ${message}`);
-}
-
-console.log('');
-console.log('=== ROOMS DNA: CONFIG ===');
-
-assert(Boolean(dna), 'Existe configuración ROOMS DNA');
-assert(dna.version === 1, 'ROOMS DNA usa versión 1');
-
-const expectedStorage = [
-  'living_self',
-  'living_importance',
-  'dealbreakers',
-  'home_preferences',
-  'neighborhood_preferences',
-  'interests',
-  'traits'
-];
-
-for (const field of expectedStorage) {
-  assert(
-    Object.values(dna.storage).includes(field),
-    `Contrato incluye ${field}`
+  console.log(
+    `OK  ${message}`
   );
 }
 
 console.log('');
-console.log('=== ROOMS DNA: CONTENIDO ===');
+console.log(
+  '=== ROOMS DNA: V2 ONBOARDING ==='
+);
 
-assert(dna.thisOrThat.length === 4, 'Hay 4 preguntas This or That');
-assert(dna.scenarios.length === 5, 'Hay 5 escenarios de convivencia');
-assert(dna.dealbreakers.length === 4, 'Hay 4 dealbreakers');
-assert(dna.homePreferences.length === 5, 'Hay 5 preferencias de hogar');
-assert(dna.dynamicImportance.length > 0, 'Hay preguntas de importancia');
-assert(dna.interests.length > 0, 'Hay intereses');
-assert(dna.traits.length > 0, 'Hay rasgos');
+assert(
+  Boolean(v2),
+  'Existe configuración ROOMS DNA V2'
+);
+
+assert(
+  v2.version===2,
+  'ROOMS DNA onboarding usa versión 2'
+);
+
+assert(
+  (
+    v2.interactions || []
+  ).length===10,
+  'V2 define 10 interacciones'
+);
 
 console.log('');
-console.log('=== ROOMS DNA: FLUJO ===');
+console.log(
+  '=== ROOMS DNA: FLUJO ==='
+);
+
+const steps =
+  (
+    html.match(
+      /class="onboarding-step/g
+    ) || []
+  ).length;
+
+assert(
+  steps===8,
+  'El onboarding visible tiene 8 pasos'
+);
 
 const step1 =
   html.match(
     /id="onboardingStep1"[\s\S]*?(?=id="onboardingStep2")/
   )?.[0] || '';
 
-const step9 =
+const step7 =
   html.match(
-    /id="onboardingStep9"[\s\S]*?(?=id="onboardingStep10")/
+    /id="onboardingStep7"[\s\S]*?(?=id="onboardingStep8")/
   )?.[0] || '';
 
-const step10 =
+const step8 =
   html.match(
-    /id="onboardingStep10"[\s\S]*?(?=<\/div>\s*<\/div>\s*<footer)/
+    /id="onboardingStep8"[\s\S]*?(?=<\/div>\s*<\/div>\s*<footer)/
   )?.[0] || '';
 
 assert(
-  !step1.includes('data-onboarding-intent'),
+  !step1.includes(
+    'data-onboarding-intent'
+  ),
   'La intención no gobierna el inicio'
 );
 
 assert(
-  step9.includes('YOUR ROOMS DNA'),
+  step7.includes(
+    'YOUR ROOMS DNA'
+  ),
   'El reveal ocurre antes de la intención'
 );
 
 assert(
-  step10.includes('data-onboarding-intent'),
+  step8.includes(
+    'data-onboarding-intent'
+  ),
   'La intención está después del reveal'
 );
 
 assert(
-  (html.match(/class="onboarding-step/g) || []).length === 10,
-  'El onboarding universal tiene 10 pasos'
+  !html.includes(
+    'id="dnaImportance"'
+  ),
+  'Importance V1 ya no está en onboarding'
+);
+
+assert(
+  !html.includes(
+    'id="dnaDealbreakers"'
+  ),
+  'Dealbreakers V1 ya no están en onboarding'
 );
 
 console.log('');
-console.log('=== ROOMS DNA: ESTADO FRONTEND ===');
-
-assert(
-  app.includes('dnaState'),
-  'Existe estado específico de ROOMS DNA'
+console.log(
+  '=== ROOMS DNA: ESTADO FRONTEND ==='
 );
 
 assert(
-  app.includes('thisOrThat'),
-  'Frontend recoge This or That'
+  app.includes(
+    'roomsDnaV2Answers'
+  ),
+  'Frontend usa estado canónico V2'
 );
 
 assert(
-  app.includes('scenarios'),
-  'Frontend recoge escenarios'
+  app.includes(
+    'thisOrThatComplete'
+  ),
+  'VIBE valida respuestas V2'
 );
 
 assert(
-  app.includes('importance'),
-  'Frontend recoge importancia'
+  app.includes(
+    'livingComplete'
+  ),
+  'LIVING valida respuestas V2'
 );
 
 assert(
-  app.includes('dealbreakers'),
-  'Frontend recoge dealbreakers'
+  app.includes(
+    'homePrioritiesComplete'
+  ),
+  'HOME valida respuestas V2'
 );
 
 assert(
-  app.includes('homePreferences'),
-  'Frontend recoge preferencias de hogar'
+  app.includes(
+    'worldComplete'
+  ),
+  'WORLD valida respuestas V2'
 );
 
 assert(
-  app.includes('intents'),
-  'Frontend separa las intenciones'
+  app.includes(
+    'getRoomsDnaPersistenceSnapshot'
+  ),
+  'Frontend genera snapshot persistible V2'
+);
+
+assert(
+  app.includes(
+    'buildLegacyMatchPreferencesFromV2'
+  ),
+  'Existe adapter temporal V2 a match_preferences'
 );
 
 console.log('');
-console.log('ROOMS DNA ARCHITECTURE OK');
+console.log(
+  '=== ROOMS DNA: COMPATIBILIDAD ==='
+);
 
+assert(
+  Boolean(legacy),
+  'Configuración V1 sigue disponible para editores legacy'
+);
 
-console.log('');
-console.log('=== ROOMS DNA: EDITORES CANÓNICOS ===');
+assert(
+  legacy.version===1,
+  'V1 permanece aislado como compatibilidad'
+);
 
 const supabaseApp =
   fs.readFileSync(
@@ -145,30 +230,16 @@ const supabaseApp =
 
 assert(
   supabaseApp.includes(
+    ".from('rooms_dna')"
+  ),
+  'Persistencia V2 usa rooms_dna'
+);
+
+assert(
+  supabaseApp.includes(
     ".from('match_preferences')"
   ),
-  'Editores usan match_preferences'
-);
-
-assert(
-  !supabaseApp.includes(
-    'state.preferences?.answers?.living'
-  ),
-  'Convivencia ya no usa answers.living'
-);
-
-assert(
-  !supabaseApp.includes(
-    'state.preferences.answers.living'
-  ),
-  'No quedan lecturas directas de answers.living'
-);
-
-assert(
-  !supabaseApp.includes(
-    'answers.homeFeatures'
-  ),
-  'Preferencias de hogar ya no usan homeFeatures'
+  'Editores legacy mantienen match_preferences'
 );
 
 assert(
@@ -186,4 +257,6 @@ assert(
 );
 
 console.log('');
-console.log('ROOMS DNA EDITORS OK');
+console.log(
+  'ROOMS DNA ARCHITECTURE OK'
+);

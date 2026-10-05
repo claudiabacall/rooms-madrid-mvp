@@ -56,24 +56,6 @@
       </div>
 
       <div class="onboarding-step" id="onboardingStep4" hidden>
-        <p class="eyebrow">LO QUE TE IMPORTA</p>
-        <h1>No todo pesa<br>lo mismo.</h1>
-        <p class="onboarding-help">
-          Aquí distinguimos una preferencia de algo que de verdad necesitas.
-        </p>
-        <div id="dnaImportance" class="dna-question-stack"></div>
-      </div>
-
-      <div class="onboarding-step" id="onboardingStep5" hidden>
-        <p class="eyebrow">DEALBREAKERS</p>
-        <h1>¿Con qué no<br>negociarías?</h1>
-        <p class="onboarding-help">
-          Marcar algo como dealbreaker tendrá más peso en tu compatibilidad.
-        </p>
-        <div id="dnaDealbreakers" class="dna-question-stack"></div>
-      </div>
-
-      <div class="onboarding-step" id="onboardingStep6" hidden>
         <p class="eyebrow">TU CASA</p>
         <h1>¿Qué hace que una casa<br>te encaje de verdad?</h1>
         <p class="onboarding-help">
@@ -82,7 +64,7 @@
         <div id="dnaHomePreferences" class="dna-question-stack"></div>
       </div>
 
-      <div class="onboarding-step" id="onboardingStep7" hidden>
+      <div class="onboarding-step" id="onboardingStep5" hidden>
         <p class="eyebrow">UN POCO MÁS DE TI</p>
         <h1>Fuera de casa,<br>¿quién eres?</h1>
         <p class="onboarding-help">
@@ -93,7 +75,7 @@
         <div id="dnaTraits" aria-label="Rasgos personales"></div>
       </div>
 
-      <div class="onboarding-step" id="onboardingStep8" hidden>
+      <div class="onboarding-step" id="onboardingStep6" hidden>
         <p class="eyebrow">TU PERFIL</p>
         <h1>Ahora sí,<br>ponte cara.</h1>
         <p class="onboarding-help">
@@ -129,21 +111,90 @@
         </div>
       </div>
 
-      <div class="onboarding-step" id="onboardingStep9" hidden>
+      <div class="onboarding-step" id="onboardingStep7" hidden>
         <div class="dna-reveal">
-          <p class="eyebrow">YOUR ROOMS DNA</p>
-          <span class="dna-reveal-mark" aria-hidden="true">✦</span>
-          <h1 id="dnaRevealTitle">Tu DNA está listo</h1>
-          <p id="dnaRevealDescriptor" class="dna-reveal-descriptor"></p>
-          <div id="dnaRevealSummary" class="dna-reveal-summary"></div>
-          <p class="onboarding-help">
-            Esto no es una etiqueta. Es la base que Rooms utilizará para
-            comparar convivencia y se puede actualizar cuando quieras.
-          </p>
+
+          <div class="dna-reveal-visual">
+            <div class="dna-reveal-visual-meta">
+              <span>ROOMS DNA</span>
+              <span>01</span>
+            </div>
+
+            <div
+              class="dna-reveal-art"
+              id="dnaRevealArt"
+              aria-hidden="true">
+              <span>✦</span>
+            </div>
+
+            <div class="dna-reveal-brand">
+              <strong>ROOMS.</strong>
+              <span>Find. Match. Live.</span>
+            </div>
+          </div>
+
+          <div class="dna-reveal-content">
+
+            <div class="dna-reveal-heading">
+              <p class="eyebrow">
+                YOUR ROOMS DNA
+              </p>
+
+              <span
+                class="dna-reveal-index">
+                PERSONALITY TYPE
+              </span>
+            </div>
+
+            <h1 id="dnaRevealTitle">
+              Tu DNA está listo
+            </h1>
+
+            <p
+              id="dnaRevealDescriptor"
+              class="dna-reveal-descriptor">
+            </p>
+
+            <div
+              id="dnaRevealSummary"
+              class="dna-reveal-summary">
+            </div>
+
+            <div
+              id="dnaRevealInterests"
+              class="dna-reveal-interests"
+              hidden>
+            </div>
+
+            <div
+              id="dnaRevealSecondary"
+              class="dna-reveal-secondary-panel"
+              hidden>
+            </div>
+
+            <div class="dna-reveal-actions">
+              <button
+                type="button"
+                class="dna-reveal-share"
+                id="dnaRevealShare"
+                disabled
+                aria-disabled="true"
+                title="Share my DNA · Próximamente">
+                Share my DNA
+                <span aria-hidden="true">↗</span>
+              </button>
+
+              <small>
+                Your DNA evolves with you.
+              </small>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
-      <div class="onboarding-step" id="onboardingStep10" hidden>
+      <div class="onboarding-step" id="onboardingStep8" hidden>
         <p class="eyebrow">AHORA SÍ</p>
         <h1>¿Qué quieres hacer<br>ahora en Rooms?</h1>
         <p class="onboarding-help">
@@ -868,6 +919,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/supabase-config.js"></script>
   <script src="assets/js/rooms-dna-config.js"></script>
+  <script src="assets/js/rooms-dna-v2-config.js"></script>
+  <script src="assets/js/rooms-dna-engine.js"></script>
+  <script src="assets/js/rooms-dna-archetypes.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/vendor/leaflet/leaflet.js"></script>
   <script src="assets/js/supabase-app.js"></script>

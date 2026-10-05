@@ -7938,6 +7938,76 @@
       return false;
     }
 
+    const roomsDna =
+      snapshot.roomsDna;
+
+    if (
+      !roomsDna ||
+      !roomsDna.modelVersion
+    ) {
+      console.error(
+        'Rooms: snapshot ROOMS DNA V2 no disponible.'
+      );
+
+      notify(
+        'No se pudo preparar tu Rooms DNA'
+      );
+
+      return false;
+    }
+
+    const roomsDnaResult =
+      await db
+        .from('rooms_dna')
+        .upsert(
+          {
+            user_id:
+              state.user.id,
+
+            model_version:
+              roomsDna.modelVersion,
+
+            answers:
+              roomsDna.answers,
+
+            dimensions:
+              roomsDna.dimensions,
+
+            categories:
+              roomsDna.categories,
+
+            classification:
+              roomsDna.classification,
+
+            evidence:
+              roomsDna.evidence,
+
+            calculated_at:
+              roomsDna.calculatedAt,
+
+            updated_at:
+              new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id'
+          }
+        )
+        .select()
+        .single();
+
+    if (roomsDnaResult.error) {
+      console.error(
+        'Rooms: error guardando ROOMS DNA V2.',
+        roomsDnaResult.error
+      );
+
+      notify(
+        'No se pudo guardar tu Rooms DNA'
+      );
+
+      return false;
+    }
+
     const deleteIntentsResult =
       await db
         .from('user_intents')

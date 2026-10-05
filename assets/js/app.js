@@ -18,6 +18,52 @@ const dnaState={
   intents:new Set()
 };
 
+/*
+  ROOMS DNA V2 — CANONICAL ANSWERS
+
+  Esta será la única fuente de verdad del nuevo
+  onboarding. Durante la migración convivirá
+  temporalmente con dnaState v1.
+*/
+const roomsDnaV2Answers={};
+
+function setRoomsDnaV2Answer(
+  interactionId,
+  value
+){
+  if(
+    !interactionId ||
+    value===undefined ||
+    value===null
+  ){
+    return;
+  }
+
+  roomsDnaV2Answers[
+    interactionId
+  ]=value;
+}
+
+function removeRoomsDnaV2Answer(
+  interactionId
+){
+  delete roomsDnaV2Answers[
+    interactionId
+  ];
+}
+
+function getRoomsDnaV2Answers(){
+  return structuredClone(
+    roomsDnaV2Answers
+  );
+}
+
+/*
+  Temporal para inspección durante desarrollo.
+*/
+window.__roomsDnaV2Answers=
+  roomsDnaV2Answers;
+
 function toggleSetButton(button,set,value){
   const active=button.getAttribute('aria-pressed')==='true';
   button.setAttribute('aria-pressed',String(!active));
@@ -40,30 +86,61 @@ function selectSingle(selector,current){
 let dnaThisIndex=0;
 let dnaThisPointer=null;
 
+function getRoomsDnaV2VibeQuestions(){
+  return (
+    window.ROOMS_DNA_V2
+      ?.interactions || []
+  ).filter(
+    interaction=>
+      interaction.act==='vibe' &&
+      interaction.type==='forced_choice'
+  );
+}
+
 function thisOrThatComplete(){
-  return roomsDna.thisOrThat.every(
-    question=>Boolean(
-      dnaState.thisOrThat[question.id]
+  const questions=
+    getRoomsDnaV2VibeQuestions();
+
+  return (
+    questions.length>0 &&
+    questions.every(
+      question=>Boolean(
+        roomsDnaV2Answers[
+          question.id
+        ]
+      )
     )
   );
 }
 
 function renderThisOrThat(){
   const host=
-    document.querySelector('#dnaThisOrThat');
+    document.querySelector(
+      '#dnaThisOrThat'
+    );
 
-  if(!host||!roomsDna)return;
+  const questions=
+    getRoomsDnaV2VibeQuestions();
+
+  if(
+    !host ||
+    !questions.length
+  )return;
 
   if(
     dnaThisIndex>=
-    roomsDna.thisOrThat.length
+    questions.length
   ){
     host.innerHTML=`
       <div class="dna-swipe-complete">
         <span aria-hidden="true">✦</span>
-        <strong>Primera capa lista</strong>
+
+        <strong>
+          Primera capa lista
+        </strong>
+
         <small>
-          ${roomsDna.thisOrThat.length}
+          ${questions.length}
           decisiones guardadas
         </small>
 
@@ -80,59 +157,86 @@ function renderThisOrThat(){
   }
 
   const question=
-    roomsDna.thisOrThat[dnaThisIndex];
+    questions[dnaThisIndex];
+
+  const left=
+    question.options?.[0];
+
+  const right=
+    question.options?.[1];
+
+  if(!left||!right)return;
 
   const selected=
-    dnaState.thisOrThat[question.id];
+    roomsDnaV2Answers[
+      question.id
+    ];
 
   host.innerHTML=`
     <div
       class="dna-swipe-stage"
       data-dna-swipe-stage
       tabindex="0"
-      aria-label="${question.title}">
+      aria-label="${question.prompt}">
 
       <div class="dna-swipe-meta">
         <span>
           ${dnaThisIndex+1}
-          / ${roomsDna.thisOrThat.length}
+          / ${questions.length}
         </span>
 
         <div>
           <i style="width:${
-            ((dnaThisIndex+1)/
-            roomsDna.thisOrThat.length)*100
+            (
+              (dnaThisIndex+1) /
+              questions.length
+            ) * 100
           }%"></i>
         </div>
       </div>
 
       <div class="dna-split-question">
-        <small>THIS OR THAT</small>
-        <h2>${question.title}</h2>
-        <p>Elige la opción que más se parece a ti.</p>
+        <small>
+          ${question.eyebrow}
+        </small>
+
+        <h2>
+          ${question.prompt}
+        </h2>
+
+        <p>
+          Elige la opción que más
+          se parece a ti.
+        </p>
       </div>
 
       <div class="dna-swipe-deck">
 
         <button
-          class="dna-swipe-choice dna-swipe-choice-left"
+          class="
+            dna-swipe-choice
+            dna-swipe-choice-left
+          "
           type="button"
           data-dna-this="${question.id}"
-          data-dna-value="${question.left.id}"
+          data-dna-value="${left.id}"
           data-dna-swipe-choice="left"
-          aria-label="${question.left.label}">
+          aria-label="${left.label}">
           <span>←</span>
-          <b>${question.left.label}</b>
+          <b>${left.label}</b>
         </button>
 
         <button
-          class="dna-swipe-choice dna-swipe-choice-right"
+          class="
+            dna-swipe-choice
+            dna-swipe-choice-right
+          "
           type="button"
           data-dna-this="${question.id}"
-          data-dna-value="${question.right.id}"
+          data-dna-value="${right.id}"
           data-dna-swipe-choice="right"
-          aria-label="${question.right.label}">
-          <b>${question.right.label}</b>
+          aria-label="${right.label}">
+          <b>${right.label}</b>
           <span>→</span>
         </button>
 
@@ -140,12 +244,16 @@ function renderThisOrThat(){
           class="dna-swipe-card"
           tabindex="0"
           role="group"
-          aria-label="${question.title}"
+          aria-label="${question.prompt}"
           data-dna-swipe-card>
 
-          <small>THIS OR THAT</small>
+          <small>
+            ${question.eyebrow}
+          </small>
 
-          <h2>${question.title}</h2>
+          <h2>
+            ${question.prompt}
+          </h2>
 
           <p>
             Arrastra hacia la opción
@@ -162,15 +270,17 @@ function renderThisOrThat(){
       </div>
 
       <div class="dna-swipe-mobile-labels">
-        <span>${question.left.label}</span>
-        <span>${question.right.label}</span>
+        <span>${left.label}</span>
+        <span>${right.label}</span>
       </div>
 
       ${
         selected
-          ? `<small class="dna-swipe-saved">
+          ? `
+            <small class="dna-swipe-saved">
               Respuesta guardada
-            </small>`
+            </small>
+          `
           : ''
       }
     </div>
@@ -180,18 +290,29 @@ function renderThisOrThat(){
 }
 
 function commitThisOrThat(side){
+  const questions=
+    getRoomsDnaV2VibeQuestions();
+
   const question=
-    roomsDna.thisOrThat[dnaThisIndex];
+    questions[dnaThisIndex];
 
   if(!question)return;
 
   const option=
     side==='left'
-      ? question.left
-      : question.right;
+      ? question.options?.[0]
+      : question.options?.[1];
 
-  dnaState.thisOrThat[question.id]=
-    option.id;
+  if(!option)return;
+
+  /*
+    Escritura DIRECTA V2.
+    Ya no pasa por dnaState.thisOrThat.
+  */
+  setRoomsDnaV2Answer(
+    question.id,
+    option.id
+  );
 
   const card=
     document.querySelector(
@@ -438,863 +559,6 @@ function renderScaleQuestions(hostSelector,questions,scale,dataAttr,stateKey){
   `).join('');
 }
 
-let dnaImportanceIndex=0;
-let dnaImportanceLocked=false;
-let activeImportanceQuestions=[];
-
-function importanceSignalScore(id){
-  const scenarios=dnaState.scenarios;
-  const thisOrThat=dnaState.thisOrThat;
-
-  const scenarioScore=value=>{
-    if(value==='strong')return 3;
-    if(value==='depends')return 2;
-    if(value==='fine')return 1;
-    return 0;
-  };
-
-  if(id==='cleanliness'){
-    return scenarioScore(
-      scenarios.dishes_two_days
-    );
-  }
-
-  if(id==='social_energy'){
-    return Math.max(
-      scenarioScore(
-        scenarios.six_friends_tonight
-      ),
-      scenarioScore(
-        scenarios.improvised_dinner
-      )
-    );
-  }
-
-  if(id==='quiet_focus'){
-    return Math.max(
-      scenarioScore(
-        scenarios.music_while_working
-      ),
-      scenarioScore(
-        scenarios.working_from_home
-      )
-    );
-  }
-
-  if(id==='daily_rhythm'){
-    return thisOrThat.tuesday_2330
-      ? 2.5
-      : 0;
-  }
-
-  return 0;
-}
-
-function getActiveImportanceQuestions(){
-  const questions=[
-    ...roomsDna.dynamicImportance
-  ];
-
-  return questions
-    .map((question,index)=>({
-      ...question,
-      signalScore:
-        importanceSignalScore(
-          question.id
-        ),
-      originalIndex:index
-    }))
-    .sort((a,b)=>{
-      if(
-        b.signalScore!==
-        a.signalScore
-      ){
-        return (
-          b.signalScore-
-          a.signalScore
-        );
-      }
-
-      return (
-        a.originalIndex-
-        b.originalIndex
-      );
-    })
-    .slice(0,3);
-}
-
-function importancePosition(index){
-  const last=
-    roomsDna.importanceScale.length-1;
-
-  if(last<=0)return 50;
-
-  return (index/last)*100;
-}
-
-function previewImportance(
-  index,
-  slider
-){
-  const option=
-    roomsDna.importanceScale[index];
-
-  if(!option||!slider)return;
-
-  slider.style.setProperty(
-    '--importance-position',
-    `${importancePosition(index)}%`
-  );
-
-  slider.setAttribute(
-    'aria-valuenow',
-    String(index)
-  );
-
-  slider.setAttribute(
-    'aria-valuetext',
-    option.label
-  );
-
-  const current=
-    slider.querySelector(
-      '.dna-importance-current'
-    );
-
-  if(current){
-    current.textContent=
-      option.label;
-  }
-
-  slider
-    .querySelectorAll(
-      '.dna-importance-stop'
-    )
-    .forEach((stop,stopIndex)=>{
-      stop.classList.toggle(
-        'is-active',
-        stopIndex===index
-      );
-    });
-}
-
-function importanceIndexFromPoint(
-  clientX,
-  slider
-){
-  const rect=
-    slider.getBoundingClientRect();
-
-  const ratio=Math.max(
-    0,
-    Math.min(
-      1,
-      (
-        clientX-
-        rect.left
-      )/
-      rect.width
-    )
-  );
-
-  return Math.round(
-    ratio*(
-      roomsDna.importanceScale.length-1
-    )
-  );
-}
-
-function commitImportance(
-  index
-){
-  if(dnaImportanceLocked)return;
-
-  const question=
-    activeImportanceQuestions[
-      dnaImportanceIndex
-    ];
-
-  const option=
-    roomsDna.importanceScale[index];
-
-  if(!question||!option)return;
-
-  dnaImportanceLocked=true;
-
-  dnaState.importance[
-    question.id
-  ]=option.id;
-
-  const stage=
-    document.querySelector(
-      '.dna-importance-stage'
-    );
-
-  if(stage){
-    stage.classList.add(
-      'is-committed'
-    );
-  }
-
-  updateOnboardingContinue();
-
-  window.setTimeout(()=>{
-    dnaImportanceIndex+=1;
-    dnaImportanceLocked=false;
-    renderImportance();
-  },380);
-}
-
-function bindImportanceSlider(){
-  const slider=
-    document.querySelector(
-      '.dna-importance-slider'
-    );
-
-  if(!slider)return;
-
-  slider.addEventListener(
-    'pointermove',
-    event=>{
-      if(dnaImportanceLocked)return;
-
-      previewImportance(
-        importanceIndexFromPoint(
-          event.clientX,
-          slider
-        ),
-        slider
-      );
-    }
-  );
-
-  slider.addEventListener(
-    'pointerdown',
-    event=>{
-      if(dnaImportanceLocked)return;
-
-      slider.setPointerCapture(
-        event.pointerId
-      );
-
-      slider.classList.add(
-        'is-dragging'
-      );
-
-      previewImportance(
-        importanceIndexFromPoint(
-          event.clientX,
-          slider
-        ),
-        slider
-      );
-    }
-  );
-
-  slider.addEventListener(
-    'pointerup',
-    event=>{
-      if(dnaImportanceLocked)return;
-
-      slider.classList.remove(
-        'is-dragging'
-      );
-
-      const index=
-        importanceIndexFromPoint(
-          event.clientX,
-          slider
-        );
-
-      previewImportance(
-        index,
-        slider
-      );
-
-      commitImportance(index);
-    }
-  );
-
-  slider.addEventListener(
-    'pointercancel',
-    ()=>{
-      slider.classList.remove(
-        'is-dragging'
-      );
-    }
-  );
-
-  slider.addEventListener(
-    'keydown',
-    event=>{
-      if(dnaImportanceLocked)return;
-
-      const current=
-        Number(
-          slider.getAttribute(
-            'aria-valuenow'
-          ) || 1
-        );
-
-      if(event.key==='ArrowLeft'){
-        event.preventDefault();
-
-        previewImportance(
-          Math.max(
-            0,
-            current-1
-          ),
-          slider
-        );
-      }
-
-      if(event.key==='ArrowRight'){
-        event.preventDefault();
-
-        previewImportance(
-          Math.min(
-            roomsDna.importanceScale.length-1,
-            current+1
-          ),
-          slider
-        );
-      }
-
-      if(
-        event.key==='Enter' ||
-        event.key===' '
-      ){
-        event.preventDefault();
-
-        commitImportance(
-          Number(
-            slider.getAttribute(
-              'aria-valuenow'
-            ) || 1
-          )
-        );
-      }
-    }
-  );
-}
-
-function renderImportance(){
-  const host=
-    document.querySelector(
-      '#dnaImportance'
-    );
-
-  if(!host||!roomsDna)return;
-
-  activeImportanceQuestions=
-    getActiveImportanceQuestions();
-
-  /*
-    Si las respuestas anteriores han cambiado,
-    living_importance solo conserva dimensiones
-    activas en este onboarding.
-  */
-  const activeIds=
-    new Set(
-      activeImportanceQuestions
-        .map(question=>question.id)
-    );
-
-  Object.keys(
-    dnaState.importance
-  ).forEach(id=>{
-    if(!activeIds.has(id)){
-      delete dnaState.importance[id];
-    }
-  });
-
-  if(
-    dnaImportanceIndex>=
-    activeImportanceQuestions.length
-  ){
-    host.innerHTML=`
-      <div class="dna-importance-complete">
-        <span aria-hidden="true">✦</span>
-
-        <small>
-          ROOMS ESTÁ APRENDIENDO
-        </small>
-
-        <strong>
-          Ya sabemos qué pesa
-          de verdad para ti.
-        </strong>
-
-        <button
-          type="button"
-          class="dna-importance-review">
-          Revisar
-        </button>
-      </div>
-    `;
-
-    updateOnboardingContinue();
-    return;
-  }
-
-  const question=
-    activeImportanceQuestions[
-      dnaImportanceIndex
-    ];
-
-  const saved=
-    dnaState.importance[
-      question.id
-    ];
-
-  let initialIndex=1;
-
-  if(saved){
-    const found=
-      roomsDna.importanceScale
-        .findIndex(
-          item=>item.id===saved
-        );
-
-    if(found>=0){
-      initialIndex=found;
-    }
-  }
-
-  const initial=
-    roomsDna.importanceScale[
-      initialIndex
-    ];
-
-  host.innerHTML=`
-    <div class="dna-importance-stage">
-
-      <div class="dna-importance-meta">
-        <span>
-          ${dnaImportanceIndex+1}
-          / ${activeImportanceQuestions.length}
-        </span>
-
-        <div>
-          <i style="width:${
-            (
-              (
-                dnaImportanceIndex+1
-              )/
-              activeImportanceQuestions.length
-            )*100
-          }%"></i>
-        </div>
-      </div>
-
-      <div class="dna-importance-insight">
-        <span class="dna-importance-signal">
-          ✦
-        </span>
-
-        <small>
-          LO QUE ESTAMOS VIENDO
-        </small>
-
-        <h2>
-          ${question.prompt}
-        </h2>
-      </div>
-
-      <div
-        class="dna-importance-slider"
-        role="slider"
-        tabindex="0"
-        aria-label="${question.prompt}"
-        aria-valuemin="0"
-        aria-valuemax="${
-          roomsDna.importanceScale.length-1
-        }"
-        aria-valuenow="${initialIndex}"
-        aria-valuetext="${initial.label}"
-        style="--importance-position:${
-          importancePosition(initialIndex)
-        }%">
-
-        <strong
-          class="dna-importance-current">
-          ${initial.label}
-        </strong>
-
-        <div class="dna-importance-line">
-          <span></span>
-        </div>
-
-        <div class="dna-importance-knob">
-          <span></span>
-        </div>
-
-        <div class="dna-importance-stops">
-          ${roomsDna.importanceScale.map(
-            (option,index)=>`
-              <div
-                class="dna-importance-stop${
-                  index===initialIndex
-                    ? ' is-active'
-                    : ''
-                }">
-                <i></i>
-                <b>${option.label}</b>
-              </div>
-            `
-          ).join('')}
-        </div>
-      </div>
-
-      <p class="dna-importance-tip">
-        Mueve el peso hasta donde
-        realmente lo sientas.
-      </p>
-    </div>
-  `;
-
-  bindImportanceSlider();
-}
-
-
-let dnaDealbreakerIndex=0;
-let dnaDealbreakerPointer=null;
-let dnaDealbreakerLocked=false;
-
-function commitDealbreaker(side){
-  if(dnaDealbreakerLocked)return;
-
-  const question=
-    roomsDna.dealbreakers[
-      dnaDealbreakerIndex
-    ];
-
-  if(!question)return;
-
-  const isDealbreaker=
-    side==='right';
-
-  dnaDealbreakerLocked=true;
-
-  dnaState.dealbreakers[
-    question.id
-  ]=isDealbreaker;
-
-  const stage=
-    document.querySelector(
-      '.dna-dealbreaker-stage'
-    );
-
-  const card=
-    document.querySelector(
-      '.dna-dealbreaker-card'
-    );
-
-  if(stage){
-    stage.classList.add(
-      side==='left'
-        ? 'is-adapt'
-        : 'is-out'
-    );
-  }
-
-  if(card){
-    card.classList.add(
-      side==='left'
-        ? 'dealbreaker-out-left'
-        : 'dealbreaker-out-right'
-    );
-  }
-
-  updateOnboardingContinue();
-
-  window.setTimeout(()=>{
-    dnaDealbreakerIndex+=1;
-    dnaDealbreakerLocked=false;
-    renderDealbreakers();
-  },360);
-}
-
-function resetDealbreakerCard(
-  card,
-  stage
-){
-  if(!card)return;
-
-  card.style.transform='';
-  card.style.transition='';
-
-  stage?.classList.remove(
-    'is-preview-left',
-    'is-preview-right'
-  );
-
-  dnaDealbreakerPointer=null;
-}
-
-function bindDealbreakerCard(){
-  const card=
-    document.querySelector(
-      '.dna-dealbreaker-card'
-    );
-
-  const stage=
-    document.querySelector(
-      '.dna-dealbreaker-stage'
-    );
-
-  if(!card||!stage)return;
-
-  card.addEventListener(
-    'pointerdown',
-    event=>{
-      if(dnaDealbreakerLocked)return;
-
-      dnaDealbreakerPointer={
-        id:event.pointerId,
-        startX:event.clientX,
-        deltaX:0
-      };
-
-      card.setPointerCapture(
-        event.pointerId
-      );
-
-      card.classList.add(
-        'is-dragging'
-      );
-    }
-  );
-
-  card.addEventListener(
-    'pointermove',
-    event=>{
-      if(
-        !dnaDealbreakerPointer ||
-        dnaDealbreakerPointer.id!==
-          event.pointerId
-      )return;
-
-      const deltaX=
-        event.clientX-
-        dnaDealbreakerPointer.startX;
-
-      dnaDealbreakerPointer.deltaX=
-        deltaX;
-
-      const limited=
-        Math.max(
-          -220,
-          Math.min(220,deltaX)
-        );
-
-      card.style.transform=
-        `translateX(${limited}px) rotate(${limited/28}deg)`;
-
-      stage.classList.remove(
-        'is-preview-left',
-        'is-preview-right'
-      );
-
-      if(deltaX<-35){
-        stage.classList.add(
-          'is-preview-left'
-        );
-      }
-
-      if(deltaX>35){
-        stage.classList.add(
-          'is-preview-right'
-        );
-      }
-    }
-  );
-
-  const finish=event=>{
-    if(
-      !dnaDealbreakerPointer ||
-      dnaDealbreakerPointer.id!==
-        event.pointerId
-    )return;
-
-    const deltaX=
-      dnaDealbreakerPointer.deltaX;
-
-    card.classList.remove(
-      'is-dragging'
-    );
-
-    if(Math.abs(deltaX)>=85){
-      commitDealbreaker(
-        deltaX<0
-          ? 'left'
-          : 'right'
-      );
-      return;
-    }
-
-    resetDealbreakerCard(
-      card,
-      stage
-    );
-  };
-
-  card.addEventListener(
-    'pointerup',
-    finish
-  );
-
-  card.addEventListener(
-    'pointercancel',
-    ()=>{
-      card.classList.remove(
-        'is-dragging'
-      );
-
-      resetDealbreakerCard(
-        card,
-        stage
-      );
-    }
-  );
-
-  card.addEventListener(
-    'keydown',
-    event=>{
-      if(event.key==='ArrowLeft'){
-        event.preventDefault();
-        commitDealbreaker('left');
-      }
-
-      if(event.key==='ArrowRight'){
-        event.preventDefault();
-        commitDealbreaker('right');
-      }
-    }
-  );
-}
-
-function renderDealbreakers(){
-  const host=
-    document.querySelector(
-      '#dnaDealbreakers'
-    );
-
-  if(!host||!roomsDna)return;
-
-  if(
-    dnaDealbreakerIndex>=
-    roomsDna.dealbreakers.length
-  ){
-    host.innerHTML=`
-      <div class="dna-dealbreaker-complete">
-        <span aria-hidden="true">✦</span>
-
-        <strong>
-          Límites claros.
-        </strong>
-
-        <small>
-          ${roomsDna.dealbreakers.length}
-          decisiones guardadas
-        </small>
-
-        <button
-          type="button"
-          class="dna-dealbreaker-review">
-          Revisar
-        </button>
-      </div>
-    `;
-
-    updateOnboardingContinue();
-    return;
-  }
-
-  const question=
-    roomsDna.dealbreakers[
-      dnaDealbreakerIndex
-    ];
-
-  host.innerHTML=`
-    <div class="dna-dealbreaker-stage">
-
-      <div class="dna-dealbreaker-meta">
-        <span>
-          ${dnaDealbreakerIndex+1}
-          / ${roomsDna.dealbreakers.length}
-        </span>
-
-        <div>
-          <i style="width:${
-            (
-              (
-                dnaDealbreakerIndex+1
-              )/
-              roomsDna.dealbreakers.length
-            )*100
-          }%"></i>
-        </div>
-      </div>
-
-      <div class="dna-dealbreaker-copy">
-        <small>
-          ¿DÓNDE ESTÁ TU LÍMITE?
-        </small>
-
-        <p>
-          Coloca esta situación donde
-          realmente encaje para ti.
-        </p>
-      </div>
-
-      <div class="dna-dealbreaker-board">
-
-        <button
-          type="button"
-          class="dna-dealbreaker-zone dna-dealbreaker-zone-left">
-          <span>←</span>
-          <small>PODRÍA</small>
-          <b>ADAPTARME</b>
-        </button>
-
-        <button
-          type="button"
-          class="dna-dealbreaker-zone dna-dealbreaker-zone-right">
-          <small>NO ES</small>
-          <b>PARA MÍ</b>
-          <span>→</span>
-        </button>
-
-        <article
-          class="dna-dealbreaker-card"
-          tabindex="0"
-          role="group"
-          aria-label="${question.label}">
-
-          <small>
-            SITUACIÓN
-          </small>
-
-          <h2>
-            ${question.label}
-          </h2>
-
-          <div>
-            <span>←</span>
-            <em>arrastra</em>
-            <span>→</span>
-          </div>
-
-        </article>
-      </div>
-
-    </div>
-  `;
-
-  bindDealbreakerCard();
-}
-
 let dnaHomeSelected=null;
 let dnaHomePointer=null;
 
@@ -1306,18 +570,60 @@ const dnaHomeSymbols={
   transport:'⌁'
 };
 
+function getRoomsDnaV2HomeQuestion(){
+  return (
+    window.ROOMS_DNA_V2
+      ?.interactions || []
+  ).find(
+    interaction=>
+      interaction.id==='home_priorities' &&
+      interaction.act==='home' &&
+      interaction.type==='priority_board'
+  ) || null;
+}
+
+function getRoomsDnaV2HomeAnswers(){
+  return (
+    roomsDnaV2Answers
+      .home_priorities || {}
+  );
+}
+
+function homePrioritiesComplete(){
+  const question=
+    getRoomsDnaV2HomeQuestion();
+
+  if(!question)return false;
+
+  const answers=
+    getRoomsDnaV2HomeAnswers();
+
+  return question.items.every(
+    item=>Boolean(
+      answers[item.id]
+    )
+  );
+}
+
 function setHomePreference(
   preferenceId,
   levelId
 ){
+  const question=
+    getRoomsDnaV2HomeQuestion();
+
+  if(!question)return;
+
   const validPreference=
-    roomsDna.homePreferences.some(
-      item=>item.id===preferenceId
+    question.items.some(
+      item=>
+        item.id===preferenceId
     );
 
   const validLevel=
-    roomsDna.homePreferenceScale.some(
-      item=>item.id===levelId
+    question.levels.some(
+      item=>
+        item.id===levelId
     );
 
   if(
@@ -1325,9 +631,18 @@ function setHomePreference(
     !validLevel
   )return;
 
-  dnaState.homePreferences[
+  const current={
+    ...getRoomsDnaV2HomeAnswers()
+  };
+
+  current[
     preferenceId
   ]=levelId;
+
+  setRoomsDnaV2Answer(
+    'home_priorities',
+    current
+  );
 
   dnaHomeSelected=null;
 
@@ -1338,14 +653,25 @@ function setHomePreference(
 function homePreferenceCard(
   preference
 ){
+  const question=
+    getRoomsDnaV2HomeQuestion();
+
   const current=
-    dnaState.homePreferences[
+    getRoomsDnaV2HomeAnswers()[
       preference.id
     ];
 
   const selected=
     dnaHomeSelected===
     preference.id;
+
+  const currentLabel=
+    question?.levels
+      ?.find(
+        option=>
+          option.id===current
+      )
+      ?.label || '';
 
   return `
     <button
@@ -1359,13 +685,7 @@ function homePreferenceCard(
       aria-pressed="${selected}"
       aria-label="${preference.label}${
         current
-          ? `, ${
-              roomsDna.homePreferenceScale
-                .find(
-                  option=>
-                    option.id===current
-                )?.label || ''
-            }`
+          ? `, ${currentLabel}`
           : ', sin colocar'
       }">
 
@@ -1659,11 +979,6 @@ function finishHomePreferencePointer(
     return;
   }
 
-  /*
-    Si solo ha sido un toque/click,
-    mantenemos el sistema alternativo:
-    seleccionar ficha y después nivel.
-  */
   if(!pointer.moved){
     dnaHomeSelected=
       dnaHomeSelected===
@@ -1675,11 +990,6 @@ function finishHomePreferencePointer(
     return;
   }
 
-  /*
-    Si se arrastra pero se suelta fuera,
-    reconstruimos para devolver la ficha
-    exactamente a su posición original.
-  */
   renderHomePreferences();
 }
 
@@ -1722,26 +1032,36 @@ document.addEventListener(
   }
 );
 
-
 function renderHomePreferences(){
   const host=
     document.querySelector(
       '#dnaHomePreferences'
     );
 
-  if(!host||!roomsDna)return;
+  const question=
+    getRoomsDnaV2HomeQuestion();
+
+  if(!host||!question)return;
+
+  const answers=
+    getRoomsDnaV2HomeAnswers();
+
+  const preferences=
+    question.items || [];
+
+  const levels=
+    question.levels || [];
 
   const unassigned=
-    roomsDna.homePreferences
-      .filter(
-        preference=>
-          !dnaState.homePreferences[
-            preference.id
-          ]
-      );
+    preferences.filter(
+      preference=>
+        !answers[
+          preference.id
+        ]
+    );
 
   const placedCount=
-    roomsDna.homePreferences.length-
+    preferences.length-
     unassigned.length;
 
   host.innerHTML=`
@@ -1750,7 +1070,7 @@ function renderHomePreferences(){
       <div class="dna-home-status">
         <span>
           ${placedCount}
-          / ${roomsDna.homePreferences.length}
+          / ${preferences.length}
           colocadas
         </span>
 
@@ -1758,7 +1078,7 @@ function renderHomePreferences(){
           <i style="width:${
             (
               placedCount/
-              roomsDna.homePreferences.length
+              preferences.length
             )*100
           }%"></i>
         </div>
@@ -1768,13 +1088,13 @@ function renderHomePreferences(){
         <div class="dna-home-shelf-head">
           <div>
             <small>
-              POR COLOCAR
+              ${question.eyebrow}
             </small>
 
             <strong>
               ${
                 unassigned.length
-                  ? 'Construye tus prioridades'
+                  ? question.prompt
                   : 'Tu casa ideal ya tiene forma'
               }
             </strong>
@@ -1814,18 +1134,16 @@ function renderHomePreferences(){
 
       <div class="dna-home-board">
 
-        ${roomsDna.homePreferenceScale
+        ${levels
           .map((level,index)=>{
 
             const items=
-              roomsDna.homePreferences
-                .filter(
-                  preference=>
-                    dnaState
-                      .homePreferences[
-                        preference.id
-                      ]===level.id
-                );
+              preferences.filter(
+                preference=>
+                  answers[
+                    preference.id
+                  ]===level.id
+              );
 
             return `
               <section
@@ -1904,24 +1222,126 @@ let dnaTraitPointer=null;
 const dnaInterestSymbols={
   sport:'●',
   music:'♫',
-  cooking:'✦',
+  food:'✦',
   travel:'↗',
-  gym:'↑',
+  nightlife:'✺',
+  cinema:'▶',
   gaming:'◫',
+  art:'◇',
   reading:'Aa',
-  'going-out':'✺',
-  'quiet-plans':'☾',
+  nature:'△',
+  fashion:'◐',
   pets:'♡'
 };
 
 const dnaTraitSymbols={
-  tidy:'⌁',
   social:'✦',
   calm:'○',
   independent:'↗',
-  cook:'◇',
-  early:'☀'
+  organised:'⌁',
+  spontaneous:'~',
+  communicative:'◇',
+  homebody:'⌂',
+  easygoing:'☼'
 };
+
+function getRoomsDnaV2WorldQuestion(
+  interactionId
+){
+  return (
+    window.ROOMS_DNA_V2
+      ?.interactions || []
+  ).find(
+    interaction=>
+      interaction.id===interactionId &&
+      interaction.act==='world'
+  ) || null;
+}
+
+function getRoomsDnaV2Selection(
+  interactionId
+){
+  const value=
+    roomsDnaV2Answers[
+      interactionId
+    ];
+
+  return Array.isArray(value)
+    ? value
+    : [];
+}
+
+function setRoomsDnaV2Selection(
+  interactionId,
+  values
+){
+  setRoomsDnaV2Answer(
+    interactionId,
+    [...values]
+  );
+}
+
+function worldComplete(){
+  return (
+    getRoomsDnaV2Selection(
+      'world_interests'
+    ).length>0 &&
+    getRoomsDnaV2Selection(
+      'self_description'
+    ).length>0
+  );
+}
+
+function toggleRoomsDnaV2Selection(
+  interactionId,
+  optionId
+){
+  const question=
+    getRoomsDnaV2WorldQuestion(
+      interactionId
+    );
+
+  if(!question)return false;
+
+  const valid=
+    question.options.some(
+      option=>
+        option.id===optionId
+    );
+
+  if(!valid)return false;
+
+  const current=
+    new Set(
+      getRoomsDnaV2Selection(
+        interactionId
+      )
+    );
+
+  if(current.has(optionId)){
+    current.delete(optionId);
+  }else{
+    const maxSelections=
+      question.maxSelections ??
+      Infinity;
+
+    if(
+      current.size>=
+      maxSelections
+    ){
+      return false;
+    }
+
+    current.add(optionId);
+  }
+
+  setRoomsDnaV2Selection(
+    interactionId,
+    current
+  );
+
+  return true;
+}
 
 function renderInterestMosaic(){
   const host=
@@ -1929,7 +1349,19 @@ function renderInterestMosaic(){
       '#dnaInterests'
     );
 
-  if(!host||!roomsDna)return;
+  const question=
+    getRoomsDnaV2WorldQuestion(
+      'world_interests'
+    );
+
+  if(!host||!question)return;
+
+  const selected=
+    new Set(
+      getRoomsDnaV2Selection(
+        'world_interests'
+      )
+    );
 
   host.innerHTML=`
     <section class="dna-identity-block dna-interests-block">
@@ -1937,22 +1369,22 @@ function renderInterestMosaic(){
       <header class="dna-identity-section-head">
         <div>
           <small>
-            01 · TU MUNDO
+            ${question.eyebrow}
           </small>
 
           <h2>
-            ¿Qué forma parte de ti?
+            ${question.prompt}
           </h2>
         </div>
 
         <span>
-          ${dnaState.interests.size}
-          elegidos
+          ${selected.size}
+          / ${question.maxSelections}
         </span>
       </header>
 
       <div class="dna-interest-mosaic">
-        ${roomsDna.interests.map(
+        ${question.options.map(
           (item,index)=>`
             <button
               type="button"
@@ -1962,7 +1394,7 @@ function renderInterestMosaic(){
                   (index%4)+1
                 }
                 ${
-                  dnaState.interests.has(
+                  selected.has(
                     item.id
                   )
                     ? 'is-selected'
@@ -1971,7 +1403,7 @@ function renderInterestMosaic(){
               "
               data-dna-interest="${item.id}"
               aria-pressed="${
-                dnaState.interests.has(
+                selected.has(
                   item.id
                 )
               }">
@@ -1990,7 +1422,7 @@ function renderInterestMosaic(){
 
               <i aria-hidden="true">
                 ${
-                  dnaState.interests.has(
+                  selected.has(
                     item.id
                   )
                     ? '✓'
@@ -2004,8 +1436,9 @@ function renderInterestMosaic(){
       </div>
 
       <p class="dna-identity-note">
-        Elige todos los que realmente
-        formen parte de tu vida.
+        Elige hasta
+        ${question.maxSelections}
+        opciones.
       </p>
 
     </section>
@@ -2014,7 +1447,14 @@ function renderInterestMosaic(){
 
 function traitCard(item){
   const selected=
-    dnaState.traits.has(
+    new Set(
+      getRoomsDnaV2Selection(
+        'self_description'
+      )
+    );
+
+  const isSelected=
+    selected.has(
       item.id
     );
 
@@ -2022,12 +1462,12 @@ function traitCard(item){
     <button
       type="button"
       class="dna-trait-card${
-        selected
+        isSelected
           ? ' is-in-identity'
           : ''
       }"
       data-dna-trait="${item.id}"
-      aria-pressed="${selected}">
+      aria-pressed="${isSelected}">
 
       <span aria-hidden="true">
         ${
@@ -2043,7 +1483,7 @@ function traitCard(item){
 
       <small>
         ${
-          selected
+          isSelected
             ? 'Quitar'
             : 'Soy yo'
         }
@@ -2056,22 +1496,50 @@ function setTraitIdentity(
   traitId,
   selected
 ){
+  const question=
+    getRoomsDnaV2WorldQuestion(
+      'self_description'
+    );
+
+  if(!question)return;
+
   const valid=
-    roomsDna.traits.some(
-      item=>item.id===traitId
+    question.options.some(
+      item=>
+        item.id===traitId
     );
 
   if(!valid)return;
 
+  const current=
+    new Set(
+      getRoomsDnaV2Selection(
+        'self_description'
+      )
+    );
+
   if(selected){
-    dnaState.traits.add(
+    if(
+      !current.has(traitId) &&
+      current.size>=
+        question.maxSelections
+    ){
+      return;
+    }
+
+    current.add(
       traitId
     );
   }else{
-    dnaState.traits.delete(
+    current.delete(
       traitId
     );
   }
+
+  setRoomsDnaV2Selection(
+    'self_description',
+    current
+  );
 
   renderTraitIdentity();
   updateOnboardingContinue();
@@ -2194,10 +1662,17 @@ function bindTraitIdentity(){
           'is-hovered'
         );
 
+        const selected=
+          new Set(
+            getRoomsDnaV2Selection(
+              'self_description'
+            )
+          );
+
         if(!pointer.moved){
           setTraitIdentity(
             pointer.traitId,
-            !dnaState.traits.has(
+            !selected.has(
               pointer.traitId
             )
           );
@@ -2253,20 +1728,32 @@ function renderTraitIdentity(){
       '#dnaTraits'
     );
 
-  if(!host||!roomsDna)return;
+  const question=
+    getRoomsDnaV2WorldQuestion(
+      'self_description'
+    );
+
+  if(!host||!question)return;
+
+  const selected=
+    new Set(
+      getRoomsDnaV2Selection(
+        'self_description'
+      )
+    );
 
   const outside=
-    roomsDna.traits.filter(
+    question.options.filter(
       item=>
-        !dnaState.traits.has(
+        !selected.has(
           item.id
         )
     );
 
   const inside=
-    roomsDna.traits.filter(
+    question.options.filter(
       item=>
-        dnaState.traits.has(
+        selected.has(
           item.id
         )
     );
@@ -2277,17 +1764,17 @@ function renderTraitIdentity(){
       <header class="dna-identity-section-head">
         <div>
           <small>
-            02 · CÓMO ERES
+            ${question.eyebrow}
           </small>
 
           <h2>
-            ¿Qué te llevas contigo?
+            ${question.prompt}
           </h2>
         </div>
 
         <span>
           ${inside.length}
-          dentro
+          / ${question.maxSelections}
         </span>
       </header>
 
@@ -2295,7 +1782,7 @@ function renderTraitIdentity(){
 
         <div class="dna-trait-pool">
           <small>
-            ARRASTRA LO QUE TE DEFINE
+            ELIGE LO QUE MÁS TE DEFINE
           </small>
 
           <div>
@@ -2354,8 +1841,9 @@ function renderTraitIdentity(){
       </div>
 
       <p class="dna-identity-note">
-        También puedes tocar un rasgo
-        para meterlo o sacarlo.
+        Elige hasta
+        ${question.maxSelections}
+        rasgos.
       </p>
 
     </section>
@@ -2374,30 +1862,75 @@ let dnaScenarioIndex=0;
 let dnaScenarioPointer=null;
 let dnaScenarioLocked=false;
 
+function getRoomsDnaV2LivingQuestions(){
+  return (
+    window.ROOMS_DNA_V2
+      ?.interactions || []
+  ).filter(
+    interaction=>
+      interaction.act==='living' &&
+      interaction.type==='scenario'
+  );
+}
+
+function livingComplete(){
+  const questions=
+    getRoomsDnaV2LivingQuestions();
+
+  return (
+    questions.length>0 &&
+    questions.every(
+      question=>Boolean(
+        roomsDnaV2Answers[
+          question.id
+        ]
+      )
+    )
+  );
+}
+
+function getCurrentLivingQuestion(){
+  return getRoomsDnaV2LivingQuestions()[
+    dnaScenarioIndex
+  ];
+}
+
 function scenarioScaleIndexFromPoint(
   clientX,
   meter
 ){
-  const rect=meter.getBoundingClientRect();
+  const question=
+    getCurrentLivingQuestion();
+
+  const options=
+    question?.options || [];
+
+  if(!options.length)return 0;
+
+  const rect=
+    meter.getBoundingClientRect();
 
   const ratio=Math.max(
     0,
     Math.min(
       1,
-      (clientX-rect.left)/rect.width
+      (clientX-rect.left)/
+        rect.width
     )
   );
 
   return Math.round(
     ratio*(
-      roomsDna.scenarioScale.length-1
+      options.length-1
     )
   );
 }
 
-function scenarioPosition(index){
-  const last=
-    roomsDna.scenarioScale.length-1;
+function scenarioPosition(
+  index,
+  total
+){
+  const last=total-1;
 
   if(last<=0)return 50;
 
@@ -2408,14 +1941,25 @@ function previewScenarioReaction(
   index,
   meter
 ){
-  const scale=
-    roomsDna.scenarioScale[index];
+  const question=
+    getCurrentLivingQuestion();
 
-  if(!scale||!meter)return;
+  const options=
+    question?.options || [];
+
+  const option=
+    options[index];
+
+  if(!option||!meter)return;
 
   meter.style.setProperty(
     '--reaction-position',
-    `${scenarioPosition(index)}%`
+    `${
+      scenarioPosition(
+        index,
+        options.length
+      )
+    }%`
   );
 
   const value=
@@ -2424,19 +1968,22 @@ function previewScenarioReaction(
     );
 
   if(value){
-    value.textContent=scale.label;
+    value.textContent=
+      option.label;
   }
 
   meter
     .querySelectorAll(
       '.dna-reaction-stop'
     )
-    .forEach((stop,stopIndex)=>{
-      stop.classList.toggle(
-        'is-active',
-        stopIndex===index
-      );
-    });
+    .forEach(
+      (stop,stopIndex)=>{
+        stop.classList.toggle(
+          'is-active',
+          stopIndex===index
+        );
+      }
+    );
 
   meter.setAttribute(
     'aria-valuenow',
@@ -2445,7 +1992,7 @@ function previewScenarioReaction(
 
   meter.setAttribute(
     'aria-valuetext',
-    scale.label
+    option.label
   );
 }
 
@@ -2455,20 +2002,22 @@ function commitScenarioReaction(
   if(dnaScenarioLocked)return;
 
   const question=
-    roomsDna.scenarios[
-      dnaScenarioIndex
-    ];
+    getCurrentLivingQuestion();
 
-  const scale=
-    roomsDna.scenarioScale[index];
+  const option=
+    question?.options?.[index];
 
-  if(!question||!scale)return;
+  if(!question||!option)return;
 
   dnaScenarioLocked=true;
 
-  dnaState.scenarios[
-    question.id
-  ]=scale.id;
+  /*
+    Escritura DIRECTA V2.
+  */
+  setRoomsDnaV2Answer(
+    question.id,
+    option.id
+  );
 
   const stage=
     document.querySelector(
@@ -2596,6 +2145,14 @@ function bindScenarioMeter(){
     event=>{
       if(dnaScenarioLocked)return;
 
+      const question=
+        getCurrentLivingQuestion();
+
+      const options=
+        question?.options || [];
+
+      if(!options.length)return;
+
       const current=
         Number(
           meter.getAttribute(
@@ -2624,7 +2181,7 @@ function bindScenarioMeter(){
 
         previewScenarioReaction(
           Math.min(
-            roomsDna.scenarioScale.length-1,
+            options.length-1,
             current+1
           ),
           meter
@@ -2655,11 +2212,17 @@ function renderScenarios(){
       '#dnaScenarios'
     );
 
-  if(!host||!roomsDna)return;
+  const questions=
+    getRoomsDnaV2LivingQuestions();
+
+  if(
+    !host ||
+    !questions.length
+  )return;
 
   if(
     dnaScenarioIndex>=
-    roomsDna.scenarios.length
+    questions.length
   ){
     host.innerHTML=`
       <div class="dna-reaction-complete">
@@ -2670,7 +2233,7 @@ function renderScenarios(){
         </strong>
 
         <small>
-          ${roomsDna.scenarios.length}
+          ${questions.length}
           situaciones respondidas
         </small>
 
@@ -2687,23 +2250,30 @@ function renderScenarios(){
   }
 
   const question=
-    roomsDna.scenarios[
+    questions[
       dnaScenarioIndex
     ];
 
+  const options=
+    question.options || [];
+
+  if(options.length<2)return;
+
   const saved=
-    dnaState.scenarios[
+    roomsDnaV2Answers[
       question.id
     ];
 
-  let initialIndex=1;
+  let initialIndex=
+    Math.floor(
+      (options.length-1)/2
+    );
 
   if(saved){
     const found=
-      roomsDna.scenarioScale
-        .findIndex(
-          item=>item.id===saved
-        );
+      options.findIndex(
+        item=>item.id===saved
+      );
 
     if(found>=0){
       initialIndex=found;
@@ -2711,7 +2281,7 @@ function renderScenarios(){
   }
 
   const initial=
-    roomsDna.scenarioScale[
+    options[
       initialIndex
     ];
 
@@ -2721,7 +2291,7 @@ function renderScenarios(){
       <div class="dna-reaction-meta">
         <span>
           ${dnaScenarioIndex+1}
-          / ${roomsDna.scenarios.length}
+          / ${questions.length}
         </span>
 
         <div>
@@ -2729,20 +2299,20 @@ function renderScenarios(){
             (
               (
                 dnaScenarioIndex+1
-              )/
-              roomsDna.scenarios.length
-            )*100
+              ) /
+              questions.length
+            ) * 100
           }%"></i>
         </div>
       </div>
 
       <div class="dna-reaction-copy">
         <small>
-          ¿CÓMO TE SENTARÍA?
+          ${question.eyebrow}
         </small>
 
         <h2>
-          ${question.title}
+          ${question.prompt}
         </h2>
 
         <p>
@@ -2755,15 +2325,18 @@ function renderScenarios(){
         class="dna-reaction-meter"
         role="slider"
         tabindex="0"
-        aria-label="${question.title}"
+        aria-label="${question.prompt}"
         aria-valuemin="0"
         aria-valuemax="${
-          roomsDna.scenarioScale.length-1
+          options.length-1
         }"
         aria-valuenow="${initialIndex}"
         aria-valuetext="${initial.label}"
         style="--reaction-position:${
-          scenarioPosition(initialIndex)
+          scenarioPosition(
+            initialIndex,
+            options.length
+          )
         }%">
 
         <div class="dna-reaction-track">
@@ -2779,7 +2352,7 @@ function renderScenarios(){
         </strong>
 
         <div class="dna-reaction-stops">
-          ${roomsDna.scenarioScale.map(
+          ${options.map(
             (item,index)=>`
               <span
                 class="dna-reaction-stop${
@@ -2811,10 +2384,6 @@ function renderDna(){
 
   renderScenarios();
 
-  renderImportance();
-
-  renderDealbreakers();
-
   renderHomePreferences();
 
   renderIdentityChips();
@@ -2828,58 +2397,174 @@ function updateOnboardingContinue(){
   let ready=true;
 
   if(onboardingStep===2){
-    ready=completeness(
-      dnaState.thisOrThat,
-      roomsDna.thisOrThat.length
-    );
+    ready=
+      thisOrThatComplete();
   }
 
   if(onboardingStep===3){
-    ready=completeness(
-      dnaState.scenarios,
-      roomsDna.scenarios.length
-    );
+    ready=
+      livingComplete();
   }
 
   if(onboardingStep===4){
-    ready=completeness(
-      dnaState.importance,
-      getActiveImportanceQuestions().length
-    );
+    ready=
+      homePrioritiesComplete();
   }
 
   if(onboardingStep===5){
-    ready=completeness(
-      dnaState.dealbreakers,
-      roomsDna.dealbreakers.length
-    );
+    ready=
+      worldComplete();
   }
 
   if(onboardingStep===6){
-    ready=completeness(
-      dnaState.homePreferences,
-      roomsDna.homePreferences.length
-    );
-  }
-
-  if(onboardingStep===7){
-    ready=
-      dnaState.interests.size>0 &&
-      dnaState.traits.size>0;
-  }
-
-  if(onboardingStep===8){
     ready=Boolean(
       document.querySelector('#profileName')?.value.trim()
     );
   }
 
-  if(onboardingStep===10){
+  if(onboardingStep===8){
     ready=dnaState.intents.size>0;
   }
 
   onboardingContinue.disabled=!ready;
 }
+
+function calculateRoomsDnaV2Reveal(){
+  const engine=
+    window.ROOMS_DNA_ENGINE;
+
+  const archetypes=
+    window.ROOMS_DNA_ARCHETYPES;
+
+  const config=
+    window.ROOMS_DNA_V2;
+
+  if(
+    !engine ||
+    !archetypes ||
+    !config
+  ){
+    return null;
+  }
+
+  try{
+    /*
+      ROOMS DNA V2 nativo.
+      El motor consume únicamente
+      las respuestas canónicas V2.
+    */
+    const answers=
+      getRoomsDnaV2Answers();
+
+    const dna=
+      engine.calculate(
+        answers,
+        config
+      );
+
+    const classification=
+      archetypes.classify(
+        dna
+      );
+
+    if(
+      !classification?.primary
+    ){
+      return null;
+    }
+
+    const result={
+      answers,
+      dna,
+      classification
+    };
+
+    /*
+      Temporalmente lo exponemos para poder
+      inspeccionarlo desde DevTools.
+    */
+    window.__roomsDnaReveal=
+      result;
+
+    return result;
+  }catch(error){
+    console.warn(
+      'Rooms DNA v2 reveal fallback',
+      error
+    );
+
+    return null;
+  }
+}
+
+
+function getRoomsDnaTopDimensions(
+  dna,
+  limit=3
+){
+  const config=
+    window.ROOMS_DNA_V2;
+
+  return Object.entries(
+    dna?.dimensions || {}
+  )
+    .map(
+      ([id,value])=>{
+        const self=value?.self;
+
+        const score=
+          self?.score ?? 0;
+
+        const confidence=
+          self?.confidence ?? 0;
+
+        const definition=
+          config?.dimensions?.[id];
+
+        const directionalLabel=
+          score>=0
+            ? definition?.high
+            : definition?.low;
+
+        return {
+          id,
+          score,
+          confidence,
+          salience:
+            Math.abs(score) *
+            confidence,
+
+          label:
+            directionalLabel ||
+            definition?.label ||
+            id,
+
+          index:
+            Math.round(
+              (
+                (
+                  score + 1
+                ) / 2
+              ) * 100
+            )
+        };
+      }
+    )
+    .filter(
+      item=>
+        item.confidence>0
+    )
+    .sort(
+      (a,b)=>
+        b.salience-
+        a.salience
+    )
+    .slice(
+      0,
+      limit
+    );
+}
+
 
 function buildDnaDescriptor(){
   const parts=[];
@@ -2905,36 +2590,339 @@ function buildDnaDescriptor(){
   return parts.slice(0,3).join(' · ') || 'Tu forma de vivir';
 }
 
+
+function fitRoomsDnaRevealTitle(){
+  const title=
+    document.querySelector(
+      '#dnaRevealTitle'
+    );
+
+  if(!title)return;
+
+  /*
+    El tamaño máximo depende del viewport.
+    A partir de ahí reducimos únicamente
+    si el contenido real lo necesita.
+  */
+  const maxSize=
+    window.innerWidth<=767
+      ? 58
+      : window.innerWidth<=1200
+        ? 64
+        : 76;
+
+  const minSize=
+    window.innerWidth<=767
+      ? 34
+      : 38;
+
+  title.style.fontSize=
+    `${maxSize}px`;
+
+  /*
+    Dejamos que el navegador haga los saltos
+    naturales entre palabras. Si alguna línea
+    desborda, reducimos progresivamente.
+  */
+  let size=maxSize;
+
+  while(
+    size>minSize &&
+    title.scrollWidth>
+      title.clientWidth+1
+  ){
+    size-=1;
+    title.style.fontSize=
+      `${size}px`;
+  }
+
+  /*
+    Segunda comprobación:
+    cada palabra debe caber completa.
+  */
+  const words=
+    title.textContent
+      .trim()
+      .split(/\s+/);
+
+  if(!words.length)return;
+
+  const probe=
+    document.createElement('span');
+
+  probe.style.position='fixed';
+  probe.style.visibility='hidden';
+  probe.style.pointerEvents='none';
+  probe.style.whiteSpace='nowrap';
+  probe.style.fontFamily=
+    getComputedStyle(title)
+      .fontFamily;
+  probe.style.fontWeight=
+    getComputedStyle(title)
+      .fontWeight;
+  probe.style.letterSpacing=
+    getComputedStyle(title)
+      .letterSpacing;
+
+  document.body.appendChild(probe);
+
+  while(size>minSize){
+    probe.style.fontSize=
+      `${size}px`;
+
+    const widest=
+      Math.max(
+        ...words.map(word=>{
+          probe.textContent=word;
+          return probe
+            .getBoundingClientRect()
+            .width;
+        })
+      );
+
+    if(
+      widest<=
+      title.clientWidth
+    ){
+      break;
+    }
+
+    size-=1;
+
+    title.style.fontSize=
+      `${size}px`;
+  }
+
+  probe.remove();
+}
+
+
 function renderReveal(){
-  const descriptor=document.querySelector('#dnaRevealDescriptor');
-  const summary=document.querySelector('#dnaRevealSummary');
+  const title=
+    document.querySelector(
+      '#dnaRevealTitle'
+    );
+
+  const descriptor=
+    document.querySelector(
+      '#dnaRevealDescriptor'
+    );
+
+  const summary=
+    document.querySelector(
+      '#dnaRevealSummary'
+    );
+
+  const reveal=
+    calculateRoomsDnaV2Reveal();
+
+  /*
+    Fallback v1:
+    si por cualquier motivo el nuevo motor
+    no está disponible, el onboarding sigue
+    funcionando como antes.
+  */
+  if(!reveal){
+    if(title){
+      title.textContent=
+        'Tu DNA está listo';
+    }
+
+    if(descriptor){
+      descriptor.textContent=
+        buildDnaDescriptor();
+    }
+
+    if(summary){
+      const dealbreakers=
+        Object.values(
+          dnaState.dealbreakers
+        )
+          .filter(
+            value=>
+              value==='dealbreaker'
+          )
+          .length;
+
+      const needs=
+        Object.values(
+          dnaState.homePreferences
+        )
+          .filter(
+            value=>
+              value==='need'
+          )
+          .length;
+
+      summary.innerHTML=`
+        <span>
+          <b>
+            ${roomsDna.scenarios.length}
+          </b>
+          <small>
+            señales de convivencia
+          </small>
+        </span>
+
+        <span>
+          <b>
+            ${dealbreakers}
+          </b>
+          <small>
+            dealbreakers
+          </small>
+        </span>
+
+        <span>
+          <b>
+            ${needs}
+          </b>
+          <small>
+            prioridades de hogar
+          </small>
+        </span>
+      `;
+    }
+
+    return;
+  }
+
+  const {
+    dna,
+    classification
+  }=reveal;
+
+  const primary=
+    classification.primary;
+
+  const secondary=
+    classification.secondary;
+
+  const topDimensions=
+    getRoomsDnaTopDimensions(
+      dna,
+      3
+    );
+
+  if(title){
+    title.textContent=
+      primary.name;
+
+    requestAnimationFrame(
+      fitRoomsDnaRevealTitle
+    );
+  }
+
+  const revealArt=
+    document.querySelector(
+      '#dnaRevealArt'
+    );
+
+  const revealVisual=
+    document.querySelector(
+      '.dna-reveal-visual'
+    );
+
+  if(revealArt&&revealVisual){
+    const archetypeIndex={
+      selective_social:'01',
+      open_house:'02',
+      peace_keeper:'03',
+      house_ceo:'04',
+      free_spirit:'05',
+      private_club:'06'
+    };
+
+    const archetypeSymbol={
+      selective_social:'✦',
+      open_house:'+',
+      peace_keeper:'○',
+      house_ceo:'⌁',
+      free_spirit:'↗',
+      private_club:'◇'
+    };
+
+    revealVisual.dataset.archetype=
+      primary.id;
+
+    revealArt.innerHTML=`
+      <span>
+        ${
+          archetypeSymbol[
+            primary.id
+          ] || '✦'
+        }
+      </span>
+    `;
+
+    const number=
+      revealVisual.querySelector(
+        '.dna-reveal-visual-meta span:last-child'
+      );
+
+    if(number){
+      number.textContent=
+        archetypeIndex[
+          primary.id
+        ] || '01';
+    }
+  }
 
   if(descriptor){
-    descriptor.textContent=buildDnaDescriptor();
+    descriptor.textContent=
+      primary.tagline;
   }
 
   if(summary){
-    const dealbreakers=Object.values(dnaState.dealbreakers)
-      .filter(value=>value==='dealbreaker').length;
+    const dimensionsHtml=
+      topDimensions
+        .map(
+          dimension=>`
+            <span
+              class="dna-reveal-stat">
+              <b>
+                ${dimension.index}
+              </b>
+              <small>
+                ${dimension.label}
+              </small>
+            </span>
+          `
+        )
+        .join('');
 
-    const needs=Object.values(dnaState.homePreferences)
-      .filter(value=>value==='need').length;
+    const secondaryHtml=
+      secondary &&
+      secondary.fit>0
+        ? `
+          <span
+            class="
+              dna-reveal-stat
+              dna-reveal-secondary
+            ">
+            <b>
+              ${
+                Math.round(
+                  secondary.fit*100
+                )
+              }%
+            </b>
+            <small>
+              Secondary ·
+              ${secondary.name}
+            </small>
+          </span>
+        `
+        : '';
 
-    summary.innerHTML=`
-      <span><b>${roomsDna.scenarios.length}</b><small>señales de convivencia</small></span>
-      <span><b>${dealbreakers}</b><small>dealbreakers</small></span>
-      <span><b>${needs}</b><small>prioridades de hogar</small></span>
-    `;
+    summary.innerHTML=
+      dimensionsHtml +
+      secondaryHtml;
   }
 }
 
 function showOnboardingStep(step){
   onboardingStep=step;
-
-  if(step===4){
-    dnaImportanceIndex=0;
-    renderImportance();
-  }
 
   document.querySelectorAll('.onboarding-step').forEach(
     (panel,index)=>{
@@ -2944,13 +2932,13 @@ function showOnboardingStep(step){
   );
 
   document.querySelector('.onboarding-progress')
-    ?.setAttribute('aria-label',`Paso ${step} de 10`);
+    ?.setAttribute('aria-label',`Paso ${step} de 8`);
 
   const copy=document.querySelector('.progress-copy');
-  if(copy)copy.innerHTML=`${step} <i>/ 10</i>`;
+  if(copy)copy.innerHTML=`${step} <i>/ 8</i>`;
 
   const progress=document.querySelector('.progress-track span');
-  if(progress)progress.style.width=`${step*10}%`;
+  if(progress)progress.style.width=`${(step/8)*100}%`;
 
   onboardingBack.hidden=step===1;
 
@@ -2960,11 +2948,11 @@ function showOnboardingStep(step){
   if(step===1){
     onboardingContinue.innerHTML=
       'Empezar <span aria-hidden="true">→</span>';
-  }else if(step===9){
+  }else if(step===7){
     renderReveal();
     onboardingContinue.innerHTML=
       'Continuar <span aria-hidden="true">→</span>';
-  }else if(step===10){
+  }else if(step===8){
     onboardingContinue.innerHTML=
       'Entrar en Rooms <span aria-hidden="true">→</span>';
   }else{
@@ -3011,44 +2999,6 @@ document.addEventListener('click',event=>{
     return;
   }
 
-  const reviewImportance=
-    event.target.closest(
-      '.dna-importance-review'
-    );
-
-  if(reviewImportance){
-    dnaImportanceIndex=0;
-    renderImportance();
-    return;
-  }
-
-  const dealbreakerZone=
-    event.target.closest(
-      '.dna-dealbreaker-zone'
-    );
-
-  if(dealbreakerZone){
-    commitDealbreaker(
-      dealbreakerZone.classList.contains(
-        'dna-dealbreaker-zone-left'
-      )
-        ? 'left'
-        : 'right'
-    );
-    return;
-  }
-
-  const reviewDealbreakers=
-    event.target.closest(
-      '.dna-dealbreaker-review'
-    );
-
-  if(reviewDealbreakers){
-    dnaDealbreakerIndex=0;
-    renderDealbreakers();
-    return;
-  }
-
   const interest=
     event.target.closest(
       '[data-dna-interest]'
@@ -3058,13 +3008,10 @@ document.addEventListener('click',event=>{
     const id=
       interest.dataset.dnaInterest;
 
-    if(
-      dnaState.interests.has(id)
-    ){
-      dnaState.interests.delete(id);
-    }else{
-      dnaState.interests.add(id);
-    }
+    toggleRoomsDnaV2Selection(
+      'world_interests',
+      id
+    );
 
     renderInterestMosaic();
     updateOnboardingContinue();
@@ -3114,58 +3061,301 @@ onboardingBack.addEventListener('click',()=>{
   }
 });
 
-function getRoomsDnaOnboardingSnapshot(){
-  const livingThisOrThat={};
-  const neighborhoodPreferences={};
+function getRoomsDnaPersistenceSnapshot(){
+  const reveal=
+    calculateRoomsDnaV2Reveal();
 
-  roomsDna.thisOrThat.forEach(question=>{
-    const value=dnaState.thisOrThat[question.id]||null;
+  if(!reveal){
+    return null;
+  }
 
-    if(question.target==='living_self'){
-      livingThisOrThat[question.id]=value;
+  const {
+    answers,
+    dna,
+    classification
+  }=reveal;
+
+  const evidence=[];
+
+  for(
+    const [
+      dimension,
+      layers
+    ] of Object.entries(
+      dna.dimensions || {}
+    )
+  ){
+    for(
+      const layer of [
+        'self',
+        'preferred',
+        'importance'
+      ]
+    ){
+      for(
+        const item of
+        layers?.[layer]?.evidence || []
+      ){
+        evidence.push({
+          dimension,
+          layer,
+          ...item
+        });
+      }
     }
+  }
 
-    if(question.target==='neighborhood_preferences'){
-      neighborhoodPreferences[question.id]=value;
-    }
-  });
+  const compactArchetype=
+    archetype=>{
+      if(!archetype)return null;
 
-  const dealbreakers={};
-  roomsDna.dealbreakers.forEach(question=>{
-    dealbreakers[question.id]=
-      dnaState.dealbreakers[question.id]==='dealbreaker';
-  });
+      return {
+        id:archetype.id,
+        name:archetype.name,
+        tagline:archetype.tagline,
+        fit:archetype.fit
+      };
+    };
 
   return {
-    version:roomsDna.version,
+    modelVersion:
+      dna.version,
 
-    matchPreferences:{
-      living_self:{
-        this_or_that:livingThisOrThat,
-        scenarios:{...dnaState.scenarios}
-      },
+    answers,
 
-      living_importance:{
-        ...dnaState.importance
-      },
+    dimensions:
+      dna.dimensions || {},
 
-      dealbreakers,
+    categories:
+      dna.categorical || {},
 
-      home_preferences:{
-        ...dnaState.homePreferences
-      },
+    classification:{
+      primary:
+        compactArchetype(
+          classification.primary
+        ),
 
-      neighborhood_preferences:
-        neighborhoodPreferences,
+      secondary:
+        compactArchetype(
+          classification.secondary
+        ),
 
-      interests:[
-        ...dnaState.interests
-      ],
-
-      traits:[
-        ...dnaState.traits
-      ]
+      ranked:
+        (
+          classification.ranked || []
+        ).map(
+          compactArchetype
+        )
     },
+
+    evidence,
+
+    calculatedAt:
+      new Date().toISOString()
+  };
+}
+
+window.getRoomsDnaPersistenceSnapshot=
+  getRoomsDnaPersistenceSnapshot;
+
+
+function buildLegacyMatchPreferencesFromV2(){
+  const answers=
+    getRoomsDnaV2Answers();
+
+  const homePreferences={
+    ...(
+      answers.home_priorities ||
+      {}
+    )
+  };
+
+  /*
+    Compatibilidad temporal con profile.interests.
+
+    Solo traducimos conceptos que tienen
+    un equivalente razonable en V1.
+  */
+  const interestMap={
+    sport:'sport',
+    music:'music',
+    food:'cooking',
+    travel:'travel',
+    gaming:'gaming',
+    reading:'reading',
+    nightlife:'going-out',
+    pets:'pets'
+  };
+
+  const interests=[
+    ...new Set(
+      (
+        answers.world_interests ||
+        []
+      )
+        .map(
+          value=>
+            interestMap[value]
+        )
+        .filter(Boolean)
+    )
+  ];
+
+  /*
+    Igual para traits:
+    no inferimos rasgos que V1 no conocía.
+  */
+  const traitMap={
+    social:'social',
+    calm:'calm',
+    independent:'independent',
+    organised:'tidy'
+  };
+
+  const traits=[
+    ...new Set(
+      (
+        answers.self_description ||
+        []
+      )
+        .map(
+          value=>
+            traitMap[value]
+        )
+        .filter(Boolean)
+    )
+  ];
+
+  const livingSelf={
+    this_or_that:{},
+    scenarios:{}
+  };
+
+  /*
+    Friday night es el único forced-choice
+    con una equivalencia suficientemente clara
+    respecto al antiguo sunday_home.
+  */
+  if(
+    answers.friday_night===
+      'reset'
+  ){
+    livingSelf.this_or_that
+      .sunday_home='quiet';
+  }
+
+  if(
+    answers.friday_night===
+      'alive'
+  ){
+    livingSelf.this_or_that
+      .sunday_home='social';
+  }
+
+  /*
+    Escenarios con equivalencia directa
+    o suficientemente próxima.
+
+    No rellenamos music_while_working
+    ni working_from_home porque V2
+    no pregunta esas situaciones.
+  */
+  const dishesMap={
+    whatever:'fine',
+    tomorrow_ok:'depends',
+    needs_cleaning:'strong'
+  };
+
+  const friendsMap={
+    love_it:'fine',
+    tell_me:'depends',
+    not_weekdays:'strong'
+  };
+
+  const plansMap={
+    improvise:'fine',
+    tell_me_before:'depends'
+  };
+
+  if(
+    dishesMap[
+      answers.dishes_overnight
+    ]
+  ){
+    livingSelf.scenarios
+      .dishes_two_days=
+        dishesMap[
+          answers.dishes_overnight
+        ];
+  }
+
+  if(
+    friendsMap[
+      answers.friends_tuesday
+    ]
+  ){
+    livingSelf.scenarios
+      .six_friends_tonight=
+        friendsMap[
+          answers.friends_tuesday
+        ];
+  }
+
+  if(
+    plansMap[
+      answers.plans_change
+    ]
+  ){
+    livingSelf.scenarios
+      .improvised_dinner=
+        plansMap[
+          answers.plans_change
+        ];
+  }
+
+  return {
+    living_self:
+      livingSelf,
+
+    /*
+      V2 ya no pregunta estas dos capas
+      mediante las pantallas antiguas.
+      No inventamos valores.
+    */
+    living_importance:{},
+    dealbreakers:{},
+
+    home_preferences:
+      homePreferences,
+
+    /*
+      El onboarding V2 actual no pregunta
+      preferencias de barrio.
+    */
+    neighborhood_preferences:{},
+
+    interests,
+    traits
+  };
+}
+
+
+function getRoomsDnaOnboardingSnapshot(){
+  const roomsDna=
+    getRoomsDnaPersistenceSnapshot();
+
+  if(!roomsDna){
+    return null;
+  }
+
+  return {
+    version:
+      roomsDna.modelVersion,
+
+    roomsDna,
+
+    matchPreferences:
+      buildLegacyMatchPreferencesFromV2(),
 
     intents:[
       ...dnaState.intents
@@ -3173,15 +3363,21 @@ function getRoomsDnaOnboardingSnapshot(){
 
     profile:{
       name:
-        document.querySelector('#profileName')
+        document.querySelector(
+          '#profileName'
+        )
           ?.value.trim()||'',
 
       bio:
-        document.querySelector('#profileBio')
+        document.querySelector(
+          '#profileBio'
+        )
           ?.value.trim()||'',
 
       photo:
-        document.querySelector('#profilePhotoInput')
+        document.querySelector(
+          '#profilePhotoInput'
+        )
           ?.files?.[0]||null
     }
   };
@@ -3220,7 +3416,7 @@ function openPersonalizedFeed(
 window.openPersonalizedFeed=openPersonalizedFeed;
 
 onboardingContinue.addEventListener('click',async()=>{
-  if(onboardingStep<10){
+  if(onboardingStep<8){
     showOnboardingStep(onboardingStep+1);
     return;
   }
@@ -3404,3 +3600,16 @@ document.querySelectorAll('[data-empty-action="communities"]').forEach(button=>b
 const offlineBanner=document.createElement('div');offlineBanner.className='offline-banner';offlineBanner.hidden=true;offlineBanner.innerHTML='<b>Sin conexión</b><span>Algunas funciones no estarán disponibles hasta que recuperes internet.</span>';document.body.appendChild(offlineBanner);window.addEventListener('offline',()=>offlineBanner.hidden=false);window.addEventListener('online',()=>{offlineBanner.hidden=true;ping('Conexión recuperada')});
 
 document.addEventListener('click',event=>{const detailCarouselControl=event.target.closest('#detailModal [data-carousel-prev],#detailModal [data-carousel-next]');if(detailCarouselControl){advanceCarousel(detailCarouselControl.closest('[data-carousel]'),detailCarouselControl.hasAttribute('data-carousel-next')?1:-1);return}if(event.target.closest('[data-close]'))closeAll()});document.addEventListener('keydown',event=>{if(event.key==='Escape')closeAll()});
+
+window.addEventListener(
+  'resize',
+  ()=>{
+    if(
+      document.querySelector(
+        '#onboardingStep7'
+      )?.hidden===false
+    ){
+      fitRoomsDnaRevealTitle();
+    }
+  }
+);
