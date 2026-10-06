@@ -44,7 +44,7 @@ if(
 const result =
   engine.calculate({
     friday_night: 'alive',
-    kitchen_9am: 'reset_space',
+    day_off: 'rough_plan',
     plans_change: 'tell_me_before'
   });
 
@@ -90,18 +90,10 @@ approx(
 
 approx(
   result.dimensions
-    .cleanliness
-    .self
-    .score,
-  0.80
-);
-
-approx(
-  result.dimensions
     .spontaneity
     .self
     .score,
-  -0.75
+  -0.775
 );
 
 approx(

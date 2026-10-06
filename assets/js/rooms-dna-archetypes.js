@@ -222,6 +222,11 @@
           dimension: 'privacy',
           direction: 1,
           minConfidence: 0.20
+        },
+        {
+          dimension: 'sharing_style',
+          direction: -1,
+          minConfidence: 0.20
         }
       ],
 

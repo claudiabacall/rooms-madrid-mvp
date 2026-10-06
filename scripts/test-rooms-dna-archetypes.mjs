@@ -81,7 +81,7 @@ const privateDna =
     friends_tuesday: 'not_weekdays',
     partner_three_nights: 'too_much',
     shared_groceries: 'mine_is_mine',
-    kitchen_9am: 'reset_space'
+    day_off: 'rough_plan'
   });
 
 const privateResult =
@@ -150,7 +150,7 @@ console.log(
 const houseCeoDna =
   engine.calculate({
     friday_night: 'alive',
-    kitchen_9am: 'reset_space',
+    day_off: 'rough_plan',
     plans_change: 'tell_me_before',
     friends_tuesday: 'tell_me',
     dishes_overnight: 'needs_cleaning',
@@ -228,7 +228,7 @@ console.log(
 const freeSpiritDna =
   engine.calculate({
     plans_change: 'improvise',
-    kitchen_9am: 'lived_in',
+    day_off: 'rough_plan',
     dishes_overnight: 'whatever',
     shared_groceries: 'ask_first'
   });
@@ -258,7 +258,7 @@ console.log(
 
 const peaceKeeperDna =
   engine.calculate({
-    kitchen_9am: 'lived_in',
+    day_off: 'go_with_flow',
     dishes_overnight: 'tomorrow_ok',
 
     self_description: [

@@ -185,29 +185,26 @@ globalThis.ROOMS_DNA_V2 = {
     },
 
     {
-      id: 'kitchen_9am',
+      id: 'day_off',
       act: 'vibe',
       type: 'forced_choice',
-      eyebrow: '09:00 AM',
-      prompt: 'La cocina después del desayuno.',
+      eyebrow: 'DAY OFF',
+      prompt: 'Mañana tienes el día libre.',
       options: [
         {
-          id: 'reset_space',
-          label: 'Todo vuelve a su sitio',
+          id: 'rough_plan',
+          label: 'Me gusta tener más o menos un plan.',
           signals: [
-            { dimension: 'cleanliness', field: 'self', value: 0.80 },
-            { dimension: 'boundaries', field: 'self', value: 0.30 },
-            { dimension: 'sharing_style', field: 'self', value: -0.15 }
+            { dimension: 'spontaneity', field: 'self', value: -0.80 },
+            { dimension: 'boundaries', field: 'self', value: 0.15 }
           ]
         },
         {
-          id: 'lived_in',
-          label: 'Una taza, el portátil, vida real',
+          id: 'go_with_flow',
+          label: 'Ya veré dónde acaba el día.',
           signals: [
-            { dimension: 'cleanliness', field: 'self', value: -0.35 },
-            { dimension: 'boundaries', field: 'self', value: -0.15 },
-            { dimension: 'sharing_style', field: 'self', value: 0.20 },
-            { dimension: 'home_activity', field: 'self', value: 0.20 }
+            { dimension: 'spontaneity', field: 'self', value: 0.90 },
+            { dimension: 'boundaries', field: 'self', value: -0.20 }
           ]
         }
       ]
@@ -280,7 +277,7 @@ globalThis.ROOMS_DNA_V2 = {
             { dimension: 'visitor_tolerance', field: 'importance', value: 0.35 },
             { dimension: 'social_energy', field: 'self', value: 0.20 },
             { dimension: 'communication', field: 'self', value: 0.80 },
-            { dimension: 'boundaries', field: 'self', value: 0.55 },
+            { dimension: 'boundaries', field: 'self', value: 0.45 },
             { dimension: 'spontaneity', field: 'self', value: -0.35 }
           ]
         },
@@ -369,10 +366,10 @@ globalThis.ROOMS_DNA_V2 = {
           label: 'Alguna vez sí. Tres noches ya es otra cosa.',
           signals: [
             { dimension: 'visitor_tolerance', field: 'self', value: 0.05 },
-            { dimension: 'privacy', field: 'self', value: 0.55 },
+            { dimension: 'privacy', field: 'self', value: 0.35 },
             { dimension: 'privacy', field: 'preferred', value: 0.45 },
             { dimension: 'privacy', field: 'importance', value: 0.55 },
-            { dimension: 'boundaries', field: 'self', value: 0.70 },
+            { dimension: 'boundaries', field: 'self', value: 0.50 },
             { dimension: 'communication', field: 'self', value: 0.45 }
           ]
         },
@@ -423,7 +420,7 @@ globalThis.ROOMS_DNA_V2 = {
             { dimension: 'sharing_style', field: 'self', value: 0.30 },
             { dimension: 'sharing_style', field: 'preferred', value: 0.25 },
             { dimension: 'sharing_style', field: 'importance', value: 0.25 },
-            { dimension: 'boundaries', field: 'self', value: 0.55 },
+            { dimension: 'boundaries', field: 'self', value: 0.45 },
             { dimension: 'communication', field: 'self', value: 0.75 }
           ]
         },
