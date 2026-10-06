@@ -84,7 +84,6 @@ function selectSingle(selector,current){
 }
 
 let dnaThisIndex=0;
-let dnaThisPointer=null;
 
 function getRoomsDnaV2VibeQuestions(){
   return (
@@ -132,22 +131,23 @@ function renderThisOrThat(){
     questions.length
   ){
     host.innerHTML=`
-      <div class="dna-swipe-complete">
-        <span aria-hidden="true">✦</span>
-
-        <strong>
-          Primera capa lista
-        </strong>
+      <div class="dna-vibe-complete">
+        <div class="dna-vibe-complete-mark">
+          ✦
+        </div>
 
         <small>
-          ${questions.length}
-          decisiones guardadas
+          VIBE COMPLETADO
         </small>
+
+        <strong>
+          Primera capa desbloqueada.
+        </strong>
 
         <button
           type="button"
           data-dna-review-this>
-          Revisar respuestas
+          Revisar VIBE
         </button>
       </div>
     `;
@@ -167,35 +167,53 @@ function renderThisOrThat(){
 
   if(!left||!right)return;
 
-  const selected=
-    roomsDnaV2Answers[
-      question.id
-    ];
+  const progress=
+    questions
+      .map(
+        (_,index)=>`
+          <i class="${
+            index<dnaThisIndex
+              ? 'is-done'
+              : index===dnaThisIndex
+                ? 'is-current'
+                : ''
+          }"></i>
+        `
+      )
+      .join('');
 
   host.innerHTML=`
     <div
-      class="dna-swipe-stage"
+      class="dna-vibe-stage dna-swipe-stage"
       data-dna-swipe-stage
       tabindex="0"
       aria-label="${question.prompt}">
 
-      <div class="dna-swipe-meta">
-        <span>
-          ${dnaThisIndex+1}
-          / ${questions.length}
-        </span>
+      <header class="dna-vibe-run">
+        <div class="dna-vibe-run-copy">
+          <small>
+            ROOMS DNA · VIBE
+          </small>
 
-        <div>
-          <i style="width:${
-            (
-              (dnaThisIndex+1) /
+          <span>
+            ${String(
+              dnaThisIndex+1
+            ).padStart(2,'0')}
+            /
+            ${String(
               questions.length
-            ) * 100
-          }%"></i>
+            ).padStart(2,'0')}
+          </span>
         </div>
-      </div>
 
-      <div class="dna-split-question">
+        <div
+          class="dna-vibe-progress"
+          aria-hidden="true">
+          ${progress}
+        </div>
+      </header>
+
+      <div class="dna-vibe-question">
         <small>
           ${question.eyebrow}
         </small>
@@ -205,84 +223,86 @@ function renderThisOrThat(){
         </h2>
 
         <p>
-          Elige la opción que más
-          se parece a ti.
+          Elige por instinto.
         </p>
       </div>
 
-      <div class="dna-swipe-deck">
+      <div
+        class="dna-vibe-choices"
+        role="group"
+        aria-label="${question.prompt}">
 
         <button
           class="
+            dna-vibe-choice
+            dna-vibe-choice-a
             dna-swipe-choice
-            dna-swipe-choice-left
           "
           type="button"
           data-dna-this="${question.id}"
           data-dna-value="${left.id}"
           data-dna-swipe-choice="left"
           aria-label="${left.label}">
-          <span>←</span>
-          <b>${left.label}</b>
+
+          <span class="dna-vibe-choice-code">
+            A
+          </span>
+
+          <strong>
+            ${left.label}
+          </strong>
+
+          <span class="dna-vibe-choice-arrow">
+            ↙
+          </span>
         </button>
+
+        <div
+          class="dna-vibe-versus"
+          aria-hidden="true">
+          OR
+        </div>
 
         <button
           class="
+            dna-vibe-choice
+            dna-vibe-choice-b
             dna-swipe-choice
-            dna-swipe-choice-right
           "
           type="button"
           data-dna-this="${question.id}"
           data-dna-value="${right.id}"
           data-dna-swipe-choice="right"
           aria-label="${right.label}">
-          <b>${right.label}</b>
-          <span>→</span>
+
+          <span class="dna-vibe-choice-code">
+            B
+          </span>
+
+          <strong>
+            ${right.label}
+          </strong>
+
+          <span class="dna-vibe-choice-arrow">
+            ↘
+          </span>
         </button>
-
-        <article
-          class="dna-swipe-card"
-          tabindex="0"
-          role="group"
-          aria-label="${question.prompt}"
-          data-dna-swipe-card>
-
-          <small>
-            ${question.eyebrow}
-          </small>
-
-          <h2>
-            ${question.prompt}
-          </h2>
-
-          <p>
-            Arrastra hacia la opción
-            que más se parece a ti
-          </p>
-
-          <div class="dna-swipe-card-hint">
-            <span>←</span>
-            <em>desliza</em>
-            <span>→</span>
-          </div>
-
-        </article>
       </div>
 
-      <div class="dna-swipe-mobile-labels">
-        <span>${left.label}</span>
-        <span>${right.label}</span>
-      </div>
+      <footer class="dna-vibe-footer">
+        <span>
+          ← A
+        </span>
 
-      ${
-        selected
-          ? `
-            <small class="dna-swipe-saved">
-              Respuesta guardada
-            </small>
-          `
-          : ''
-      }
+        <b>
+          NO LO PIENSES DEMASIADO
+        </b>
+
+        <span>
+          B →
+        </span>
+      </footer>
+
     </div>
   `;
 
@@ -364,179 +384,36 @@ function commitThisOrThat(side){
   },260);
 }
 
-function resetSwipeCard(card,stage){
-  if(!card)return;
-
-  card.style.transform='';
-  card.style.transition='';
-
-  stage?.removeAttribute(
-    'data-swipe-direction'
-  );
-
-  dnaThisPointer=null;
-}
-
 function bindThisOrThatGesture(){
-  const card=
-    document.querySelector(
-      '[data-dna-swipe-card]'
-    );
-
   const stage=
     document.querySelector(
       '[data-dna-swipe-stage]'
     );
 
-  if(!card||!stage)return;
+  if(!stage)return;
 
   stage.addEventListener(
     'keydown',
     event=>{
       if(
-        event.target!==stage
-      )return;
-
-      if(event.key==='ArrowLeft'){
+        event.key==='ArrowLeft' ||
+        event.key.toLowerCase()==='a'
+      ){
         event.preventDefault();
         commitThisOrThat('left');
       }
 
-      if(event.key==='ArrowRight'){
-        event.preventDefault();
-        commitThisOrThat('right');
-      }
-    }
-  );
-
-  card.addEventListener(
-    'pointerdown',
-    event=>{
-      dnaThisPointer={
-        id:event.pointerId,
-        startX:event.clientX,
-        deltaX:0
-      };
-
-      card.setPointerCapture(
-        event.pointerId
-      );
-
-      card.classList.add(
-        'is-dragging'
-      );
-    }
-  );
-
-  card.addEventListener(
-    'pointermove',
-    event=>{
       if(
-        !dnaThisPointer||
-        dnaThisPointer.id!==
-          event.pointerId
-      )return;
-
-      const deltaX=
-        event.clientX-
-        dnaThisPointer.startX;
-
-      dnaThisPointer.deltaX=
-        deltaX;
-
-      const limited=
-        Math.max(
-          -220,
-          Math.min(220,deltaX)
-        );
-
-      const rotate=
-        limited/24;
-
-      card.style.transform=
-        `translateX(${limited}px) rotate(${rotate}deg)`;
-
-      if(deltaX<-35){
-        stage.setAttribute(
-          'data-swipe-direction',
-          'left'
-        );
-      }else if(deltaX>35){
-        stage.setAttribute(
-          'data-swipe-direction',
-          'right'
-        );
-      }else{
-        stage.removeAttribute(
-          'data-swipe-direction'
-        );
-      }
-    }
-  );
-
-  const finishPointer=event=>{
-    if(
-      !dnaThisPointer||
-      dnaThisPointer.id!==
-        event.pointerId
-    )return;
-
-    const deltaX=
-      dnaThisPointer.deltaX;
-
-    card.classList.remove(
-      'is-dragging'
-    );
-
-    if(Math.abs(deltaX)>=85){
-      commitThisOrThat(
-        deltaX<0
-          ? 'left'
-          : 'right'
-      );
-      return;
-    }
-
-    resetSwipeCard(
-      card,
-      stage
-    );
-  };
-
-  card.addEventListener(
-    'pointerup',
-    finishPointer
-  );
-
-  card.addEventListener(
-    'pointercancel',
-    event=>{
-      card.classList.remove(
-        'is-dragging'
-      );
-
-      resetSwipeCard(
-        card,
-        stage
-      );
-    }
-  );
-
-  card.addEventListener(
-    'keydown',
-    event=>{
-      if(event.key==='ArrowLeft'){
-        event.preventDefault();
-        commitThisOrThat('left');
-      }
-
-      if(event.key==='ArrowRight'){
+        event.key==='ArrowRight' ||
+        event.key.toLowerCase()==='b'
+      ){
         event.preventDefault();
         commitThisOrThat('right');
       }
     }
   );
 }
+
 
 function renderScaleQuestions(hostSelector,questions,scale,dataAttr,stateKey){
   const host=document.querySelector(hostSelector);
@@ -704,8 +581,8 @@ function homePreferenceCard(
       <small>
         ${
           current
-            ? 'Mover'
-            : 'Colocar'
+            ? 'Cambiar'
+            : 'Elegir'
         }
       </small>
     </button>
@@ -1071,7 +948,7 @@ function renderHomePreferences(){
         <span>
           ${placedCount}
           / ${preferences.length}
-          colocadas
+          definidas
         </span>
 
         <div>
@@ -1095,7 +972,7 @@ function renderHomePreferences(){
               ${
                 unassigned.length
                   ? question.prompt
-                  : 'Tu casa ideal ya tiene forma'
+                  : 'Tu casa ideal está lista'
               }
             </strong>
           </div>
@@ -1104,12 +981,12 @@ function renderHomePreferences(){
             dnaHomeSelected
               ? `
                 <span class="dna-home-selected-note">
-                  Ahora elige un nivel ↓
+                  Ahora elige dónde va ↓
                 </span>
               `
               : `
                 <span class="dna-home-selected-note">
-                  Arrastra una ficha
+                  Construye tu casa
                 </span>
               `
           }
@@ -1125,7 +1002,7 @@ function renderHomePreferences(){
                   .join('')
               : `
                 <div class="dna-home-empty">
-                  ✦ Todo colocado
+                  ✦ HOME COMPLETADO
                 </div>
               `
           }
@@ -1192,7 +1069,7 @@ function renderHomePreferences(){
                           .join('')
                       : `
                         <span class="dna-home-drop-hint">
-                          Suelta aquí
+                          Coloca aquí
                         </span>
                       `
                   }
@@ -1206,9 +1083,9 @@ function renderHomePreferences(){
       </div>
 
       <p class="dna-home-board-tip">
-        Arrastra para ordenar.
+        Arrastra para construir.
         También puedes tocar una ficha
-        y después elegir un nivel.
+        y después elegir dónde va.
       </p>
 
     </div>
@@ -1858,10 +1735,6 @@ function renderIdentityChips(){
 }
 
 
-let dnaScenarioIndex=0;
-let dnaScenarioPointer=null;
-let dnaScenarioLocked=false;
-
 function getRoomsDnaV2LivingQuestions(){
   return (
     window.ROOMS_DNA_V2
@@ -1880,129 +1753,28 @@ function livingComplete(){
   return (
     questions.length>0 &&
     questions.every(
-      question=>Boolean(
-        roomsDnaV2Answers[
-          question.id
-        ]
-      )
+      question=>
+        Boolean(
+          roomsDnaV2Answers[
+            question.id
+          ]
+        )
     )
   );
 }
 
-function getCurrentLivingQuestion(){
-  return getRoomsDnaV2LivingQuestions()[
-    dnaScenarioIndex
-  ];
-}
 
-function scenarioScaleIndexFromPoint(
-  clientX,
-  meter
-){
-  const question=
-    getCurrentLivingQuestion();
+let dnaScenarioIndex=0;
+let dnaScenarioLocked=false;
 
-  const options=
-    question?.options || [];
-
-  if(!options.length)return 0;
-
-  const rect=
-    meter.getBoundingClientRect();
-
-  const ratio=Math.max(
-    0,
-    Math.min(
-      1,
-      (clientX-rect.left)/
-        rect.width
-    )
-  );
-
-  return Math.round(
-    ratio*(
-      options.length-1
-    )
-  );
-}
-
-function scenarioPosition(
-  index,
-  total
-){
-  const last=total-1;
-
-  if(last<=0)return 50;
-
-  return (index/last)*100;
-}
-
-function previewScenarioReaction(
-  index,
-  meter
-){
-  const question=
-    getCurrentLivingQuestion();
-
-  const options=
-    question?.options || [];
-
-  const option=
-    options[index];
-
-  if(!option||!meter)return;
-
-  meter.style.setProperty(
-    '--reaction-position',
-    `${
-      scenarioPosition(
-        index,
-        options.length
-      )
-    }%`
-  );
-
-  const value=
-    meter.querySelector(
-      '.dna-reaction-current'
-    );
-
-  if(value){
-    value.textContent=
-      option.label;
-  }
-
-  meter
-    .querySelectorAll(
-      '.dna-reaction-stop'
-    )
-    .forEach(
-      (stop,stopIndex)=>{
-        stop.classList.toggle(
-          'is-active',
-          stopIndex===index
-        );
-      }
-    );
-
-  meter.setAttribute(
-    'aria-valuenow',
-    String(index)
-  );
-
-  meter.setAttribute(
-    'aria-valuetext',
-    option.label
-  );
-}
-
-function commitScenarioReaction(
-  index
-){
+function commitScenarioReaction(index){
   if(dnaScenarioLocked)return;
 
+  const questions=
+    getRoomsDnaV2LivingQuestions();
+
   const question=
-    getCurrentLivingQuestion();
+    questions[dnaScenarioIndex];
 
   const option=
     question?.options?.[index];
@@ -2011,9 +1783,6 @@ function commitScenarioReaction(
 
   dnaScenarioLocked=true;
 
-  /*
-    Escritura DIRECTA V2.
-  */
   setRoomsDnaV2Answer(
     question.id,
     option.id
@@ -2021,7 +1790,12 @@ function commitScenarioReaction(
 
   const stage=
     document.querySelector(
-      '.dna-reaction-stage'
+      '[data-dna-living-stage]'
+    );
+
+  const choice=
+    document.querySelector(
+      `[data-dna-living-choice="${index}"]`
     );
 
   if(stage){
@@ -2030,176 +1804,69 @@ function commitScenarioReaction(
     );
   }
 
+  if(choice){
+    choice.classList.add(
+      'is-selected'
+    );
+  }
+
   updateOnboardingContinue();
 
-  window.setTimeout(()=>{
-    dnaScenarioIndex+=1;
-    dnaScenarioLocked=false;
-    renderScenarios();
-  },420);
+  window.setTimeout(
+    ()=>{
+      dnaScenarioIndex+=1;
+      dnaScenarioLocked=false;
+      renderScenarios();
+    },
+    260
+  );
 }
 
-function bindScenarioMeter(){
-  const meter=
+function bindLivingGame(){
+  const stage=
     document.querySelector(
-      '.dna-reaction-meter'
+      '[data-dna-living-stage]'
     );
 
-  if(!meter)return;
+  if(!stage)return;
 
-  meter.addEventListener(
-    'pointermove',
-    event=>{
-      if(dnaScenarioLocked)return;
-
-      const index=
-        scenarioScaleIndexFromPoint(
-          event.clientX,
-          meter
+  stage
+    .querySelectorAll(
+      '[data-dna-living-choice]'
+    )
+    .forEach(
+      button=>{
+        button.addEventListener(
+          'click',
+          ()=>{
+            commitScenarioReaction(
+              Number(
+                button.dataset
+                  .dnaLivingChoice
+              )
+            );
+          }
         );
-
-      previewScenarioReaction(
-        index,
-        meter
-      );
-
-      if(
-        dnaScenarioPointer &&
-        dnaScenarioPointer.id===
-          event.pointerId
-      ){
-        dnaScenarioPointer.index=
-          index;
       }
-    }
-  );
+    );
 
-  meter.addEventListener(
-    'pointerdown',
-    event=>{
-      if(dnaScenarioLocked)return;
-
-      const index=
-        scenarioScaleIndexFromPoint(
-          event.clientX,
-          meter
-        );
-
-      dnaScenarioPointer={
-        id:event.pointerId,
-        index
-      };
-
-      meter.setPointerCapture(
-        event.pointerId
-      );
-
-      meter.classList.add(
-        'is-dragging'
-      );
-
-      previewScenarioReaction(
-        index,
-        meter
-      );
-    }
-  );
-
-  meter.addEventListener(
-    'pointerup',
-    event=>{
-      if(
-        !dnaScenarioPointer ||
-        dnaScenarioPointer.id!==
-          event.pointerId
-      )return;
-
-      const index=
-        dnaScenarioPointer.index;
-
-      dnaScenarioPointer=null;
-
-      meter.classList.remove(
-        'is-dragging'
-      );
-
-      commitScenarioReaction(
-        index
-      );
-    }
-  );
-
-  meter.addEventListener(
-    'pointercancel',
-    ()=>{
-      dnaScenarioPointer=null;
-
-      meter.classList.remove(
-        'is-dragging'
-      );
-    }
-  );
-
-  meter.addEventListener(
+  stage.addEventListener(
     'keydown',
     event=>{
       if(dnaScenarioLocked)return;
 
-      const question=
-        getCurrentLivingQuestion();
-
-      const options=
-        question?.options || [];
-
-      if(!options.length)return;
-
-      const current=
-        Number(
-          meter.getAttribute(
-            'aria-valuenow'
-          ) || 1
-        );
+      const numeric=
+        Number(event.key);
 
       if(
-        event.key==='ArrowLeft'
-      ){
-        event.preventDefault();
-
-        previewScenarioReaction(
-          Math.max(
-            0,
-            current-1
-          ),
-          meter
-        );
-      }
-
-      if(
-        event.key==='ArrowRight'
-      ){
-        event.preventDefault();
-
-        previewScenarioReaction(
-          Math.min(
-            options.length-1,
-            current+1
-          ),
-          meter
-        );
-      }
-
-      if(
-        event.key==='Enter' ||
-        event.key===' '
+        Number.isInteger(numeric) &&
+        numeric>=1 &&
+        numeric<=3
       ){
         event.preventDefault();
 
         commitScenarioReaction(
-          Number(
-            meter.getAttribute(
-              'aria-valuenow'
-            ) || 1
-          )
+          numeric-1
         );
       }
     }
@@ -2225,22 +1892,23 @@ function renderScenarios(){
     questions.length
   ){
     host.innerHTML=`
-      <div class="dna-reaction-complete">
-        <span aria-hidden="true">✦</span>
-
-        <strong>
-          Ya sabemos cómo reaccionas
-        </strong>
+      <div class="dna-living-complete">
+        <div class="dna-living-complete-mark">
+          ✦
+        </div>
 
         <small>
-          ${questions.length}
-          situaciones respondidas
+          LIVING COMPLETADO
         </small>
+
+        <strong>
+          Ya sabemos cómo convives.
+        </strong>
 
         <button
           type="button"
           class="dna-reaction-review">
-          Revisar respuestas
+          Revisar LIVING
         </button>
       </div>
     `;
@@ -2259,54 +1927,53 @@ function renderScenarios(){
 
   if(options.length<2)return;
 
-  const saved=
-    roomsDnaV2Answers[
-      question.id
-    ];
-
-  let initialIndex=
-    Math.floor(
-      (options.length-1)/2
-    );
-
-  if(saved){
-    const found=
-      options.findIndex(
-        item=>item.id===saved
-      );
-
-    if(found>=0){
-      initialIndex=found;
-    }
-  }
-
-  const initial=
-    options[
-      initialIndex
-    ];
+  const progress=
+    questions
+      .map(
+        (_,index)=>`
+          <i class="${
+            index<dnaScenarioIndex
+              ? 'is-done'
+              : index===dnaScenarioIndex
+                ? 'is-current'
+                : ''
+          }"></i>
+        `
+      )
+      .join('');
 
   host.innerHTML=`
-    <div class="dna-reaction-stage">
+    <div
+      class="dna-living-stage"
+      data-dna-living-stage
+      tabindex="0"
+      aria-label="${question.prompt}">
 
-      <div class="dna-reaction-meta">
-        <span>
-          ${dnaScenarioIndex+1}
-          / ${questions.length}
-        </span>
+      <header class="dna-living-run">
+        <div class="dna-living-run-copy">
+          <small>
+            ROOMS DNA · LIVING
+          </small>
 
-        <div>
-          <i style="width:${
-            (
-              (
-                dnaScenarioIndex+1
-              ) /
+          <span>
+            ${String(
+              dnaScenarioIndex+1
+            ).padStart(2,'0')}
+            /
+            ${String(
               questions.length
-            ) * 100
-          }%"></i>
+            ).padStart(2,'0')}
+          </span>
         </div>
-      </div>
 
-      <div class="dna-reaction-copy">
+        <div
+          class="dna-living-progress"
+          aria-hidden="true">
+          ${progress}
+        </div>
+      </header>
+
+      <div class="dna-living-scene">
         <small>
           ${question.eyebrow}
         </small>
@@ -2316,68 +1983,65 @@ function renderScenarios(){
         </h2>
 
         <p>
-          Muévete por la escala.
-          No lo pienses demasiado.
+          ¿Cuál es tu reacción?
         </p>
       </div>
 
       <div
-        class="dna-reaction-meter"
-        role="slider"
-        tabindex="0"
-        aria-label="${question.prompt}"
-        aria-valuemin="0"
-        aria-valuemax="${
-          options.length-1
-        }"
-        aria-valuenow="${initialIndex}"
-        aria-valuetext="${initial.label}"
-        style="--reaction-position:${
-          scenarioPosition(
-            initialIndex,
-            options.length
-          )
-        }%">
+        class="dna-living-choices"
+        role="group"
+        aria-label="${question.prompt}">
 
-        <div class="dna-reaction-track">
-          <span></span>
-        </div>
+        ${options.map(
+          (option,index)=>`
+            <button
+              type="button"
+              class="dna-living-choice"
+              data-dna-living-choice="${index}"
+              aria-label="${option.label}">
 
-        <div class="dna-reaction-orb">
-          <span>✦</span>
-        </div>
-
-        <strong class="dna-reaction-current">
-          ${initial.label}
-        </strong>
-
-        <div class="dna-reaction-stops">
-          ${options.map(
-            (item,index)=>`
-              <span
-                class="dna-reaction-stop${
-                  index===initialIndex
-                    ? ' is-active'
-                    : ''
-                }">
-                <i></i>
-                <b>${item.label}</b>
+              <span class="dna-living-choice-number">
+                ${String(index+1).padStart(2,'0')}
               </span>
-            `
-          ).join('')}
-        </div>
+
+              <strong>
+                ${option.label}
+              </strong>
+
+              <span
+                class="dna-living-choice-mark"
+                aria-hidden="true">
+                ↗
+              </span>
+            </button>
+          `
+        ).join('')}
       </div>
 
-      <small class="dna-reaction-tip">
-        Arrastra, mueve el ratón
-        o usa ← →
-      </small>
+      <footer class="dna-living-footer">
+        <span>
+          1 — ${options[0]?.label || ''}
+        </span>
+
+        <b>
+          ELIGE POR INSTINTO
+        </b>
+
+        <span>
+          ${options.length} — ${
+            options[
+              options.length-1
+            ]?.label || ''
+          }
+        </span>
+      </footer>
 
     </div>
   `;
 
-  bindScenarioMeter();
+  bindLivingGame();
 }
+
 
 function renderDna(){
   renderThisOrThat();
