@@ -18276,359 +18276,263 @@ body.dna-home-is-dragging{
 }
 
 /* =========================================================
-   ROOMS DNA V2 — VIBE GAME
+   ROOMS DNA V2 — GLOBAL GAME PROGRESS
    ========================================================= */
 
-#onboarding #onboardingStep2 > .eyebrow,
-#onboarding #onboardingStep2 > h1,
-#onboarding #onboardingStep2 > .onboarding-help{
-  display:none;
-}
-
-#onboarding #dnaThisOrThat{
+#onboarding .dna-global-run{
   width:100%;
-  max-width:1180px;
-  margin:0 auto;
-}
-
-#onboarding .dna-vibe-stage{
-  width:100%;
-  outline:none;
-}
-
-#onboarding .dna-vibe-run{
   display:grid;
   gap:14px;
   margin-bottom:54px;
 }
 
-#onboarding .dna-vibe-run-copy{
+#onboarding .dna-global-run-copy{
   display:flex;
   justify-content:space-between;
   align-items:center;
   gap:20px;
 }
 
-#onboarding .dna-vibe-run-copy small,
-#onboarding .dna-vibe-run-copy span{
+#onboarding .dna-global-run-copy small,
+#onboarding .dna-global-run-copy span{
   font-size:11px;
-  font-weight:800;
+  font-weight:850;
   letter-spacing:.14em;
 }
 
-#onboarding .dna-vibe-progress{
+#onboarding .dna-global-strip{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:
+    repeat(10,minmax(0,1fr));
   gap:6px;
+  align-items:center;
 }
 
-#onboarding .dna-vibe-progress i{
-  height:5px;
-  background:rgba(0,0,0,.1);
+#onboarding .dna-global-strip i{
+  position:relative;
+  display:block;
+  height:6px;
+  background:rgba(0,0,0,.10);
   transition:
-    background .2s ease,
-    transform .2s ease;
+    background .18s ease,
+    transform .18s ease,
+    border-radius .18s ease;
 }
 
-#onboarding .dna-vibe-progress i.is-done{
+#onboarding .dna-global-strip i:nth-child(3n+1){
+  border-radius:999px;
+}
+
+#onboarding .dna-global-strip i:nth-child(3n+2){
+  transform:skewX(-18deg);
+}
+
+#onboarding .dna-global-strip i:nth-child(3n){
+  border-radius:2px;
+}
+
+#onboarding .dna-global-strip i.is-done{
   background:#111;
 }
 
-#onboarding .dna-vibe-progress i.is-current{
+#onboarding .dna-global-strip i.is-current{
   background:var(--acid);
-  transform:scaleY(1.5);
+  transform:scaleY(1.8);
 }
 
-#onboarding .dna-vibe-question{
-  max-width:1000px;
-  margin:0 auto 42px;
-  text-align:center;
-}
-
-#onboarding .dna-vibe-question small{
-  display:block;
-  margin-bottom:13px;
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.15em;
-  text-transform:uppercase;
-  color:rgba(0,0,0,.42);
-}
-
-#onboarding .dna-vibe-question h2{
-  max-width:15ch !important;
-  margin:0 auto !important;
-  font-size:clamp(
-    52px,
-    7vw,
-    104px
-  ) !important;
-  line-height:.87 !important;
-  letter-spacing:-.07em !important;
-  text-wrap:balance;
-}
-
-#onboarding .dna-vibe-question p{
-  margin:20px 0 0 !important;
-  font-size:13px !important;
-  font-weight:700;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  color:rgba(0,0,0,.38) !important;
-}
-
-#onboarding .dna-vibe-choices{
-  position:relative;
-  display:grid;
-  grid-template-columns:
-    minmax(0,1fr)
-    minmax(0,1fr);
-  gap:10px;
-}
-
-#onboarding .dna-vibe-choice{
-  position:relative;
-  min-width:0;
-  min-height:300px;
-  padding:34px;
-  overflow:hidden;
-  border:1px solid #111;
-  border-radius:0;
-  background:transparent;
-  color:#111;
-  cursor:pointer;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  align-items:flex-start;
-  text-align:left;
-  font:inherit;
-  transition:
-    background .22s ease,
-    color .22s ease,
-    transform .22s ease,
-    flex .22s ease;
-}
-
-#onboarding .dna-vibe-choice-b{
-  align-items:flex-end;
-  text-align:right;
-}
-
-#onboarding .dna-vibe-choice-code{
-  width:42px;
-  height:42px;
-  border:1px solid currentColor;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:.08em;
-}
-
-#onboarding .dna-vibe-choice strong{
-  max-width:12ch;
-  font-size:clamp(
-    30px,
-    3.4vw,
-    54px
-  );
-  line-height:.95;
-  letter-spacing:-.055em;
-  text-wrap:balance;
-}
-
-#onboarding .dna-vibe-choice-arrow{
-  font-size:24px;
-  line-height:1;
-}
-
-#onboarding .dna-vibe-versus{
-  position:absolute;
-  z-index:4;
-  left:50%;
-  top:50%;
-  width:48px;
-  height:48px;
-  border:1px solid #111;
-  border-radius:50%;
-  background:#f4f4ef;
-  display:grid;
-  place-items:center;
-  transform:translate(-50%,-50%);
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.08em;
-  pointer-events:none;
-}
-
-@media (hover:hover) and (pointer:fine){
-
-  #onboarding .dna-vibe-choice:hover{
-    background:var(--acid);
-    transform:translateY(-4px);
-  }
-
-  #onboarding .dna-vibe-choices:has(
-    .dna-vibe-choice-a:hover
-  )
-  .dna-vibe-choice-b,
-  #onboarding .dna-vibe-choices:has(
-    .dna-vibe-choice-b:hover
-  )
-  .dna-vibe-choice-a{
-    opacity:.42;
-  }
-}
-
-#onboarding
-.dna-vibe-stage.is-committed-left
-.dna-vibe-choice-a,
-#onboarding
-.dna-vibe-stage.is-committed-right
-.dna-vibe-choice-b{
-  background:var(--acid);
-  transform:scale(1.01);
-}
-
-#onboarding
-.dna-vibe-stage.is-committed-left
-.dna-vibe-choice-b,
-#onboarding
-.dna-vibe-stage.is-committed-right
-.dna-vibe-choice-a{
-  opacity:.22;
-}
-
-#onboarding .dna-vibe-footer{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:18px;
-  margin-top:14px;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.12em;
-  color:rgba(0,0,0,.38);
-}
-
-#onboarding .dna-vibe-footer b{
-  font-size:inherit;
-  font-weight:inherit;
-}
-
-#onboarding .dna-vibe-complete{
-  min-height:520px;
-  border:1px solid #111;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  padding:48px;
-  text-align:center;
-}
-
-#onboarding .dna-vibe-complete-mark{
-  width:88px;
-  height:88px;
-  margin-bottom:30px;
-  background:var(--acid);
-  display:grid;
-  place-items:center;
-  border-radius:50%;
-  font-size:34px;
-}
-
-#onboarding .dna-vibe-complete small{
-  margin-bottom:12px;
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.16em;
-}
-
-#onboarding .dna-vibe-complete strong{
-  max-width:10ch;
-  font-size:clamp(44px,6vw,76px);
-  line-height:.9;
-  letter-spacing:-.06em;
-}
-
-#onboarding .dna-vibe-complete button{
-  margin-top:34px;
-  min-height:46px;
-  padding:0 18px;
-  border:1px solid #111;
-  background:transparent;
-  font:inherit;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  cursor:pointer;
+#onboarding .dna-global-strip i.is-current:nth-child(3n+2){
+  transform:
+    skewX(-18deg)
+    scaleY(1.8);
 }
 
 @media (max-width:767px){
 
-  #onboarding .dna-vibe-run{
+  #onboarding .dna-global-run{
     margin-bottom:34px;
   }
 
-  #onboarding .dna-vibe-question{
-    margin-bottom:28px;
+  #onboarding .dna-global-strip{
+    gap:4px;
   }
 
-  #onboarding .dna-vibe-question h2{
-    max-width:10ch !important;
-    font-size:clamp(
-      46px,
-      14vw,
-      68px
-    ) !important;
-  }
-
-  #onboarding .dna-vibe-choices{
-    grid-template-columns:1fr;
-    gap:8px;
-  }
-
-  #onboarding .dna-vibe-choice{
-    min-height:190px;
-    padding:24px;
-  }
-
-  #onboarding .dna-vibe-choice-b{
-    align-items:flex-start;
-    text-align:left;
-  }
-
-  #onboarding .dna-vibe-choice strong{
-    max-width:13ch;
-    font-size:32px;
-  }
-
-  #onboarding .dna-vibe-versus{
-    top:50%;
-  }
-
-  #onboarding .dna-vibe-footer{
-    margin-top:12px;
-  }
-
-  #onboarding .dna-vibe-footer b{
-    display:none;
-  }
-
-  #onboarding .dna-vibe-complete{
-    min-height:420px;
-    padding:30px 20px;
+  #onboarding .dna-global-strip i{
+    height:5px;
   }
 }
 
 @media (prefers-reduced-motion:reduce){
 
-  #onboarding .dna-vibe-choice,
-  #onboarding .dna-vibe-progress i{
+  #onboarding .dna-global-strip i{
     transition:none;
+  }
+}
+
+/* =========================================================
+   ROOMS DNA V2 — GAME TRANSITION
+   ========================================================= */
+
+#onboarding .dna-game-transition{
+  position:absolute;
+  z-index:200;
+  inset:0;
+  padding:42px;
+  background:#111;
+  color:#fff;
+  opacity:0;
+  pointer-events:none;
+  transition:
+    opacity .16s ease;
+}
+
+#onboarding .dna-game-transition[hidden]{
+  display:none;
+}
+
+#onboarding .dna-game-transition.is-visible{
+  opacity:1;
+  pointer-events:auto;
+}
+
+#onboarding .dna-game-transition-inner{
+  width:100%;
+  min-height:520px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+}
+
+#onboarding .dna-game-transition-strip{
+  width:min(620px,100%);
+  display:grid;
+  grid-template-columns:
+    repeat(10,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:52px;
+}
+
+#onboarding .dna-game-transition-strip i{
+  height:7px;
+  background:rgba(255,255,255,.15);
+  transform:scaleY(1);
+  animation:
+    dnaTransitionPiece
+    .35s
+    var(--dna-delay)
+    forwards;
+}
+
+#onboarding
+.dna-game-transition-strip
+i:nth-child(3n+1){
+  border-radius:999px;
+}
+
+#onboarding
+.dna-game-transition-strip
+i:nth-child(3n+2){
+  transform:skewX(-18deg);
+}
+
+#onboarding .dna-game-transition small{
+  margin-bottom:14px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  opacity:.55;
+}
+
+#onboarding .dna-game-transition strong{
+  max-width:9ch;
+  font-size:clamp(
+    58px,
+    9vw,
+    128px
+  );
+  line-height:.82;
+  letter-spacing:-.075em;
+  text-wrap:balance;
+}
+
+#onboarding .dna-game-transition > *{
+  min-width:0;
+}
+
+#onboarding .dna-game-transition-inner > span{
+  margin-top:22px;
+  font-size:13px;
+  font-weight:750;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+
+#onboarding .dna-game-transition-mark{
+  width:72px;
+  height:72px;
+  margin-top:44px;
+  border-radius:50%;
+  background:var(--acid);
+  color:#111;
+  display:grid;
+  place-items:center;
+  font-size:28px;
+  transition:
+    transform .22s ease;
+}
+
+#onboarding
+.dna-game-transition.is-resolving
+.dna-game-transition-mark{
+  transform:
+    scale(1.35)
+    rotate(45deg);
+}
+
+@keyframes dnaTransitionPiece{
+  to{
+    background:var(--acid);
+    transform:scaleY(1.7);
+  }
+}
+
+@media (max-width:767px){
+
+  #onboarding .dna-game-transition{
+    padding:28px 20px;
+  }
+
+  #onboarding .dna-game-transition-inner{
+    min-height:440px;
+  }
+
+  #onboarding .dna-game-transition-strip{
+    margin-bottom:42px;
+    gap:4px;
+  }
+
+  #onboarding .dna-game-transition strong{
+    max-width:8ch;
+    font-size:clamp(
+      54px,
+      17vw,
+      76px
+    );
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+
+  #onboarding .dna-game-transition,
+  #onboarding .dna-game-transition-mark{
+    transition:none;
+  }
+
+  #onboarding .dna-game-transition-strip i{
+    animation:none;
+    background:var(--acid);
   }
 }

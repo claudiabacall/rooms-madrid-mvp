@@ -112,6 +112,58 @@ function thisOrThatComplete(){
   );
 }
 
+function renderRoomsDnaGlobalProgress(
+  current,
+  chapter
+){
+  const total=10;
+
+  const pieces=
+    Array.from(
+      {length:total},
+      (_,index)=>{
+        const position=index+1;
+
+        const state=
+          position<current
+            ? 'is-done'
+            : position===current
+              ? 'is-current'
+              : '';
+
+        return `
+          <i
+            class="${state}"
+            aria-hidden="true">
+          </i>
+        `;
+      }
+    ).join('');
+
+  return `
+    <header class="dna-global-run">
+      <div class="dna-global-run-copy">
+        <small>
+          ROOMS DNA · ${chapter}
+        </small>
+
+        <span>
+          ${String(current).padStart(2,'0')}
+          /
+          ${String(total).padStart(2,'0')}
+        </span>
+      </div>
+
+      <div
+        class="dna-global-strip"
+        aria-label="Paso ${current} de ${total}">
+        ${pieces}
+      </div>
+    </header>
+  `;
+}
+
+
 function renderThisOrThat(){
   const host=
     document.querySelector(
@@ -167,21 +219,6 @@ function renderThisOrThat(){
 
   if(!left||!right)return;
 
-  const progress=
-    questions
-      .map(
-        (_,index)=>`
-          <i class="${
-            index<dnaThisIndex
-              ? 'is-done'
-              : index===dnaThisIndex
-                ? 'is-current'
-                : ''
-          }"></i>
-        `
-      )
-      .join('');
-
   host.innerHTML=`
     <div
       class="dna-vibe-stage dna-swipe-stage"
@@ -189,29 +226,10 @@ function renderThisOrThat(){
       tabindex="0"
       aria-label="${question.prompt}">
 
-      <header class="dna-vibe-run">
-        <div class="dna-vibe-run-copy">
-          <small>
-            ROOMS DNA · VIBE
-          </small>
-
-          <span>
-            ${String(
-              dnaThisIndex+1
-            ).padStart(2,'0')}
-            /
-            ${String(
-              questions.length
-            ).padStart(2,'0')}
-          </span>
-        </div>
-
-        <div
-          class="dna-vibe-progress"
-          aria-hidden="true">
-          ${progress}
-        </div>
-      </header>
+      ${renderRoomsDnaGlobalProgress(
+        dnaThisIndex+1,
+        'VIBE'
+      )}
 
       <div class="dna-vibe-question">
         <small>
@@ -944,6 +962,11 @@ function renderHomePreferences(){
   host.innerHTML=`
     <div class="dna-home-experience">
 
+      ${renderRoomsDnaGlobalProgress(
+        8,
+        'HOME'
+      )}
+
       <div class="dna-home-status">
         <span>
           ${placedCount}
@@ -1242,6 +1265,11 @@ function renderInterestMosaic(){
 
   host.innerHTML=`
     <section class="dna-identity-block dna-interests-block">
+
+      ${renderRoomsDnaGlobalProgress(
+        9,
+        'WORLD'
+      )}
 
       <header class="dna-identity-section-head">
         <div>
@@ -1638,6 +1666,11 @@ function renderTraitIdentity(){
   host.innerHTML=`
     <section class="dna-identity-block dna-traits-block">
 
+      ${renderRoomsDnaGlobalProgress(
+        10,
+        'WORLD'
+      )}
+
       <header class="dna-identity-section-head">
         <div>
           <small>
@@ -1927,21 +1960,6 @@ function renderScenarios(){
 
   if(options.length<2)return;
 
-  const progress=
-    questions
-      .map(
-        (_,index)=>`
-          <i class="${
-            index<dnaScenarioIndex
-              ? 'is-done'
-              : index===dnaScenarioIndex
-                ? 'is-current'
-                : ''
-          }"></i>
-        `
-      )
-      .join('');
-
   host.innerHTML=`
     <div
       class="dna-living-stage"
@@ -1949,29 +1967,10 @@ function renderScenarios(){
       tabindex="0"
       aria-label="${question.prompt}">
 
-      <header class="dna-living-run">
-        <div class="dna-living-run-copy">
-          <small>
-            ROOMS DNA · LIVING
-          </small>
-
-          <span>
-            ${String(
-              dnaScenarioIndex+1
-            ).padStart(2,'0')}
-            /
-            ${String(
-              questions.length
-            ).padStart(2,'0')}
-          </span>
-        </div>
-
-        <div
-          class="dna-living-progress"
-          aria-hidden="true">
-          ${progress}
-        </div>
-      </header>
+      ${renderRoomsDnaGlobalProgress(
+        dnaScenarioIndex+4,
+        'LIVING'
+      )}
 
       <div class="dna-living-scene">
         <small>
@@ -2585,6 +2584,129 @@ function renderReveal(){
   }
 }
 
+function playRoomsDnaTransition({
+  eyebrow='ROOMS DNA',
+  title,
+  detail=''
+}){
+  return new Promise(resolve=>{
+    const host=
+      document.querySelector(
+        '#onboarding'
+      );
+
+    if(!host){
+      resolve();
+      return;
+    }
+
+    let overlay=
+      host.querySelector(
+        '.dna-game-transition'
+      );
+
+    if(!overlay){
+      overlay=
+        document.createElement(
+          'div'
+        );
+
+      overlay.className=
+        'dna-game-transition';
+
+      overlay.setAttribute(
+        'aria-live',
+        'polite'
+      );
+
+      host.appendChild(
+        overlay
+      );
+    }
+
+    overlay.innerHTML=`
+      <div class="dna-game-transition-inner">
+
+        <div
+          class="dna-game-transition-strip"
+          aria-hidden="true">
+
+          ${Array.from(
+            {length:10},
+            (_,index)=>`
+              <i style="
+                --dna-delay:${
+                  index*28
+                }ms
+              "></i>
+            `
+          ).join('')}
+
+        </div>
+
+        <small>
+          ${eyebrow}
+        </small>
+
+        <strong>
+          ${title}
+        </strong>
+
+        ${
+          detail
+            ? `
+              <span>
+                ${detail}
+              </span>
+            `
+            : ''
+        }
+
+        <div
+          class="dna-game-transition-mark"
+          aria-hidden="true">
+          ✦
+        </div>
+
+      </div>
+    `;
+
+    overlay.hidden=false;
+
+    requestAnimationFrame(
+      ()=>{
+        overlay.classList.add(
+          'is-visible'
+        );
+      }
+    );
+
+    window.setTimeout(
+      ()=>{
+        overlay.classList.add(
+          'is-resolving'
+        );
+      },
+      620
+    );
+
+    window.setTimeout(
+      ()=>{
+        overlay.classList.remove(
+          'is-visible',
+          'is-resolving'
+        );
+
+        overlay.hidden=true;
+
+        resolve();
+      },
+      900
+    );
+  });
+}
+
+
 function showOnboardingStep(step){
   onboardingStep=step;
 
@@ -3080,6 +3202,32 @@ function openPersonalizedFeed(
 window.openPersonalizedFeed=openPersonalizedFeed;
 
 onboardingContinue.addEventListener('click',async()=>{
+  if(onboardingStep===5){
+    onboardingContinue.disabled=true;
+
+    await playRoomsDnaTransition({
+      eyebrow:'10 / 10 · ROOMS DNA',
+      title:'DNA COMPLETO',
+      detail:'Solo falta ponerte cara.'
+    });
+
+    showOnboardingStep(6);
+    return;
+  }
+
+  if(onboardingStep===6){
+    onboardingContinue.disabled=true;
+
+    await playRoomsDnaTransition({
+      eyebrow:'ROOMS DNA',
+      title:'LEYENDO TU DNA…',
+      detail:'Buscando tu forma de vivir.'
+    });
+
+    showOnboardingStep(7);
+    return;
+  }
+
   if(onboardingStep<8){
     showOnboardingStep(onboardingStep+1);
     return;
