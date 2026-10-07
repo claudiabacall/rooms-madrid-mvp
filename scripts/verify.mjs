@@ -7,6 +7,8 @@ const files = {
   html: 'index.html',
   app: 'assets/js/app.js',
   supabase: 'assets/js/supabase-app.js',
+  saved: 'assets/js/features/saved.js',
+  moderation: 'assets/js/features/moderation.js',
   css: 'assets/css/feed.css'
 };
 
@@ -47,7 +49,12 @@ for (const file of Object.values(files)) {
 
 title('SINTAXIS JAVASCRIPT');
 
-for (const file of [files.app, files.supabase]) {
+for (const file of [
+  files.app,
+  files.supabase,
+  files.saved,
+  files.moderation
+]) {
   if (!fs.existsSync(file)) continue;
 
   try {
@@ -126,7 +133,12 @@ if (
   const html = read(files.html);
 
   const js =
-    `${read(files.app)}\n${read(files.supabase)}`;
+    [
+      read(files.app),
+      read(files.supabase),
+      read(files.saved),
+      read(files.moderation)
+    ].join('\n');
 
   const declaredIds = new Set([
     ...[
@@ -387,7 +399,12 @@ if (
   const html = read(files.html);
 
   const js =
-    `${read(files.app)}\n${read(files.supabase)}`;
+    [
+      read(files.app),
+      read(files.supabase),
+      read(files.saved),
+      read(files.moderation)
+    ].join('\n');
 
   const buttons = [
     ...html.matchAll(/<button\b([^>]*)>/gi)
@@ -482,7 +499,12 @@ if (
   const html = read(files.html);
 
   const js =
-    `${read(files.app)}\n${read(files.supabase)}`;
+    [
+      read(files.app),
+      read(files.supabase),
+      read(files.saved),
+      read(files.moderation)
+    ].join('\n');
 
   const issues = [];
 
@@ -884,9 +906,16 @@ if (
   };
 
   const js =
-    contents[files.app] +
-    '\n' +
-    contents[files.supabase];
+    [
+      contents[files.app],
+      contents[files.supabase],
+      fs.existsSync('assets/js/features/saved.js')
+        ? read('assets/js/features/saved.js')
+        : '',
+      fs.existsSync('assets/js/features/moderation.js')
+        ? read('assets/js/features/moderation.js')
+        : ''
+    ].join('\n');
 
   const declared = new Map();
 
@@ -1010,6 +1039,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('MODERATION FEATURE');
+
+try {
+  const outputModeration =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-moderation-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputModeration.trim()
+  );
+
+  ok('Moderation feature modular');
+} catch (error) {
+  fail('Moderation feature modular');
 
   console.error(
     error.stdout?.toString() ||
