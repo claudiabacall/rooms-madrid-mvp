@@ -174,15 +174,27 @@ createServer(async (request, response) => {
 
     response.end(body);
   } catch (error) {
-    console.error(error);
+    if (error?.code !== "ENOENT") {
+      console.error(
+        "Rooms server error:",
+        error
+      );
+    }
 
-    response.writeHead(404, {
-      "Content-Type":
-        "text/plain; charset=utf-8"
-    });
+    response.writeHead(
+      error?.code === "ENOENT"
+        ? 404
+        : 500,
+      {
+        "Content-Type":
+          "text/plain; charset=utf-8"
+      }
+    );
 
     response.end(
-      "Archivo no encontrado"
+      error?.code === "ENOENT"
+        ? "Archivo no encontrado"
+        : "Error interno del servidor"
     );
   }
 }).listen(
