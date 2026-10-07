@@ -990,6 +990,34 @@ if (
 }
 
 
+
+title('SUPABASE MIGRATIONS');
+
+try {
+  const outputMigrations =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-migration-order.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputMigrations.trim()
+  );
+
+  ok('Supabase migrations order');
+} catch (error) {
+  fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
 title('SAVED FEATURE');
 
 try {
