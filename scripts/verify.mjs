@@ -989,6 +989,34 @@ if (
   }
 }
 
+
+title('SAVED FEATURE');
+
+try {
+  const outputSaved =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-saved-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputSaved.trim()
+  );
+
+  ok('Saved feature modular');
+} catch (error) {
+  fail('Saved feature modular');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
 title('ROOMS DNA V2');
 
 try {
