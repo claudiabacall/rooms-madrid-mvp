@@ -18536,3 +18536,175 @@ i:nth-child(3n+2){
     background:var(--acid);
   }
 }
+
+/* =========================================================
+   ROOMS DNA V2 — PROFILE BASICS
+   ========================================================= */
+
+#onboarding .profile-basics{
+  display:grid;
+  grid-template-columns:minmax(210px,280px) minmax(0,1fr);
+  gap:34px;
+  align-items:start;
+  margin-top:34px;
+}
+
+#onboarding .profile-photo-upload{
+  min-width:0;
+  display:grid;
+  gap:14px;
+  cursor:pointer;
+}
+
+#onboarding .profile-photo-upload > input{
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+
+#onboarding .profile-photo-preview{
+  position:relative;
+  width:100%;
+  aspect-ratio:1 / 1;
+  overflow:hidden;
+  border:1px solid #111;
+  border-radius:24px;
+  background:#e9e8e3;
+  display:grid;
+  place-items:center;
+}
+
+#onboarding .profile-photo-preview b{
+  font-size:48px;
+  font-weight:400;
+  line-height:1;
+}
+
+#onboarding .profile-photo-preview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+#onboarding .profile-photo-upload > span:last-child{
+  display:grid;
+  gap:3px;
+}
+
+#onboarding .profile-photo-upload strong{
+  font-size:15px;
+  font-weight:850;
+}
+
+#onboarding .profile-photo-upload small{
+  color:rgba(0,0,0,.52);
+  font-size:12px;
+}
+
+#onboarding .profile-fields{
+  min-width:0;
+  display:grid;
+  gap:18px;
+}
+
+#onboarding .profile-fields label{
+  display:grid;
+  gap:8px;
+}
+
+#onboarding .profile-fields label > span{
+  font-size:12px;
+  font-weight:850;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+#onboarding .profile-fields label > span i{
+  margin-left:5px;
+  font-style:normal;
+  font-weight:600;
+  color:rgba(0,0,0,.42);
+}
+
+#onboarding .profile-fields input,
+#onboarding .profile-fields textarea{
+  width:100%;
+  min-width:0;
+  border:1px solid rgba(0,0,0,.24);
+  border-radius:0;
+  background:#fff;
+  color:#111;
+  font:inherit;
+  font-size:16px;
+  outline:none;
+}
+
+#onboarding .profile-fields input{
+  min-height:56px;
+  padding:0 16px;
+}
+
+#onboarding .profile-fields textarea{
+  min-height:118px;
+  padding:15px 16px;
+  resize:vertical;
+  line-height:1.5;
+}
+
+#onboarding .profile-fields input:focus,
+#onboarding .profile-fields textarea:focus{
+  border-color:#111;
+  box-shadow:3px 3px 0 var(--acid);
+}
+
+@media (max-width:767px){
+
+  #onboarding .profile-basics{
+    grid-template-columns:1fr;
+    gap:26px;
+    margin-top:26px;
+  }
+
+  #onboarding .profile-photo-upload{
+    grid-template-columns:92px minmax(0,1fr);
+    align-items:center;
+    gap:16px;
+  }
+
+  #onboarding .profile-photo-preview{
+    width:92px;
+    aspect-ratio:1 / 1;
+    border-radius:50%;
+  }
+
+  #onboarding .profile-photo-preview b{
+    font-size:34px;
+  }
+
+  #onboarding .profile-fields{
+    gap:15px;
+  }
+
+  #onboarding .profile-fields input{
+    min-height:54px;
+  }
+
+  #onboarding .profile-fields textarea{
+    min-height:108px;
+  }
+}
+
+@media (max-width:390px){
+
+  #onboarding .profile-photo-upload{
+    grid-template-columns:76px minmax(0,1fr);
+  }
+
+  #onboarding .profile-photo-preview{
+    width:76px;
+  }
+}

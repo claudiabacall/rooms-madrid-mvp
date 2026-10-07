@@ -1005,6 +1005,19 @@ try {
     outputV2.trim()
   );
 
+  const outputOnboardingV2 =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-onboarding-v2.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputOnboardingV2.trim()
+  );
+
   const outputEngine =
     execFileSync(
       process.execPath,
