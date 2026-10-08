@@ -25,6 +25,9 @@ const files = {
   householdGroupPicker: 'assets/js/features/household-group-picker.js',
   householdInvites: 'assets/js/features/household-invites.js',
   householdCandidates: 'assets/js/features/household-candidates.js',
+  householdCreate: 'assets/js/features/household-create.js',
+  householdCore: 'assets/js/features/household-core.js',
+  householdEvents: 'assets/js/features/household-events.js',
   css: 'assets/css/feed.css'
 };
 
@@ -85,7 +88,10 @@ for (const file of [
   files.exploreController,
   files.householdGroupPicker,
   files.householdInvites,
-  files.householdCandidates
+  files.householdCandidates,
+  files.householdEvents,
+  files.householdCore,
+  files.householdCreate
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -749,6 +755,9 @@ if (
         : '',
       fs.existsSync(files.householdCandidates)
         ? read(files.householdCandidates)
+        : '',
+      fs.existsSync(files.householdEvents)
+        ? read(files.householdEvents)
         : ''
     ].join('\n');
 
@@ -1064,6 +1073,9 @@ if (
         : '',
       fs.existsSync(files.householdCandidates)
         ? read(files.householdCandidates)
+        : '',
+      fs.existsSync(files.householdEvents)
+        ? read(files.householdEvents)
         : ''
     ].join('\n');
 
@@ -1197,6 +1209,30 @@ try {
   );
 }
 
+
+title('HOUSEHOLD EVENTS FEATURE');
+
+try {
+  const outputHouseholdEvents =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-household-events-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputHouseholdEvents.trim());
+
+  ok('Household Events feature modular');
+} catch (error) {
+  fail('Household Events feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('HOUSEHOLD CORE FEATURE');
 
