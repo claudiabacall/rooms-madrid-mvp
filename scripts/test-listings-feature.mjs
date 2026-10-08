@@ -65,15 +65,28 @@ assert(
   'openRealListingDetail sigue duplicada en supabase-app.js'
 );
 
+const matchingSource =
+  fs.readFileSync(
+    'assets/js/features/matching.js',
+    'utf8'
+  );
+
 assert(
-  /function\s+calculateRealMatch\s*\(/.test(
+  !/function\s+calculateRealMatch\s*\(/.test(
     appSource
   ),
-  'calculateRealMatch no debe moverse todavía'
+  'calculateRealMatch no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+calculateRealMatch\s*\(/.test(
+    matchingSource
+  ),
+  'calculateRealMatch debe vivir en matching.js'
 );
 
 ok(
-  'Listing detail extraído sin arrastrar Matching'
+  'Listing detail aislado y Matching separado'
 );
 
 
