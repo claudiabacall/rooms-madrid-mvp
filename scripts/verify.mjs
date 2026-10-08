@@ -21,6 +21,7 @@ const files = {
   accountSettings: 'assets/js/features/account-settings.js',
   exploreView: 'assets/js/features/explore-view.js',
   exploreFilters: 'assets/js/features/explore-filters.js',
+  exploreController: 'assets/js/features/explore-controller.js',
   css: 'assets/css/feed.css'
 };
 
@@ -77,7 +78,8 @@ for (const file of [
   files.profilePrivacy,
   files.accountSettings,
   files.exploreView,
-  files.exploreFilters
+  files.exploreFilters,
+  files.exploreController
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -173,7 +175,8 @@ if (
       read(files.profilePrivacy),
       read(files.accountSettings),
       read(files.exploreView),
-      read(files.exploreFilters)
+      read(files.exploreFilters),
+      read(files.exploreController)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -451,7 +454,8 @@ if (
       read(files.profilePrivacy),
       read(files.accountSettings),
       read(files.exploreView),
-      read(files.exploreFilters)
+      read(files.exploreFilters),
+      read(files.exploreController)
     ].join('\n');
 
   const buttons = [
@@ -563,7 +567,8 @@ if (
       read(files.profilePrivacy),
       read(files.accountSettings),
       read(files.exploreView),
-      read(files.exploreFilters)
+      read(files.exploreFilters),
+      read(files.exploreController)
     ].join('\n');
 
   const issues = [];
@@ -717,6 +722,9 @@ if (
         : '',
       fs.existsSync(files.exploreFilters)
         ? read(files.exploreFilters)
+        : '',
+      fs.existsSync(files.exploreController)
+        ? read(files.exploreController)
         : ''
     ].join('\n');
 
@@ -843,6 +851,9 @@ if (
         : '',
       fs.existsSync(files.exploreFilters)
         ? read(files.exploreFilters)
+        : '',
+      fs.existsSync(files.exploreController)
+        ? read(files.exploreController)
         : ''
     ].join('\n');
 
@@ -1008,6 +1019,9 @@ if (
         : '',
       fs.existsSync(files.exploreFilters)
         ? read(files.exploreFilters)
+        : '',
+      fs.existsSync(files.exploreController)
+        ? read(files.exploreController)
         : ''
     ].join('\n');
 
@@ -1133,6 +1147,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('EXPLORE CONTROLLER FEATURE');
+
+try {
+  const outputExploreController =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-explore-controller-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputExploreController.trim()
+  );
+
+  ok('Explore Controller feature modular');
+} catch (error) {
+  fail('Explore Controller feature modular');
 
   console.error(
     error.stdout?.toString() ||

@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const controllerSource =
+  fs.readFileSync(
+    'assets/js/features/explore-controller.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== EXPLORE FILTERS · INTEGRACION ==='
@@ -83,10 +89,17 @@ for (const fn of [
 }
 
 assert(
-  /function\s+renderFilteredExplore\s*\(/.test(
+  /function\s+renderFilteredExplore\s*\(\.\.\.args\)/.test(
     appSource
   ),
-  'renderFilteredExplore debe permanecer en supabase-app.js'
+  'Debe permanecer el bridge renderFilteredExplore en supabase-app.js'
+);
+
+assert(
+  /function\s+renderFilteredExplore\s*\(\)/.test(
+    controllerSource
+  ),
+  'La implementación renderFilteredExplore debe vivir en explore-controller.js'
 );
 
 assert(
