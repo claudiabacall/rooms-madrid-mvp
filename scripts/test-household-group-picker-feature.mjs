@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const candidatesSource =
+  fs.readFileSync(
+    'assets/js/features/household-candidates.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== HOUSEHOLD GROUP PICKER · INTEGRACION ==='
@@ -83,10 +89,17 @@ for (const fn of [
 }
 
 assert(
-  /async\s+function\s+loadHouseholdCandidates\s*\(/.test(
+  /async\s+function\s+loadHouseholdCandidates\s*\(\.\.\.args\)/.test(
     appSource
   ),
-  'Candidates no debe moverse todavía'
+  'Debe permanecer el bridge loadHouseholdCandidates en supabase-app.js'
+);
+
+assert(
+  /async\s+function\s+loadHouseholdCandidates\s*\(\)/.test(
+    candidatesSource
+  ),
+  'La implementación loadHouseholdCandidates debe vivir en Household Candidates'
 );
 
 ok(

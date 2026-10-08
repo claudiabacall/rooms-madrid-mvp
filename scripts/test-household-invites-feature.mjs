@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const candidatesSource =
+  fs.readFileSync(
+    'assets/js/features/household-candidates.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== HOUSEHOLD INVITES · INTEGRACION ==='
@@ -84,10 +90,17 @@ for (const fn of [
 }
 
 assert(
-  /async\s+function\s+addPersonToHousehold\s*\(/.test(
+  !/async\s+function\s+addPersonToHousehold\s*\(/.test(
     appSource
   ),
-  'addPersonToHousehold debe permanecer en monolito'
+  'addPersonToHousehold ya no debe vivir en el monolito'
+);
+
+assert(
+  /async\s+function\s+addPersonToHousehold\s*\(/.test(
+    candidatesSource
+  ),
+  'addPersonToHousehold debe vivir en Household Candidates'
 );
 
 ok(
