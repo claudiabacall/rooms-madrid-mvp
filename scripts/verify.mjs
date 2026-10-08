@@ -35,6 +35,7 @@ const files = {
   communityPosts: 'assets/js/features/community-posts.js',
   communityDetailCore: 'assets/js/features/community-detail-core.js',
   communityDetailRender: 'assets/js/features/community-detail-render.js',
+  listingPhotos: 'assets/js/features/listing-photos.js',
   css: 'assets/css/feed.css'
 };
 
@@ -104,6 +105,7 @@ for (const file of [
   files.communityPosts,
   files.communityDetailCore,
   files.communityDetailRender,
+  files.listingPhotos,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1223,6 +1225,30 @@ try {
   );
 }
 
+
+title('LISTING PHOTOS FEATURE');
+
+try {
+  const outputListingPhotos =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-listing-photos-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputListingPhotos.trim());
+
+  ok('Listing Photos feature modular');
+} catch (error) {
+  fail('Listing Photos feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('COMMUNITY DETAIL RENDER FEATURE');
 
