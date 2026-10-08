@@ -65,7 +65,13 @@
     loadSavedCollections,
     createSavedCollection,
     loadSavedItems,
-    sortSavedItems
+    sortSavedItems,
+    ensureCollectionDetailModal,
+    openSavedCollection,
+    renderSavedCollection,
+    showSavedItemsPicker,
+    addSavedItemToCollection,
+    removeSavedItemFromCollection
   } = savedFeature;
 
   connectionsFeature =
@@ -7649,228 +7655,10 @@
 
   window.roomsBackend.loadSavedCollections = loadSavedCollections;
   window.roomsBackend.createSavedCollection = createSavedCollection;
-
-
-  function ensureCollectionDetailModal() {
-    let modal = document.querySelector('#collectionDetailModal');
-    if (modal) return modal;
-
-    modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'collectionDetailModal';
-    modal.setAttribute('aria-hidden', 'true');
-    modal.innerHTML = `
-      <div class="backdrop" data-close-collection-detail></div>
-      <article class="detail collection-detail-shell">
-        <header class="collection-detail-header">
-          <div>
-            <small>COLECCIÓN</small>
-            <h2 id="collectionDetailName">Colección</h2>
-            <p id="collectionDetailMeta"></p>
-          </div>
-          <button type="button" data-close-collection-detail aria-label="Cerrar">×</button>
-        </header>
-
-        <div class="collection-detail-actions">
-          <button type="button" id="addSavedToCollection">＋ Añadir guardados</button>
-        </div>
-
-        <div id="collectionDetailContent"></div>
-      </article>`;
-
-    document.body.appendChild(modal);
-    return modal;
-  }
-
-  async function openSavedCollection(collectionId) {
-    const collection = state.savedCollections.get(collectionId);
-    if (!collection) return;
-
-    state.currentCollectionId = collectionId;
-
-    const modal = ensureCollectionDetailModal();
-    const title = modal.querySelector('#collectionDetailName');
-    const meta = modal.querySelector('#collectionDetailMeta');
-
-    title.textContent = collection.name;
-    meta.textContent = collection.visibility === 'shared'
-      ? 'Colección compartida'
-      : 'Colección privada';
-
-    await renderSavedCollection(collectionId);
-
-    modal.classList.add('open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-  }
-
-  async function renderSavedCollection(collectionId) {
-    const container = document.querySelector('#collectionDetailContent');
-    if (!container) return;
-
-    container.innerHTML = '<div class="real-empty-state"><b>Cargando colección…</b></div>';
-
-    const { data: links, error } = await db
-      .from('saved_collection_items')
-      .select('saved_item_id')
-      .eq('collection_id', collectionId);
-
-    if (error) {
-      console.error('Rooms: error cargando colección', error);
-      container.innerHTML = '<div class="real-empty-state"><b>No se pudo cargar la colección</b></div>';
-      return;
-    }
-
-    if (!links?.length) {
-      container.innerHTML = `
-        <div class="real-empty-state">
-          <b>Esta colección está vacía</b>
-          <p>Añade alguno de tus elementos guardados.</p>
-        </div>`;
-      return;
-    }
-
-    const ids = links.map(item => item.saved_item_id);
-
-    const { data: saved, error: savedError } = await db
-      .from('saved_items')
-      .select('id,item_type,item_id')
-      .in('id', ids)
-      .eq('user_id', state.user.id);
-
-    if (savedError) {
-      console.error('Rooms: error cargando guardados de colección', savedError);
-      return;
-    }
-
-    const cards = (saved || []).map(item => {
-      const presentation = savedItemPresentation(item);
-      if (!presentation) return '';
-
-      return `
-        <article class="collection-detail-item">
-          ${presentation.image
-            ? `<img src="${escapeHtml(presentation.image)}" alt="${escapeHtml(presentation.title)}">`
-            : `<span>${escapeHtml(presentation.mark)}</span>`}
-          <div>
-            <b>${escapeHtml(presentation.title)}</b>
-            <small>${escapeHtml(presentation.subtitle)}</small>
-          </div>
-          <button
-            type="button"
-            data-remove-from-collection="${item.id}"
-            aria-label="Quitar de colección">×</button>
-        </article>`;
-    }).filter(Boolean);
-
-    container.innerHTML = cards.length
-      ? `<div class="collection-detail-list">${cards.join('')}</div>`
-      : '<div class="real-empty-state"><b>No hay elementos disponibles</b></div>';
-  }
-
-  async function showSavedItemsPicker(collectionId) {
-    const container = document.querySelector('#collectionDetailContent');
-    if (!container) return;
-
-    const [{ data: saved, error }, { data: existing }] = await Promise.all([
-      db.from('saved_items')
-        .select('id,item_type,item_id')
-        .eq('user_id', state.user.id)
-        .order('created_at', { ascending: false }),
-      db.from('saved_collection_items')
-        .select('saved_item_id')
-        .eq('collection_id', collectionId)
-    ]);
-
-    if (error) {
-      console.error('Rooms: error cargando guardados', error);
-      notify('No se pudieron cargar tus guardados');
-      return;
-    }
-
-    const alreadyAdded = new Set((existing || []).map(item => item.saved_item_id));
-
-    const options = (saved || []).map(item => {
-      const presentation = savedItemPresentation(item);
-      if (!presentation) return '';
-
-      const added = alreadyAdded.has(item.id);
-
-      return `
-        <button
-          type="button"
-          class="collection-picker-item ${added ? 'added' : ''}"
-          data-add-to-collection="${item.id}"
-          ${added ? 'disabled' : ''}>
-          ${presentation.image
-            ? `<img src="${escapeHtml(presentation.image)}" alt="${escapeHtml(presentation.title)}">`
-            : `<span>${escapeHtml(presentation.mark)}</span>`}
-          <div>
-            <b>${escapeHtml(presentation.title)}</b>
-            <small>${escapeHtml(presentation.subtitle)}</small>
-          </div>
-          <strong>${added ? '✓ Añadido' : '＋ Añadir'}</strong>
-        </button>`;
-    }).filter(Boolean);
-
-    container.innerHTML = `
-      <div class="collection-picker-head">
-        <button type="button" data-back-to-collection>← Volver a la colección</button>
-        <span>Elige entre tus guardados</span>
-      </div>
-      <div class="collection-picker-list">
-        ${options.length
-          ? options.join('')
-          : '<div class="real-empty-state"><b>No tienes guardados todavía</b></div>'}
-      </div>`;
-  }
-
-  async function addSavedItemToCollection(savedItemId) {
-    const collectionId = state.currentCollectionId;
-    if (!collectionId) return;
-
-    const { error } = await db
-      .from('saved_collection_items')
-      .insert({
-        collection_id: collectionId,
-        saved_item_id: savedItemId
-      });
-
-    if (error) {
-      console.error('Rooms: error añadiendo a colección', error);
-      notify('No se pudo añadir a la colección');
-      return;
-    }
-
-    await loadSavedCollections();
-    await showSavedItemsPicker(collectionId);
-    notify('Añadido a la colección');
-  }
-
-  async function removeSavedItemFromCollection(savedItemId) {
-    const collectionId = state.currentCollectionId;
-    if (!collectionId) return;
-
-    const { error } = await db
-      .from('saved_collection_items')
-      .delete()
-      .match({
-        collection_id: collectionId,
-        saved_item_id: savedItemId
-      });
-
-    if (error) {
-      console.error('Rooms: error quitando de colección', error);
-      notify('No se pudo quitar de la colección');
-      return;
-    }
-
-    await loadSavedCollections();
-    await renderSavedCollection(collectionId);
-    notify('Quitado de la colección');
-  }
-
   window.roomsBackend.openSavedCollection = openSavedCollection;
+
+
+
 
   function openRealListingDetail(listing) {
     const detail = document.querySelector('#detailContent');

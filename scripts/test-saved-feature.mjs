@@ -60,7 +60,13 @@ for (
     'createSavedCollection',
     'savedItemPresentation',
     'loadSavedItems',
-    'sortSavedItems'
+    'sortSavedItems',
+    'ensureCollectionDetailModal',
+    'openSavedCollection',
+    'renderSavedCollection',
+    'showSavedItemsPicker',
+    'addSavedItemToCollection',
+    'removeSavedItemFromCollection'
   ]
 ) {
   const regex =
@@ -864,6 +870,684 @@ assert(
 
 ok(
   'Colecciones cargan, validan y crean'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · COLLECTION DETAIL ==='
+);
+
+const collectionState = {
+  ...state,
+
+  savedCollections:
+    new Map([
+      [
+        'collection-1',
+        {
+          id:
+            'collection-1',
+
+          user_id:
+            'user-me',
+
+          name:
+            'Favoritos',
+
+          visibility:
+            'private'
+        }
+      ]
+    ]),
+
+  currentCollectionId:
+    null
+};
+
+const collectionRowsLive = [
+  {
+    id:
+      'collection-1',
+
+    user_id:
+      'user-me',
+
+    name:
+      'Favoritos',
+
+    visibility:
+      'private',
+
+    created_at:
+      '2026-10-07T08:00:00Z'
+  }
+];
+
+const collectionSavedRows = [
+  {
+    id:
+      'saved-db-1',
+
+    user_id:
+      'user-me',
+
+    item_type:
+      'room',
+
+    item_id:
+      'listing-room',
+
+    created_at:
+      '2026-10-07T10:00:00Z'
+  },
+
+  {
+    id:
+      'saved-db-2',
+
+    user_id:
+      'user-me',
+
+    item_type:
+      'apartment',
+
+    item_id:
+      'listing-flat',
+
+    created_at:
+      '2026-10-06T10:00:00Z'
+  }
+];
+
+const collectionLinksLive = [
+  {
+    collection_id:
+      'collection-1',
+
+    saved_item_id:
+      'saved-db-1'
+  }
+];
+
+function createCollectionQuery(
+  table
+) {
+  return {
+    table,
+
+    operation:
+      'select',
+
+    payload:
+      null,
+
+    filters:
+      [],
+
+    inFilters:
+      [],
+
+    select() {
+      return this;
+    },
+
+    eq(
+      field,
+      value
+    ) {
+      this.filters.push({
+        field,
+        value
+      });
+
+      return this;
+    },
+
+    in(
+      field,
+      values
+    ) {
+      this.inFilters.push({
+        field,
+        values
+      });
+
+      return this;
+    },
+
+    order() {
+      return Promise.resolve(
+        resolveCollectionQuery(
+          this
+        )
+      );
+    },
+
+    limit() {
+      return Promise.resolve(
+        resolveCollectionQuery(
+          this
+        )
+      );
+    },
+
+    insert(payload) {
+      this.operation =
+        'insert';
+
+      this.payload =
+        payload;
+
+      return this;
+    },
+
+    delete() {
+      this.operation =
+        'delete';
+
+      return this;
+    },
+
+    match(values) {
+      Object.entries(
+        values || {}
+      ).forEach(
+        ([field, value]) => {
+          this.filters.push({
+            field,
+            value
+          });
+        }
+      );
+
+      return this;
+    },
+
+    then(
+      resolve,
+      reject
+    ) {
+      return Promise.resolve(
+        resolveCollectionQuery(
+          this
+        )
+      ).then(
+        resolve,
+        reject
+      );
+    }
+  };
+}
+
+function matchesCollectionQuery(
+  row,
+  query
+) {
+  const equalFilters =
+    query.filters.every(
+      filter =>
+        row[
+          filter.field
+        ] ===
+        filter.value
+    );
+
+  const inFilters =
+    query.inFilters.every(
+      filter =>
+        filter.values.includes(
+          row[
+            filter.field
+          ]
+        )
+    );
+
+  return (
+    equalFilters &&
+    inFilters
+  );
+}
+
+function resolveCollectionQuery(
+  query
+) {
+  if (
+    query.table ===
+      'saved_collections'
+  ) {
+    return makeResult(
+      collectionRowsLive.filter(
+        row =>
+          matchesCollectionQuery(
+            row,
+            query
+          )
+      )
+    );
+  }
+
+  if (
+    query.table ===
+      'saved_items'
+  ) {
+    return makeResult(
+      collectionSavedRows.filter(
+        row =>
+          matchesCollectionQuery(
+            row,
+            query
+          )
+      )
+    );
+  }
+
+  if (
+    query.table ===
+      'saved_collection_items'
+  ) {
+    if (
+      query.operation ===
+        'insert'
+    ) {
+      const exists =
+        collectionLinksLive
+          .some(
+            row =>
+              row.collection_id ===
+                query.payload
+                  .collection_id &&
+              row.saved_item_id ===
+                query.payload
+                  .saved_item_id
+          );
+
+      if (!exists) {
+        collectionLinksLive.push({
+          ...query.payload
+        });
+      }
+
+      return makeResult(
+        query.payload
+      );
+    }
+
+    if (
+      query.operation ===
+        'delete'
+    ) {
+      for (
+        let index =
+          collectionLinksLive.length -
+          1;
+        index >= 0;
+        index -= 1
+      ) {
+        if (
+          matchesCollectionQuery(
+            collectionLinksLive[
+              index
+            ],
+            query
+          )
+        ) {
+          collectionLinksLive.splice(
+            index,
+            1
+          );
+        }
+      }
+
+      return makeResult(
+        []
+      );
+    }
+
+    return makeResult(
+      collectionLinksLive.filter(
+        row =>
+          matchesCollectionQuery(
+            row,
+            query
+          )
+      )
+    );
+  }
+
+  return makeResult(
+    []
+  );
+}
+
+const collectionDb = {
+  from(table) {
+    return createCollectionQuery(
+      table
+    );
+  }
+};
+
+const collectionNotifications =
+  [];
+
+const collectionFeature =
+  window
+    .ROOMS_SAVED_FEATURE
+    .create({
+      db:
+        collectionDb,
+
+      state:
+        collectionState,
+
+      escapeHtml(value) {
+        return String(
+          value ?? ''
+        )
+          .replaceAll(
+            '&',
+            '&amp;'
+          )
+          .replaceAll(
+            '<',
+            '&lt;'
+          )
+          .replaceAll(
+            '>',
+            '&gt;'
+          )
+          .replaceAll(
+            '"',
+            '&quot;'
+          );
+      },
+
+      notify(message) {
+        collectionNotifications
+          .push(
+            message
+          );
+      },
+
+      updateSavedCount() {},
+
+      connectionButtonLabel() {
+        return 'Conectar';
+      }
+    });
+
+assert(
+  collectionFeature
+    .ensureCollectionDetailModal,
+  'Saved no expone ensureCollectionDetailModal'
+);
+
+assert(
+  collectionFeature
+    .openSavedCollection,
+  'Saved no expone openSavedCollection'
+);
+
+assert(
+  collectionFeature
+    .renderSavedCollection,
+  'Saved no expone renderSavedCollection'
+);
+
+assert(
+  collectionFeature
+    .showSavedItemsPicker,
+  'Saved no expone showSavedItemsPicker'
+);
+
+assert(
+  collectionFeature
+    .addSavedItemToCollection,
+  'Saved no expone addSavedItemToCollection'
+);
+
+assert(
+  collectionFeature
+    .removeSavedItemFromCollection,
+  'Saved no expone removeSavedItemFromCollection'
+);
+
+ok(
+  'API Collections expuesta por Saved'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · MODAL COLLECTION ==='
+);
+
+const collectionModal =
+  collectionFeature
+    .ensureCollectionDetailModal();
+
+assert(
+  collectionModal?.id ===
+    'collectionDetailModal',
+  'No se crea collectionDetailModal'
+);
+
+const sameCollectionModal =
+  collectionFeature
+    .ensureCollectionDetailModal();
+
+assert(
+  sameCollectionModal ===
+    collectionModal,
+  'El modal de colección debe reutilizarse'
+);
+
+assert(
+  window.document
+    .querySelectorAll(
+      '#collectionDetailModal'
+    )
+    .length === 1,
+  'Debe existir un único modal de colección'
+);
+
+ok(
+  'Modal Collections creado y reutilizado'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · ABRIR COLLECTION ==='
+);
+
+await collectionFeature
+  .openSavedCollection(
+    'collection-1'
+  );
+
+assert(
+  collectionState
+    .currentCollectionId ===
+    'collection-1',
+  'No se guarda currentCollectionId'
+);
+
+assert(
+  collectionModal
+    .classList
+    .contains(
+      'open'
+    ),
+  'La colección no abre el modal'
+);
+
+assert(
+  collectionModal
+    .getAttribute(
+      'aria-hidden'
+    ) ===
+    'false',
+  'El modal abierto mantiene aria-hidden=true'
+);
+
+assert(
+  window.document
+    .querySelector(
+      '#collectionDetailName'
+    )
+    ?.textContent ===
+    'Favoritos',
+  'Nombre de colección incorrecto'
+);
+
+assert(
+  window.document
+    .querySelectorAll(
+      '.collection-detail-item'
+    )
+    .length === 1,
+  'La colección debería renderizar un elemento'
+);
+
+assert(
+  window.document
+    .querySelector(
+      '[data-remove-from-collection="saved-db-1"]'
+    ),
+  'No se renderiza acción de quitar elemento'
+);
+
+ok(
+  'Colección abre y renderiza contenido'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · PICKER ==='
+);
+
+await collectionFeature
+  .showSavedItemsPicker(
+    'collection-1'
+  );
+
+const alreadyAddedButton =
+  window.document
+    .querySelector(
+      '[data-add-to-collection="saved-db-1"]'
+    );
+
+const availableButton =
+  window.document
+    .querySelector(
+      '[data-add-to-collection="saved-db-2"]'
+    );
+
+assert(
+  alreadyAddedButton
+    ?.disabled === true,
+  'Elemento ya añadido debería estar deshabilitado'
+);
+
+assert(
+  availableButton &&
+  availableButton.disabled ===
+    false,
+  'Elemento disponible debería poder añadirse'
+);
+
+ok(
+  'Picker distingue añadidos y disponibles'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · AÑADIR A COLLECTION ==='
+);
+
+await collectionFeature
+  .addSavedItemToCollection(
+    'saved-db-2'
+  );
+
+assert(
+  collectionLinksLive
+    .some(
+      item =>
+        item.collection_id ===
+          'collection-1' &&
+        item.saved_item_id ===
+          'saved-db-2'
+    ),
+  'No se crea vínculo al añadir guardado'
+);
+
+assert(
+  window.document
+    .querySelector(
+      '[data-add-to-collection="saved-db-2"]'
+    )
+    ?.disabled === true,
+  'Tras añadir, el elemento debería quedar deshabilitado'
+);
+
+assert(
+  collectionNotifications
+    .at(-1) ===
+    'Añadido a la colección',
+  'Notificación al añadir incorrecta'
+);
+
+ok(
+  'Añadir guardado actualiza datos y picker'
+);
+
+
+console.log(
+  '\n=== SAVED FEATURE · QUITAR DE COLLECTION ==='
+);
+
+await collectionFeature
+  .removeSavedItemFromCollection(
+    'saved-db-1'
+  );
+
+assert(
+  !collectionLinksLive
+    .some(
+      item =>
+        item.collection_id ===
+          'collection-1' &&
+        item.saved_item_id ===
+          'saved-db-1'
+    ),
+  'El vínculo eliminado sigue existiendo'
+);
+
+assert(
+  !window.document
+    .querySelector(
+      '[data-remove-from-collection="saved-db-1"]'
+    ),
+  'El elemento quitado sigue renderizado'
+);
+
+assert(
+  window.document
+    .querySelector(
+      '[data-remove-from-collection="saved-db-2"]'
+    ),
+  'El elemento restante no se renderiza'
+);
+
+assert(
+  collectionNotifications
+    .at(-1) ===
+    'Quitado de la colección',
+  'Notificación al quitar incorrecta'
+);
+
+ok(
+  'Quitar guardado actualiza datos y colección'
 );
 
 console.log(
