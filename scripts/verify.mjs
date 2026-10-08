@@ -11,6 +11,7 @@ const files = {
   moderation: 'assets/js/features/moderation.js',
   connections: 'assets/js/features/connections.js',
   messaging: 'assets/js/features/messaging.js',
+  sessions: 'assets/js/features/sessions.js',
   css: 'assets/css/feed.css'
 };
 
@@ -57,7 +58,8 @@ for (const file of [
   files.saved,
   files.moderation,
   files.connections,
-  files.messaging
+  files.messaging,
+  files.sessions
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -143,7 +145,8 @@ if (
       read(files.saved),
       read(files.moderation),
       read(files.connections),
-      read(files.messaging)
+      read(files.messaging),
+      read(files.sessions)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -411,7 +414,8 @@ if (
       read(files.saved),
       read(files.moderation),
       read(files.connections),
-      read(files.messaging)
+      read(files.messaging),
+      read(files.sessions)
     ].join('\n');
 
   const buttons = [
@@ -513,7 +517,8 @@ if (
       read(files.saved),
       read(files.moderation),
       read(files.connections),
-      read(files.messaging)
+      read(files.messaging),
+      read(files.sessions)
     ].join('\n');
 
   const issues = [];
@@ -1049,6 +1054,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('SESSIONS FEATURE');
+
+try {
+  const outputSessions =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-sessions-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputSessions.trim()
+  );
+
+  ok('Sessions feature modular');
+} catch (error) {
+  fail('Sessions feature modular');
 
   console.error(
     error.stdout?.toString() ||
