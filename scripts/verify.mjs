@@ -28,6 +28,7 @@ const files = {
   householdCreate: 'assets/js/features/household-create.js',
   householdCore: 'assets/js/features/household-core.js',
   householdEvents: 'assets/js/features/household-events.js',
+  communityManagement: 'assets/js/features/community-management.js',
   css: 'assets/css/feed.css'
 };
 
@@ -90,6 +91,7 @@ for (const file of [
   files.householdInvites,
   files.householdCandidates,
   files.householdEvents,
+  files.communityManagement,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1209,6 +1211,30 @@ try {
   );
 }
 
+
+title('COMMUNITY MANAGEMENT FEATURE');
+
+try {
+  const outputCommunityManagement =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-community-management-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputCommunityManagement.trim());
+
+  ok('Community Management feature modular');
+} catch (error) {
+  fail('Community Management feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('HOUSEHOLD EVENTS FEATURE');
 
