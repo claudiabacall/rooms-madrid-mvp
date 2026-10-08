@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const exploreViewSource =
+  fs.readFileSync(
+    'assets/js/features/explore-view.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== ACCOUNT SETTINGS · INTEGRACION ==='
@@ -75,14 +81,21 @@ for (const fn of [
 }
 
 assert(
-  /function\s+sortExploreListings\s*\(/.test(
+  !/function\s+sortExploreListings\s*\(/.test(
     appSource
   ),
-  'Explore no debe moverse'
+  'sortExploreListings no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+sortExploreListings\s*\(/.test(
+    exploreViewSource
+  ),
+  'sortExploreListings debe vivir en explore-view.js'
 );
 
 ok(
-  'Account Settings extraído sin arrastrar Explore'
+  'Account Settings y Explore View están separados'
 );
 
 

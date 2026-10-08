@@ -19,6 +19,7 @@ const files = {
   ownProfile: 'assets/js/features/own-profile.js',
   profilePrivacy: 'assets/js/features/profile-privacy.js',
   accountSettings: 'assets/js/features/account-settings.js',
+  exploreView: 'assets/js/features/explore-view.js',
   css: 'assets/css/feed.css'
 };
 
@@ -73,7 +74,8 @@ for (const file of [
   files.profileEditor,
   files.ownProfile,
   files.profilePrivacy,
-  files.accountSettings
+  files.accountSettings,
+  files.exploreView
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -167,7 +169,8 @@ if (
       read(files.profileEditor),
       read(files.ownProfile),
       read(files.profilePrivacy),
-      read(files.accountSettings)
+      read(files.accountSettings),
+      read(files.exploreView)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -443,7 +446,8 @@ if (
       read(files.profileEditor),
       read(files.ownProfile),
       read(files.profilePrivacy),
-      read(files.accountSettings)
+      read(files.accountSettings),
+      read(files.exploreView)
     ].join('\n');
 
   const buttons = [
@@ -553,7 +557,8 @@ if (
       read(files.profileEditor),
       read(files.ownProfile),
       read(files.profilePrivacy),
-      read(files.accountSettings)
+      read(files.accountSettings),
+      read(files.exploreView)
     ].join('\n');
 
   const issues = [];
@@ -700,7 +705,12 @@ if (
   ];
 
   const allJs =
-    sources.map(item => item.text).join('\n');
+    [
+      ...sources.map(item => item.text),
+      fs.existsSync(files.exploreView)
+        ? read(files.exploreView)
+        : ''
+    ].join('\n');
 
   const issues = [];
 
@@ -976,6 +986,9 @@ if (
         : '',
       fs.existsSync(files.accountSettings)
         ? read(files.accountSettings)
+        : '',
+      fs.existsSync(files.exploreView)
+        ? read(files.exploreView)
         : ''
     ].join('\n');
 
@@ -1101,6 +1114,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('EXPLORE VIEW FEATURE');
+
+try {
+  const outputExploreView =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-explore-view-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputExploreView.trim()
+  );
+
+  ok('Explore View feature modular');
+} catch (error) {
+  fail('Explore View feature modular');
 
   console.error(
     error.stdout?.toString() ||
