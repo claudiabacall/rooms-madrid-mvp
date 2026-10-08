@@ -17,6 +17,7 @@ const files = {
   profiles: 'assets/js/features/profiles.js',
   profileEditor: 'assets/js/features/profile-editor.js',
   ownProfile: 'assets/js/features/own-profile.js',
+  profilePrivacy: 'assets/js/features/profile-privacy.js',
   css: 'assets/css/feed.css'
 };
 
@@ -69,7 +70,8 @@ for (const file of [
   files.matching,
   files.profiles,
   files.profileEditor,
-  files.ownProfile
+  files.ownProfile,
+  files.profilePrivacy
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -161,7 +163,8 @@ if (
       read(files.matching),
       read(files.profiles),
       read(files.profileEditor),
-      read(files.ownProfile)
+      read(files.ownProfile),
+      read(files.profilePrivacy)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -435,7 +438,8 @@ if (
       read(files.matching),
       read(files.profiles),
       read(files.profileEditor),
-      read(files.ownProfile)
+      read(files.ownProfile),
+      read(files.profilePrivacy)
     ].join('\n');
 
   const buttons = [
@@ -543,7 +547,8 @@ if (
       read(files.matching),
       read(files.profiles),
       read(files.profileEditor),
-      read(files.ownProfile)
+      read(files.ownProfile),
+      read(files.profilePrivacy)
     ].join('\n');
 
   const issues = [];
@@ -960,6 +965,9 @@ if (
         : '',
       fs.existsSync(files.ownProfile)
         ? read(files.ownProfile)
+        : '',
+      fs.existsSync(files.profilePrivacy)
+        ? read(files.profilePrivacy)
         : ''
     ].join('\n');
 
@@ -1085,6 +1093,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('PROFILE PRIVACY FEATURE');
+
+try {
+  const outputProfilePrivacy =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-profile-privacy-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputProfilePrivacy.trim()
+  );
+
+  ok('Profile Privacy feature modular');
+} catch (error) {
+  fail('Profile Privacy feature modular');
 
   console.error(
     error.stdout?.toString() ||

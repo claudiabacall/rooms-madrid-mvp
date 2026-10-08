@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const profilePrivacySource =
+  fs.readFileSync(
+    'assets/js/features/profile-privacy.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== OWN PROFILE · INTEGRACION ==='
@@ -83,14 +89,21 @@ assert(
 );
 
 assert(
-  /function\s+renderProfilePrivacySettings\s*\(/.test(
+  !/function\s+renderProfilePrivacySettings\s*\(/.test(
     appSource
   ),
-  'Privacy no debe moverse'
+  'renderProfilePrivacySettings no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+renderProfilePrivacySettings\s*\(/.test(
+    profilePrivacySource
+  ),
+  'renderProfilePrivacySettings debe vivir en profile-privacy.js'
 );
 
 ok(
-  'Own Profile extraído sin arrastrar Home Preferences ni Privacy'
+  'Own Profile separado de Home Preferences y Profile Privacy'
 );
 
 
