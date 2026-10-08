@@ -20,6 +20,13 @@ const supabase =
     'utf8'
   );
 
+
+const profileEditorSource =
+  fs.readFileSync(
+    'assets/js/features/profile-editor.js',
+    'utf8'
+  );
+
 const css =
   fs.readFileSync(
     'assets/css/feed.css',
@@ -464,28 +471,28 @@ ok(
 );
 
 assert(
-  supabase.includes(
+  profileEditorSource.includes(
     ".from('avatars')"
   ),
   'Uploader no usa bucket avatars'
 );
 
 assert(
-  supabase.includes(
+  profileEditorSource.includes(
     '.upload(path, file'
   ),
   'Avatar no se sube a Storage'
 );
 
 assert(
-  supabase.includes(
+  profileEditorSource.includes(
     '.getPublicUrl(path)'
   ),
   'Avatar no obtiene URL pública'
 );
 
 assert(
-  supabase.includes(
+  profileEditorSource.includes(
     '.update({ avatar_url: avatarUrl })'
   ),
   'avatar_url no se guarda en profiles'

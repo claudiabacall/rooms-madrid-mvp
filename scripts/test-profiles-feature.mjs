@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const profileEditorSource =
+  fs.readFileSync(
+    'assets/js/features/profile-editor.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== PROFILES FEATURE · INTEGRACION ==='
@@ -66,10 +72,17 @@ assert(
 );
 
 assert(
-  /function\s+ensureProfileEditorModal\s*\(/.test(
+  !/function\s+ensureProfileEditorModal\s*\(/.test(
     appSource
   ),
-  'Editor de perfil propio no debe moverse'
+  'ensureProfileEditorModal no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+ensureProfileEditorModal\s*\(/.test(
+    profileEditorSource
+  ),
+  'ensureProfileEditorModal debe vivir en profile-editor.js'
 );
 
 assert(

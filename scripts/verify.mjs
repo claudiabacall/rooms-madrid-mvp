@@ -15,6 +15,7 @@ const files = {
   listings: 'assets/js/features/listings.js',
   matching: 'assets/js/features/matching.js',
   profiles: 'assets/js/features/profiles.js',
+  profileEditor: 'assets/js/features/profile-editor.js',
   css: 'assets/css/feed.css'
 };
 
@@ -65,7 +66,8 @@ for (const file of [
   files.sessions,
   files.listings,
   files.matching,
-  files.profiles
+  files.profiles,
+  files.profileEditor
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -155,7 +157,8 @@ if (
       read(files.sessions),
       read(files.listings),
       read(files.matching),
-      read(files.profiles)
+      read(files.profiles),
+      read(files.profileEditor)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -427,7 +430,8 @@ if (
       read(files.sessions),
       read(files.listings),
       read(files.matching),
-      read(files.profiles)
+      read(files.profiles),
+      read(files.profileEditor)
     ].join('\n');
 
   const buttons = [
@@ -533,7 +537,8 @@ if (
       read(files.sessions),
       read(files.listings),
       read(files.matching),
-      read(files.profiles)
+      read(files.profiles),
+      read(files.profileEditor)
     ].join('\n');
 
   const issues = [];
@@ -944,6 +949,9 @@ if (
         : '',
       fs.existsSync('assets/js/features/moderation.js')
         ? read('assets/js/features/moderation.js')
+        : '',
+      fs.existsSync(files.profileEditor)
+        ? read(files.profileEditor)
         : ''
     ].join('\n');
 
@@ -1069,6 +1077,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('PROFILE EDITOR FEATURE');
+
+try {
+  const outputProfileEditor =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-profile-editor-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputProfileEditor.trim()
+  );
+
+  ok('Profile Editor feature modular');
+} catch (error) {
+  fail('Profile Editor feature modular');
 
   console.error(
     error.stdout?.toString() ||
