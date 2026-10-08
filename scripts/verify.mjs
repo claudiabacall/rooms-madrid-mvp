@@ -33,6 +33,7 @@ const files = {
   communityCreate: 'assets/js/features/community-create.js',
   communityInteractions: 'assets/js/features/community-interactions.js',
   communityPosts: 'assets/js/features/community-posts.js',
+  communityDetailCore: 'assets/js/features/community-detail-core.js',
   css: 'assets/css/feed.css'
 };
 
@@ -100,6 +101,7 @@ for (const file of [
   files.communityCreate,
   files.communityInteractions,
   files.communityPosts,
+  files.communityDetailCore,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1219,6 +1221,30 @@ try {
   );
 }
 
+
+title('COMMUNITY DETAIL CORE FEATURE');
+
+try {
+  const outputCommunityDetailCore =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-community-detail-core-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputCommunityDetailCore.trim());
+
+  ok('Community Detail Core feature modular');
+} catch (error) {
+  fail('Community Detail Core feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('COMMUNITY POSTS FEATURE');
 
