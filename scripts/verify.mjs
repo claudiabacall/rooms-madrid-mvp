@@ -14,6 +14,7 @@ const files = {
   sessions: 'assets/js/features/sessions.js',
   listings: 'assets/js/features/listings.js',
   matching: 'assets/js/features/matching.js',
+  profiles: 'assets/js/features/profiles.js',
   css: 'assets/css/feed.css'
 };
 
@@ -63,7 +64,8 @@ for (const file of [
   files.messaging,
   files.sessions,
   files.listings,
-  files.matching
+  files.matching,
+  files.profiles
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -152,7 +154,8 @@ if (
       read(files.messaging),
       read(files.sessions),
       read(files.listings),
-      read(files.matching)
+      read(files.matching),
+      read(files.profiles)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -423,7 +426,8 @@ if (
       read(files.messaging),
       read(files.sessions),
       read(files.listings),
-      read(files.matching)
+      read(files.matching),
+      read(files.profiles)
     ].join('\n');
 
   const buttons = [
@@ -528,7 +532,8 @@ if (
       read(files.messaging),
       read(files.sessions),
       read(files.listings),
-      read(files.matching)
+      read(files.matching),
+      read(files.profiles)
     ].join('\n');
 
   const issues = [];
@@ -1064,6 +1069,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('PROFILES FEATURE');
+
+try {
+  const outputProfiles =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-profiles-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputProfiles.trim()
+  );
+
+  ok('Profiles feature modular');
+} catch (error) {
+  fail('Profiles feature modular');
 
   console.error(
     error.stdout?.toString() ||

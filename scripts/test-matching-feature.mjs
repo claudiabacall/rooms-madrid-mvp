@@ -76,15 +76,28 @@ for (const fn of [
   );
 }
 
+const profilesSource =
+  fs.readFileSync(
+    'assets/js/features/profiles.js',
+    'utf8'
+  );
+
 assert(
-  /async\s+function\s+openRealUser\s*\(/.test(
+  !/async\s+function\s+openRealUser\s*\(/.test(
     appSource
   ),
-  'openRealUser debe permanecer en el monolito'
+  'openRealUser no debe seguir en supabase-app.js'
+);
+
+assert(
+  /async\s+function\s+openRealUser\s*\(/.test(
+    profilesSource
+  ),
+  'openRealUser debe vivir en profiles.js'
 );
 
 ok(
-  'Matching extraído sin arrastrar Profile'
+  'Matching aislado y Profiles separado'
 );
 
 
