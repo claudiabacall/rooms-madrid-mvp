@@ -1198,6 +1198,26 @@ try {
 }
 
 
+title('HOUSEHOLD CREATE FEATURE');
+
+try {
+  const outputHouseholdCreate =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-household-create-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputHouseholdCreate.trim());
+
+  ok('Household Create feature modular');
+} catch (error) {
+  fail('Household Create feature modular');
+  console.error(error.stdout?.toString() || error.message);
+}
+
 title('HOUSEHOLD CANDIDATES FEATURE');
 
 try {

@@ -104,11 +104,49 @@ assert(
   'La implementación loadHouseholdCandidates falta en la feature'
 );
 
+const createSource = fs.readFileSync(
+  'assets/js/features/household-create.js',
+  'utf8'
+);
+
 assert(
-  /async\s+function\s+createHousehold\s*\(/.test(
-    appSource
+  !/async\s+function\s+createHousehold\s*\(/.test(appSource),
+  'createHousehold sigue duplicada en el monolito'
+);
+
+assert(
+  /async\s+function\s+createHousehold\s*\(/.test(createSource),
+  'Falta createHousehold en su modulo'
+);
+
+assert(
+  htmlSource.includes(
+    'assets/js/features/household-create.js'
   ),
-  'createHousehold debe permanecer global'
+  'index no carga Household Create'
+);
+
+assert(
+  htmlSource.indexOf(
+    'assets/js/features/household-create.js'
+  ) < htmlSource.indexOf(
+    'assets/js/supabase-app.js'
+  ),
+  'Household Create debe cargar antes del monolito'
+);
+
+assert(
+  appSource.includes(
+    'window.ROOMS_HOUSEHOLD_CREATE_FEATURE?.create'
+  ),
+  'Falta inicializacion de Household Create'
+);
+
+assert(
+  appSource.includes(
+    ".addEventListener('submit', createHousehold)"
+  ),
+  'Formulario Household desconectado'
 );
 
 ok(
