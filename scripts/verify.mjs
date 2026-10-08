@@ -31,6 +31,7 @@ const files = {
   communityManagement: 'assets/js/features/community-management.js',
   communityMembership: 'assets/js/features/community-membership.js',
   communityCreate: 'assets/js/features/community-create.js',
+  communityInteractions: 'assets/js/features/community-interactions.js',
   css: 'assets/css/feed.css'
 };
 
@@ -96,6 +97,7 @@ for (const file of [
   files.communityManagement,
   files.communityMembership,
   files.communityCreate,
+  files.communityInteractions,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1215,6 +1217,30 @@ try {
   );
 }
 
+
+title('COMMUNITY INTERACTIONS FEATURE');
+
+try {
+  const outputCommunityInteractions =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-community-interactions-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputCommunityInteractions.trim());
+
+  ok('Community Interactions feature modular');
+} catch (error) {
+  fail('Community Interactions feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('COMMUNITY CREATE FEATURE');
 
