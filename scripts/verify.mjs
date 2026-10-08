@@ -16,6 +16,7 @@ const files = {
   matching: 'assets/js/features/matching.js',
   profiles: 'assets/js/features/profiles.js',
   profileEditor: 'assets/js/features/profile-editor.js',
+  ownProfile: 'assets/js/features/own-profile.js',
   css: 'assets/css/feed.css'
 };
 
@@ -67,7 +68,8 @@ for (const file of [
   files.listings,
   files.matching,
   files.profiles,
-  files.profileEditor
+  files.profileEditor,
+  files.ownProfile
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -158,7 +160,8 @@ if (
       read(files.listings),
       read(files.matching),
       read(files.profiles),
-      read(files.profileEditor)
+      read(files.profileEditor),
+      read(files.ownProfile)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -431,7 +434,8 @@ if (
       read(files.listings),
       read(files.matching),
       read(files.profiles),
-      read(files.profileEditor)
+      read(files.profileEditor),
+      read(files.ownProfile)
     ].join('\n');
 
   const buttons = [
@@ -538,7 +542,8 @@ if (
       read(files.listings),
       read(files.matching),
       read(files.profiles),
-      read(files.profileEditor)
+      read(files.profileEditor),
+      read(files.ownProfile)
     ].join('\n');
 
   const issues = [];
@@ -952,6 +957,9 @@ if (
         : '',
       fs.existsSync(files.profileEditor)
         ? read(files.profileEditor)
+        : '',
+      fs.existsSync(files.ownProfile)
+        ? read(files.ownProfile)
         : ''
     ].join('\n');
 
@@ -1077,6 +1085,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('OWN PROFILE FEATURE');
+
+try {
+  const outputOwnProfile =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-own-profile-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputOwnProfile.trim()
+  );
+
+  ok('Own Profile feature modular');
+} catch (error) {
+  fail('Own Profile feature modular');
 
   console.error(
     error.stdout?.toString() ||

@@ -35,6 +35,12 @@ const profileEditorSource =
     'utf8'
   );
 
+const ownProfileSource =
+  fs.readFileSync(
+    'assets/js/features/own-profile.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== PROFILES FEATURE · INTEGRACION ==='
@@ -86,10 +92,17 @@ assert(
 );
 
 assert(
-  /function\s+renderOwnPublicProfile\s*\(/.test(
+  !/function\s+renderOwnPublicProfile\s*\(/.test(
     appSource
   ),
-  'Perfil público propio no debe moverse'
+  'renderOwnPublicProfile no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+renderOwnPublicProfile\s*\(/.test(
+    ownProfileSource
+  ),
+  'renderOwnPublicProfile debe vivir en own-profile.js'
 );
 
 ok(
