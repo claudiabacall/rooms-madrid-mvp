@@ -20,6 +20,7 @@ const files = {
   profilePrivacy: 'assets/js/features/profile-privacy.js',
   accountSettings: 'assets/js/features/account-settings.js',
   exploreView: 'assets/js/features/explore-view.js',
+  exploreFilters: 'assets/js/features/explore-filters.js',
   css: 'assets/css/feed.css'
 };
 
@@ -75,7 +76,8 @@ for (const file of [
   files.ownProfile,
   files.profilePrivacy,
   files.accountSettings,
-  files.exploreView
+  files.exploreView,
+  files.exploreFilters
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -170,7 +172,8 @@ if (
       read(files.ownProfile),
       read(files.profilePrivacy),
       read(files.accountSettings),
-      read(files.exploreView)
+      read(files.exploreView),
+      read(files.exploreFilters)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -447,7 +450,8 @@ if (
       read(files.ownProfile),
       read(files.profilePrivacy),
       read(files.accountSettings),
-      read(files.exploreView)
+      read(files.exploreView),
+      read(files.exploreFilters)
     ].join('\n');
 
   const buttons = [
@@ -558,7 +562,8 @@ if (
       read(files.ownProfile),
       read(files.profilePrivacy),
       read(files.accountSettings),
-      read(files.exploreView)
+      read(files.exploreView),
+      read(files.exploreFilters)
     ].join('\n');
 
   const issues = [];
@@ -709,6 +714,9 @@ if (
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
         ? read(files.exploreView)
+        : '',
+      fs.existsSync(files.exploreFilters)
+        ? read(files.exploreFilters)
         : ''
     ].join('\n');
 
@@ -828,7 +836,15 @@ if (
   ];
 
   const allJs =
-    sources.map(item => item.text).join('\n');
+    [
+      ...sources.map(item => item.text),
+      fs.existsSync(files.exploreView)
+        ? read(files.exploreView)
+        : '',
+      fs.existsSync(files.exploreFilters)
+        ? read(files.exploreFilters)
+        : ''
+    ].join('\n');
 
   const issues = [];
 
@@ -989,6 +1005,9 @@ if (
         : '',
       fs.existsSync(files.exploreView)
         ? read(files.exploreView)
+        : '',
+      fs.existsSync(files.exploreFilters)
+        ? read(files.exploreFilters)
         : ''
     ].join('\n');
 
@@ -1114,6 +1133,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('EXPLORE FILTERS FEATURE');
+
+try {
+  const outputExploreFilters =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-explore-filters-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputExploreFilters.trim()
+  );
+
+  ok('Explore Filters feature modular');
+} catch (error) {
+  fail('Explore Filters feature modular');
 
   console.error(
     error.stdout?.toString() ||

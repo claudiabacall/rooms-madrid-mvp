@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const exploreFiltersSource =
+  fs.readFileSync(
+    'assets/js/features/explore-filters.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== EXPLORE VIEW · INTEGRACION ==='
@@ -66,10 +72,17 @@ assert(
 );
 
 assert(
-  /const\s+exploreFiltersState\s*=/.test(
+  !/const\s+exploreFiltersState\s*=/.test(
     appSource
   ),
-  'Explore Filters no debe moverse'
+  'exploreFiltersState no debe seguir en supabase-app.js'
+);
+
+assert(
+  /const\s+exploreFiltersState\s*=/.test(
+    exploreFiltersSource
+  ),
+  'exploreFiltersState debe vivir en explore-filters.js'
 );
 
 assert(
@@ -80,7 +93,7 @@ assert(
 );
 
 ok(
-  'Explore View separado de Filters y Controller'
+  'Explore View, Filters y Controller están separados'
 );
 
 
