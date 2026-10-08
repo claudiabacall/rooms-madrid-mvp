@@ -36,6 +36,7 @@ const files = {
   communityDetailCore: 'assets/js/features/community-detail-core.js',
   communityDetailRender: 'assets/js/features/community-detail-render.js',
   listingPhotos: 'assets/js/features/listing-photos.js',
+  listingEditor: 'assets/js/features/listing-editor.js',
   css: 'assets/css/feed.css'
 };
 
@@ -106,6 +107,7 @@ for (const file of [
   files.communityDetailCore,
   files.communityDetailRender,
   files.listingPhotos,
+  files.listingEditor,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1225,6 +1227,30 @@ try {
   );
 }
 
+
+title('LISTING EDITOR FEATURE');
+
+try {
+  const outputListingEditor =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-listing-editor-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputListingEditor.trim());
+
+  ok('Listing Editor feature modular');
+} catch (error) {
+  fail('Listing Editor feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('LISTING PHOTOS FEATURE');
 
