@@ -34,6 +34,7 @@ const files = {
   communityInteractions: 'assets/js/features/community-interactions.js',
   communityPosts: 'assets/js/features/community-posts.js',
   communityDetailCore: 'assets/js/features/community-detail-core.js',
+  communityDetailRender: 'assets/js/features/community-detail-render.js',
   css: 'assets/css/feed.css'
 };
 
@@ -102,6 +103,7 @@ for (const file of [
   files.communityInteractions,
   files.communityPosts,
   files.communityDetailCore,
+  files.communityDetailRender,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1221,6 +1223,30 @@ try {
   );
 }
 
+
+title('COMMUNITY DETAIL RENDER FEATURE');
+
+try {
+  const outputCommunityDetailRender =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-community-detail-render-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputCommunityDetailRender.trim());
+
+  ok('Community Detail Render feature modular');
+} catch (error) {
+  fail('Community Detail Render feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('COMMUNITY DETAIL CORE FEATURE');
 
