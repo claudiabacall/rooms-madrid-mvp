@@ -23,6 +23,7 @@ const files = {
   exploreFilters: 'assets/js/features/explore-filters.js',
   exploreController: 'assets/js/features/explore-controller.js',
   householdGroupPicker: 'assets/js/features/household-group-picker.js',
+  householdInvites: 'assets/js/features/household-invites.js',
   css: 'assets/css/feed.css'
 };
 
@@ -81,7 +82,8 @@ for (const file of [
   files.exploreView,
   files.exploreFilters,
   files.exploreController,
-  files.householdGroupPicker
+  files.householdGroupPicker,
+  files.householdInvites
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -179,7 +181,8 @@ if (
       read(files.exploreView),
       read(files.exploreFilters),
       read(files.exploreController),
-      read(files.householdGroupPicker)
+      read(files.householdGroupPicker),
+      read(files.householdInvites)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -459,7 +462,8 @@ if (
       read(files.exploreView),
       read(files.exploreFilters),
       read(files.exploreController),
-      read(files.householdGroupPicker)
+      read(files.householdGroupPicker),
+      read(files.householdInvites)
     ].join('\n');
 
   const buttons = [
@@ -573,7 +577,8 @@ if (
       read(files.exploreView),
       read(files.exploreFilters),
       read(files.exploreController),
-      read(files.householdGroupPicker)
+      read(files.householdGroupPicker),
+      read(files.householdInvites)
     ].join('\n');
 
   const issues = [];
@@ -733,6 +738,9 @@ if (
         : '',
       fs.existsSync(files.householdGroupPicker)
         ? read(files.householdGroupPicker)
+        : '',
+      fs.existsSync(files.householdInvites)
+        ? read(files.householdInvites)
         : ''
     ].join('\n');
 
@@ -865,6 +873,9 @@ if (
         : '',
       fs.existsSync(files.householdGroupPicker)
         ? read(files.householdGroupPicker)
+        : '',
+      fs.existsSync(files.householdInvites)
+        ? read(files.householdInvites)
         : ''
     ].join('\n');
 
@@ -1036,6 +1047,9 @@ if (
         : '',
       fs.existsSync(files.householdGroupPicker)
         ? read(files.householdGroupPicker)
+        : '',
+      fs.existsSync(files.householdInvites)
+        ? read(files.householdInvites)
         : ''
     ].join('\n');
 
@@ -1161,6 +1175,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('HOUSEHOLD INVITES FEATURE');
+
+try {
+  const outputHouseholdInvites =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-household-invites-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputHouseholdInvites.trim()
+  );
+
+  ok('Household Invites feature modular');
+} catch (error) {
+  fail('Household Invites feature modular');
 
   console.error(
     error.stdout?.toString() ||
