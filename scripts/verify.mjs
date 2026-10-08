@@ -1198,6 +1198,28 @@ try {
 }
 
 
+title('HOUSEHOLD CORE FEATURE');
+
+try {
+  const outputHouseholdCore =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-household-core-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputHouseholdCore.trim());
+
+  ok('Household Core feature modular');
+} catch (error) {
+  fail('Household Core feature modular');
+  console.error(
+    error.stdout?.toString() || error.message
+  );
+}
+
 title('HOUSEHOLD CREATE FEATURE');
 
 try {
