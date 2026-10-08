@@ -10,6 +10,7 @@ const files = {
   saved: 'assets/js/features/saved.js',
   moderation: 'assets/js/features/moderation.js',
   connections: 'assets/js/features/connections.js',
+  messaging: 'assets/js/features/messaging.js',
   css: 'assets/css/feed.css'
 };
 
@@ -55,7 +56,8 @@ for (const file of [
   files.supabase,
   files.saved,
   files.moderation,
-  files.connections
+  files.connections,
+  files.messaging
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -140,7 +142,8 @@ if (
       read(files.supabase),
       read(files.saved),
       read(files.moderation),
-      read(files.connections)
+      read(files.connections),
+      read(files.messaging)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -407,7 +410,8 @@ if (
       read(files.supabase),
       read(files.saved),
       read(files.moderation),
-      read(files.connections)
+      read(files.connections),
+      read(files.messaging)
     ].join('\n');
 
   const buttons = [
@@ -508,7 +512,8 @@ if (
       read(files.supabase),
       read(files.saved),
       read(files.moderation),
-      read(files.connections)
+      read(files.connections),
+      read(files.messaging)
     ].join('\n');
 
   const issues = [];
@@ -1044,6 +1049,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('MESSAGING FEATURE');
+
+try {
+  const outputMessaging =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-messaging-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputMessaging.trim()
+  );
+
+  ok('Messaging feature modular');
+} catch (error) {
+  fail('Messaging feature modular');
 
   console.error(
     error.stdout?.toString() ||
