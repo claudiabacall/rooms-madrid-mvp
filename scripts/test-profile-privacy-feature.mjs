@@ -29,6 +29,12 @@ const htmlSource =
     'utf8'
   );
 
+const accountSettingsSource =
+  fs.readFileSync(
+    'assets/js/features/account-settings.js',
+    'utf8'
+  );
+
 
 console.log(
   '\n=== PROFILE PRIVACY · INTEGRACION ==='
@@ -83,14 +89,21 @@ assert(
 );
 
 assert(
-  /function\s+renderAccountSettings\s*\(/.test(
+  !/function\s+renderAccountSettings\s*\(/.test(
     appSource
   ),
-  'Account Settings no debe moverse'
+  'renderAccountSettings no debe seguir en supabase-app.js'
+);
+
+assert(
+  /function\s+renderAccountSettings\s*\(/.test(
+    accountSettingsSource
+  ),
+  'renderAccountSettings debe vivir en account-settings.js'
 );
 
 ok(
-  'Privacy extraído sin arrastrar Account Settings'
+  'Profile Privacy y Account Settings están separados'
 );
 
 

@@ -23,6 +23,12 @@ const appSource =
     'utf8'
   );
 
+const accountSettingsSource =
+  fs.readFileSync(
+    'assets/js/features/account-settings.js',
+    'utf8'
+  );
+
 const htmlSource =
   fs.readFileSync(
     'index.html',
@@ -78,11 +84,18 @@ assert(
 );
 
 assert(
-  /async\s+function\s+logoutFromRooms\s*\(/.test(appSource),
-  'logoutFromRooms debe permanecer en supabase-app.js'
+  !/async\s+function\s+logoutFromRooms\s*\(/.test(appSource),
+  'logoutFromRooms no debe seguir en supabase-app.js'
 );
 
-ok('Sessions cargada sin mover auth global');
+assert(
+  /async\s+function\s+logoutFromRooms\s*\(/.test(
+    accountSettingsSource
+  ),
+  'logoutFromRooms debe vivir en account-settings.js'
+);
+
+ok('Sessions separada de Account Settings sin duplicados');
 
 
 console.log('\n=== SESSIONS · DOM ===');

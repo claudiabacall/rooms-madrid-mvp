@@ -18,6 +18,7 @@ const files = {
   profileEditor: 'assets/js/features/profile-editor.js',
   ownProfile: 'assets/js/features/own-profile.js',
   profilePrivacy: 'assets/js/features/profile-privacy.js',
+  accountSettings: 'assets/js/features/account-settings.js',
   css: 'assets/css/feed.css'
 };
 
@@ -71,7 +72,8 @@ for (const file of [
   files.profiles,
   files.profileEditor,
   files.ownProfile,
-  files.profilePrivacy
+  files.profilePrivacy,
+  files.accountSettings
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -164,7 +166,8 @@ if (
       read(files.profiles),
       read(files.profileEditor),
       read(files.ownProfile),
-      read(files.profilePrivacy)
+      read(files.profilePrivacy),
+      read(files.accountSettings)
     ].join('\n');
 
   const declaredIds = new Set([
@@ -439,7 +442,8 @@ if (
       read(files.profiles),
       read(files.profileEditor),
       read(files.ownProfile),
-      read(files.profilePrivacy)
+      read(files.profilePrivacy),
+      read(files.accountSettings)
     ].join('\n');
 
   const buttons = [
@@ -548,7 +552,8 @@ if (
       read(files.profiles),
       read(files.profileEditor),
       read(files.ownProfile),
-      read(files.profilePrivacy)
+      read(files.profilePrivacy),
+      read(files.accountSettings)
     ].join('\n');
 
   const issues = [];
@@ -968,6 +973,9 @@ if (
         : '',
       fs.existsSync(files.profilePrivacy)
         ? read(files.profilePrivacy)
+        : '',
+      fs.existsSync(files.accountSettings)
+        ? read(files.accountSettings)
         : ''
     ].join('\n');
 
@@ -1093,6 +1101,34 @@ try {
   ok('Supabase migrations order');
 } catch (error) {
   fail('Supabase migrations order');
+
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
+
+
+title('ACCOUNT SETTINGS FEATURE');
+
+try {
+  const outputAccountSettings =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-account-settings-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(
+    outputAccountSettings.trim()
+  );
+
+  ok('Account Settings feature modular');
+} catch (error) {
+  fail('Account Settings feature modular');
 
   console.error(
     error.stdout?.toString() ||
