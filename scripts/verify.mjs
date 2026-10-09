@@ -42,6 +42,7 @@ const files = {
   publishSteps: 'assets/js/features/publish-steps.js',
   publishCommunityFields: 'assets/js/features/publish-community-fields.js',
   publishComposer: 'assets/js/features/publish-composer.js',
+  publishGeocoding: 'assets/js/features/publish-geocoding.js',
   css: 'assets/css/feed.css'
 };
 
@@ -118,6 +119,7 @@ for (const file of [
   files.publishSteps,
   files.publishCommunityFields,
   files.publishComposer,
+  files.publishGeocoding,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -915,6 +917,9 @@ if (
     fs.existsSync(files.publishComposer)
       ? read(files.publishComposer)
       : '',
+    fs.existsSync(files.publishGeocoding)
+      ? read(files.publishGeocoding)
+      : '',
 
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
@@ -1082,6 +1087,9 @@ if (
       : '',
     fs.existsSync(files.publishComposer)
       ? read(files.publishComposer)
+      : '',
+    fs.existsSync(files.publishGeocoding)
+      ? read(files.publishGeocoding)
       : '',
 
       contents[files.app],
@@ -1257,6 +1265,26 @@ try {
   );
 }
 
+
+title('PUBLISH GEOCODING FEATURE');
+
+try {
+  const outputPublishGeocoding = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-geocoding-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputPublishGeocoding.trim());
+  ok('Publish Geocoding feature modular');
+} catch (error) {
+  fail('Publish Geocoding feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH COMPOSER FEATURE');
 
