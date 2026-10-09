@@ -51,6 +51,7 @@ const files = {
   feedCore: 'assets/js/features/feed-core.js',
   exploreCommunities: 'assets/js/features/explore-communities.js',
   explorePeople: 'assets/js/features/explore-people.js',
+  exploreMapCard: 'assets/js/features/explore-map-card.js',
   css: 'assets/css/feed.css'
 };
 
@@ -137,6 +138,7 @@ for (const file of [
   files.feedCore,
   files.exploreCommunities,
   files.explorePeople,
+  files.exploreMapCard,
   files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -783,6 +785,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.exploreMapCard)
+      ? read(files.exploreMapCard)
+      : '',
+
     fs.existsSync(files.explorePeople)
       ? read(files.explorePeople)
       : '',
@@ -952,6 +958,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.exploreMapCard)
+      ? read(files.exploreMapCard)
+      : '',
+
     fs.existsSync(files.explorePeople)
       ? read(files.explorePeople)
       : '',
@@ -1151,6 +1161,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.exploreMapCard)
+      ? read(files.exploreMapCard)
+      : '',
+
     fs.existsSync(files.explorePeople)
       ? read(files.explorePeople)
       : '',
@@ -1365,6 +1379,26 @@ try {
   );
 }
 
+
+title('EXPLORE MAP CARD FEATURE');
+
+try {
+  const outputExploreMapCard = execFileSync(
+    process.execPath,
+    ['scripts/test-explore-map-card-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputExploreMapCard.trim());
+  ok('Explore Map Card feature modular');
+} catch (error) {
+  fail('Explore Map Card feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('EXPLORE PEOPLE FEATURE');
 
