@@ -37,6 +37,7 @@ const files = {
   communityDetailRender: 'assets/js/features/community-detail-render.js',
   listingPhotos: 'assets/js/features/listing-photos.js',
   listingEditor: 'assets/js/features/listing-editor.js',
+  listingDelete: 'assets/js/features/listing-delete.js',
   css: 'assets/css/feed.css'
 };
 
@@ -108,6 +109,7 @@ for (const file of [
   files.communityDetailRender,
   files.listingPhotos,
   files.listingEditor,
+  files.listingDelete,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1227,6 +1229,30 @@ try {
   );
 }
 
+
+title('LISTING DELETE FEATURE');
+
+try {
+  const outputListingDelete =
+    execFileSync(
+      process.execPath,
+      ['scripts/test-listing-delete-feature.mjs'],
+      {
+        encoding: 'utf8'
+      }
+    );
+
+  console.log(outputListingDelete.trim());
+
+  ok('Listing Delete feature modular');
+} catch (error) {
+  fail('Listing Delete feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('LISTING EDITOR FEATURE');
 

@@ -46,9 +46,24 @@ for (const name of [
   );
 }
 
+const listingDeleteSource = fs.readFileSync(
+  'assets/js/features/listing-delete.js',
+  'utf8'
+);
+
 assert(
-  /async function deleteOwnListing\(/.test(app),
-  'La eliminacion debe permanecer en el monolito'
+  !/async function deleteOwnListing\(/.test(app),
+  'La eliminacion no debe seguir en el monolito'
+);
+
+assert(
+  /async function deleteOwnListing\(/.test(listingDeleteSource),
+  'Falta deleteOwnListing en Listing Delete'
+);
+
+assert(
+  app.includes('ROOMS_LISTING_DELETE_FEATURE?.create'),
+  'Falta inicializar Listing Delete'
 );
 
 console.log('OK  Extraccion e integracion correctas');
