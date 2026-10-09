@@ -38,6 +38,7 @@ const files = {
   listingPhotos: 'assets/js/features/listing-photos.js',
   listingEditor: 'assets/js/features/listing-editor.js',
   listingDelete: 'assets/js/features/listing-delete.js',
+  publishMedia: 'assets/js/features/publish-media.js',
   css: 'assets/css/feed.css'
 };
 
@@ -110,6 +111,7 @@ for (const file of [
   files.listingPhotos,
   files.listingEditor,
   files.listingDelete,
+  files.publishMedia,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1229,6 +1231,26 @@ try {
   );
 }
 
+
+title('PUBLISH MEDIA FEATURE');
+
+try {
+  const outputPublishMedia = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-media-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputPublishMedia.trim());
+  ok('Publish Media feature modular');
+} catch (error) {
+  fail('Publish Media feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('LISTING DELETE FEATURE');
 
