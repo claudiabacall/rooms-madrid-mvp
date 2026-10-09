@@ -44,6 +44,7 @@ const files = {
   publishComposer: 'assets/js/features/publish-composer.js',
   publishGeocoding: 'assets/js/features/publish-geocoding.js',
   publishSubmit: 'assets/js/features/publish-submit.js',
+  feedListingCard: 'assets/js/features/feed-listing-card.js',
   css: 'assets/css/feed.css'
 };
 
@@ -123,7 +124,8 @@ for (const file of [
   files.publishGeocoding,
   files.publishSubmit,
   files.householdCore,
-  files.householdCreate
+  files.householdCreate,
+  files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
 
@@ -769,6 +771,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedListingCard)
+      ? read(files.feedListingCard)
+      : '',
+
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
         ? read(files.exploreView)
@@ -910,6 +916,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedListingCard)
+      ? read(files.feedListingCard)
+      : '',
+
     fs.existsSync(files.publishSteps)
       ? read(files.publishSteps)
       : '',
@@ -1081,6 +1091,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.feedListingCard)
+      ? read(files.feedListingCard)
+      : '',
+
     fs.existsSync(files.publishSteps)
       ? read(files.publishSteps)
       : '',
@@ -1267,6 +1281,26 @@ try {
   );
 }
 
+
+title('FEED LISTING CARD FEATURE');
+
+try {
+  const outputFeedListingCard = execFileSync(
+    process.execPath,
+    ['scripts/test-feed-listing-card-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputFeedListingCard.trim());
+  ok('Feed Listing Card feature modular');
+} catch (error) {
+  fail('Feed Listing Card feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH SUBMIT FEATURE');
 
