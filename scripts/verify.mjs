@@ -39,6 +39,7 @@ const files = {
   listingEditor: 'assets/js/features/listing-editor.js',
   listingDelete: 'assets/js/features/listing-delete.js',
   publishMedia: 'assets/js/features/publish-media.js',
+  publishSteps: 'assets/js/features/publish-steps.js',
   css: 'assets/css/feed.css'
 };
 
@@ -112,6 +113,7 @@ for (const file of [
   files.listingEditor,
   files.listingDelete,
   files.publishMedia,
+  files.publishSteps,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -900,6 +902,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.publishSteps)
+      ? read(files.publishSteps)
+      : '',
+
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
         ? read(files.exploreView)
@@ -1058,6 +1064,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.publishSteps)
+      ? read(files.publishSteps)
+      : '',
+
       contents[files.app],
       contents[files.supabase],
       fs.existsSync('assets/js/features/saved.js')
@@ -1231,6 +1241,26 @@ try {
   );
 }
 
+
+title('PUBLISH STEPS FEATURE');
+
+try {
+  const outputPublishSteps = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-steps-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputPublishSteps.trim());
+  ok('Publish Steps feature modular');
+} catch (error) {
+  fail('Publish Steps feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH MEDIA FEATURE');
 
