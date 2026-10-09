@@ -43,6 +43,7 @@ const files = {
   publishCommunityFields: 'assets/js/features/publish-community-fields.js',
   publishComposer: 'assets/js/features/publish-composer.js',
   publishGeocoding: 'assets/js/features/publish-geocoding.js',
+  publishSubmit: 'assets/js/features/publish-submit.js',
   css: 'assets/css/feed.css'
 };
 
@@ -120,6 +121,7 @@ for (const file of [
   files.publishCommunityFields,
   files.publishComposer,
   files.publishGeocoding,
+  files.publishSubmit,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -1265,6 +1267,26 @@ try {
   );
 }
 
+
+title('PUBLISH SUBMIT FEATURE');
+
+try {
+  const outputPublishSubmit = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-submit-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputPublishSubmit.trim());
+  ok('Publish Submit feature modular');
+} catch (error) {
+  fail('Publish Submit feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH GEOCODING FEATURE');
 

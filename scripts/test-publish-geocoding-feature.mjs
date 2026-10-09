@@ -27,8 +27,19 @@ assert(
 assert(
   !/async function geocodeListingAddress\s*\(/.test(app)
 );
+const submit = fs.readFileSync(
+  'assets/js/features/publish-submit.js',
+  'utf8'
+);
+
 assert(
-  /await geocodeListingAddress\s*\(/.test(app)
+  /await geocodeListingAddress\s*\(/.test(submit),
+  'Publish Submit debe utilizar Publish Geocoding'
+);
+
+assert(
+  app.includes('ROOMS_PUBLISH_SUBMIT_FEATURE?.create'),
+  'Publish Submit debe estar conectado al monolito'
 );
 
 console.log('OK  Extraccion e integracion');
