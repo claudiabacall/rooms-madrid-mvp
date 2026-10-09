@@ -45,6 +45,7 @@ const files = {
   publishGeocoding: 'assets/js/features/publish-geocoding.js',
   publishSubmit: 'assets/js/features/publish-submit.js',
   feedListingCard: 'assets/js/features/feed-listing-card.js',
+  feedPersonCard: 'assets/js/features/feed-person-card.js',
   css: 'assets/css/feed.css'
 };
 
@@ -125,6 +126,7 @@ for (const file of [
   files.publishSubmit,
   files.householdCore,
   files.householdCreate,
+  files.feedPersonCard,
   files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -771,6 +773,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedPersonCard)
+      ? read(files.feedPersonCard)
+      : '',
+
     fs.existsSync(files.feedListingCard)
       ? read(files.feedListingCard)
       : '',
@@ -916,6 +922,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedPersonCard)
+      ? read(files.feedPersonCard)
+      : '',
+
     fs.existsSync(files.feedListingCard)
       ? read(files.feedListingCard)
       : '',
@@ -1091,6 +1101,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.feedPersonCard)
+      ? read(files.feedPersonCard)
+      : '',
+
     fs.existsSync(files.feedListingCard)
       ? read(files.feedListingCard)
       : '',
@@ -1281,6 +1295,26 @@ try {
   );
 }
 
+
+title('FEED PERSON CARD FEATURE');
+
+try {
+  const outputFeedPersonCard = execFileSync(
+    process.execPath,
+    ['scripts/test-feed-person-card-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputFeedPersonCard.trim());
+  ok('Feed Person Card feature modular');
+} catch (error) {
+  fail('Feed Person Card feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('FEED LISTING CARD FEATURE');
 
