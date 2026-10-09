@@ -8,6 +8,11 @@ const source = fs.readFileSync(
   'utf8'
 );
 
+const feedCore = fs.readFileSync(
+  'assets/js/features/feed-core.js',
+  'utf8'
+);
+
 const app = fs.readFileSync(
   'assets/js/supabase-app.js',
   'utf8'
@@ -39,7 +44,7 @@ assert(
 );
 
 assert(
-  app.includes('renderPersonCard(item)')
+  feedCore.includes('renderPersonCard(item)')
 );
 
 console.log('OK  Extraccion e integracion');

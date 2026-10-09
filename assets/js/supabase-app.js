@@ -1964,67 +1964,22 @@
   }
 
 
-  function renderRealFeed(listings, profiles, posts, communities) {
-    const feed = document.querySelector('#personalFeed');
-    if (!feed) return;
+  const feedCoreFeature =
+    window.ROOMS_FEED_CORE_FEATURE?.create({
+      state,
+      renderListingCard: (...args) => renderListingCard(...args),
+      renderPersonCard: (...args) => renderPersonCard(...args),
+      renderPostCard: (...args) => renderPostCard(...args),
+      renderCommunityCard: (...args) => renderCommunityCard(...args)
+    });
 
-    const visibleProfiles =
-      (profiles || []).filter(profile =>
-        profile?.id &&
-        !state.blockedUsers?.has(profile.id)
-      );
-
-    const items = [
-      ...listings.map(item => ({
-        type: 'listing',
-        created_at: item.created_at,
-        html: renderListingCard(item)
-      })),
-      ...visibleProfiles.map(item => ({
-        type: 'profile',
-        created_at: item.created_at,
-        html: renderPersonCard(item)
-      })),
-      ...communities.map(item => ({
-        type: 'community',
-        created_at: item.created_at,
-        html: renderCommunityCard(item)
-      })),
-      ...posts.map(item => ({
-        type: 'post',
-        created_at: item.created_at,
-        html: renderPostCard(item)
-      }))
-    ]
-      .filter(item => item.html)
-      .sort((a, b) =>
-        new Date(b.created_at || 0) -
-        new Date(a.created_at || 0)
-      );
-
-    const cards = items.map(item => item.html);
-
-    feed.innerHTML = cards.length ? cards.join('') : `
-      <section class="real-feed-empty">
-        <span>✦</span><h2>Todavía no hay contenido en Rooms</h2>
-        <p>Los perfiles, viviendas y publicaciones aparecerán aquí cuando la comunidad los cree.</p>
-        <button type="button" data-open-real-publish>Crear lo primero</button>
-      </section>`;
-
-    const activeFeedFilter =
-      document.querySelector('[data-feed-filter].active');
-
-    const activeFeedType =
-      activeFeedFilter?.dataset.feedFilter || 'all';
-
-    document
-      .querySelectorAll('#personalFeed [data-feed-type]')
-      .forEach(card => {
-        card.hidden =
-          activeFeedType !== 'all' &&
-          card.dataset.feedType !== activeFeedType;
-      });
+  if (!feedCoreFeature) {
+    throw new Error(
+      'Rooms: no se ha cargado Feed Core'
+    );
   }
+
+  const { renderRealFeed } = feedCoreFeature;
 
   const feedListingCardFeature =
     window.ROOMS_FEED_LISTING_CARD_FEATURE?.create({

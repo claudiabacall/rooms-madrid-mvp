@@ -7,6 +7,11 @@ const source = fs.readFileSync(
   'assets/js/features/feed-post-card.js',
   'utf8'
 );
+const feedCore = fs.readFileSync(
+  'assets/js/features/feed-core.js',
+  'utf8'
+);
+
 const app = fs.readFileSync(
   'assets/js/supabase-app.js',
   'utf8'
@@ -33,7 +38,7 @@ assert(
   !/function renderPostCard\s*\(/.test(app)
 );
 assert(
-  app.includes('renderPostCard(item)')
+  feedCore.includes('renderPostCard(item)')
 );
 
 console.log('OK  Extraccion e integracion');

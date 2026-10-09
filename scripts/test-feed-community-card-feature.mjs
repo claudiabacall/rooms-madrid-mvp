@@ -7,6 +7,11 @@ const source = fs.readFileSync(
   'assets/js/features/feed-community-card.js',
   'utf8'
 );
+const feedCore = fs.readFileSync(
+  'assets/js/features/feed-core.js',
+  'utf8'
+);
+
 const app = fs.readFileSync(
   'assets/js/supabase-app.js',
   'utf8'
@@ -31,7 +36,7 @@ assert(
 assert(
   !/function renderCommunityCard\s*\(/.test(app)
 );
-assert(app.includes('renderCommunityCard(item)'));
+assert(feedCore.includes('renderCommunityCard(item)'));
 
 console.log('OK  Extraccion e integracion');
 

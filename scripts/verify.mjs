@@ -48,6 +48,7 @@ const files = {
   feedPersonCard: 'assets/js/features/feed-person-card.js',
   feedPostCard: 'assets/js/features/feed-post-card.js',
   feedCommunityCard: 'assets/js/features/feed-community-card.js',
+  feedCore: 'assets/js/features/feed-core.js',
   css: 'assets/css/feed.css'
 };
 
@@ -131,6 +132,7 @@ for (const file of [
   files.feedPersonCard,
   files.feedPostCard,
   files.feedCommunityCard,
+  files.feedCore,
   files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -777,6 +779,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedCore)
+      ? read(files.feedCore)
+      : '',
+
     fs.existsSync(files.feedCommunityCard)
       ? read(files.feedCommunityCard)
       : '',
@@ -934,6 +940,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedCore)
+      ? read(files.feedCore)
+      : '',
+
     fs.existsSync(files.feedCommunityCard)
       ? read(files.feedCommunityCard)
       : '',
@@ -1121,6 +1131,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.feedCore)
+      ? read(files.feedCore)
+      : '',
+
     fs.existsSync(files.feedCommunityCard)
       ? read(files.feedCommunityCard)
       : '',
@@ -1323,6 +1337,26 @@ try {
   );
 }
 
+
+title('FEED CORE FEATURE');
+
+try {
+  const outputFeedCore = execFileSync(
+    process.execPath,
+    ['scripts/test-feed-core-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputFeedCore.trim());
+  ok('Feed Core feature modular');
+} catch (error) {
+  fail('Feed Core feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('FEED COMMUNITY CARD FEATURE');
 
