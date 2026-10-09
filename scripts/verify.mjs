@@ -40,6 +40,7 @@ const files = {
   listingDelete: 'assets/js/features/listing-delete.js',
   publishMedia: 'assets/js/features/publish-media.js',
   publishSteps: 'assets/js/features/publish-steps.js',
+  publishCommunityFields: 'assets/js/features/publish-community-fields.js',
   css: 'assets/css/feed.css'
 };
 
@@ -114,6 +115,7 @@ for (const file of [
   files.listingDelete,
   files.publishMedia,
   files.publishSteps,
+  files.publishCommunityFields,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -905,6 +907,9 @@ if (
     fs.existsSync(files.publishSteps)
       ? read(files.publishSteps)
       : '',
+    fs.existsSync(files.publishCommunityFields)
+      ? read(files.publishCommunityFields)
+      : '',
 
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
@@ -1066,6 +1071,9 @@ if (
     [
     fs.existsSync(files.publishSteps)
       ? read(files.publishSteps)
+      : '',
+    fs.existsSync(files.publishCommunityFields)
+      ? read(files.publishCommunityFields)
       : '',
 
       contents[files.app],
@@ -1241,6 +1249,26 @@ try {
   );
 }
 
+
+title('PUBLISH COMMUNITY FIELDS FEATURE');
+
+try {
+  const outputCommunityFields = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-community-fields-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputCommunityFields.trim());
+  ok('Publish Community Fields feature modular');
+} catch (error) {
+  fail('Publish Community Fields feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH STEPS FEATURE');
 
