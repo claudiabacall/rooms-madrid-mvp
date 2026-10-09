@@ -41,6 +41,7 @@ const files = {
   publishMedia: 'assets/js/features/publish-media.js',
   publishSteps: 'assets/js/features/publish-steps.js',
   publishCommunityFields: 'assets/js/features/publish-community-fields.js',
+  publishComposer: 'assets/js/features/publish-composer.js',
   css: 'assets/css/feed.css'
 };
 
@@ -116,6 +117,7 @@ for (const file of [
   files.publishMedia,
   files.publishSteps,
   files.publishCommunityFields,
+  files.publishComposer,
   files.householdCore,
   files.householdCreate
 ]) {
@@ -910,6 +912,9 @@ if (
     fs.existsSync(files.publishCommunityFields)
       ? read(files.publishCommunityFields)
       : '',
+    fs.existsSync(files.publishComposer)
+      ? read(files.publishComposer)
+      : '',
 
       ...sources.map(item => item.text),
       fs.existsSync(files.exploreView)
@@ -1074,6 +1079,9 @@ if (
       : '',
     fs.existsSync(files.publishCommunityFields)
       ? read(files.publishCommunityFields)
+      : '',
+    fs.existsSync(files.publishComposer)
+      ? read(files.publishComposer)
       : '',
 
       contents[files.app],
@@ -1249,6 +1257,26 @@ try {
   );
 }
 
+
+title('PUBLISH COMPOSER FEATURE');
+
+try {
+  const outputPublishComposer = execFileSync(
+    process.execPath,
+    ['scripts/test-publish-composer-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputPublishComposer.trim());
+  ok('Publish Composer feature modular');
+} catch (error) {
+  fail('Publish Composer feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('PUBLISH COMMUNITY FIELDS FEATURE');
 
