@@ -50,6 +50,7 @@ const files = {
   feedCommunityCard: 'assets/js/features/feed-community-card.js',
   feedCore: 'assets/js/features/feed-core.js',
   exploreCommunities: 'assets/js/features/explore-communities.js',
+  explorePeople: 'assets/js/features/explore-people.js',
   css: 'assets/css/feed.css'
 };
 
@@ -135,6 +136,7 @@ for (const file of [
   files.feedCommunityCard,
   files.feedCore,
   files.exploreCommunities,
+  files.explorePeople,
   files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -781,6 +783,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.explorePeople)
+      ? read(files.explorePeople)
+      : '',
+
     fs.existsSync(files.exploreCommunities)
       ? read(files.exploreCommunities)
       : '',
@@ -946,6 +952,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.explorePeople)
+      ? read(files.explorePeople)
+      : '',
+
     fs.existsSync(files.exploreCommunities)
       ? read(files.exploreCommunities)
       : '',
@@ -1141,6 +1151,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.explorePeople)
+      ? read(files.explorePeople)
+      : '',
+
     fs.existsSync(files.exploreCommunities)
       ? read(files.exploreCommunities)
       : '',
@@ -1351,6 +1365,26 @@ try {
   );
 }
 
+
+title('EXPLORE PEOPLE FEATURE');
+
+try {
+  const outputExplorePeople = execFileSync(
+    process.execPath,
+    ['scripts/test-explore-people-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputExplorePeople.trim());
+  ok('Explore People feature modular');
+} catch (error) {
+  fail('Explore People feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('EXPLORE COMMUNITIES FEATURE');
 
