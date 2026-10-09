@@ -46,6 +46,7 @@ const files = {
   publishSubmit: 'assets/js/features/publish-submit.js',
   feedListingCard: 'assets/js/features/feed-listing-card.js',
   feedPersonCard: 'assets/js/features/feed-person-card.js',
+  feedPostCard: 'assets/js/features/feed-post-card.js',
   css: 'assets/css/feed.css'
 };
 
@@ -127,6 +128,7 @@ for (const file of [
   files.householdCore,
   files.householdCreate,
   files.feedPersonCard,
+  files.feedPostCard,
   files.feedListingCard
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -773,6 +775,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedPostCard)
+      ? read(files.feedPostCard)
+      : '',
+
     fs.existsSync(files.feedPersonCard)
       ? read(files.feedPersonCard)
       : '',
@@ -922,6 +928,10 @@ if (
 
   const allJs =
     [
+    fs.existsSync(files.feedPostCard)
+      ? read(files.feedPostCard)
+      : '',
+
     fs.existsSync(files.feedPersonCard)
       ? read(files.feedPersonCard)
       : '',
@@ -1101,6 +1111,10 @@ if (
 
   const js =
     [
+    fs.existsSync(files.feedPostCard)
+      ? read(files.feedPostCard)
+      : '',
+
     fs.existsSync(files.feedPersonCard)
       ? read(files.feedPersonCard)
       : '',
@@ -1295,6 +1309,26 @@ try {
   );
 }
 
+
+title('FEED POST CARD FEATURE');
+
+try {
+  const outputFeedPostCard = execFileSync(
+    process.execPath,
+    ['scripts/test-feed-post-card-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputFeedPostCard.trim());
+  ok('Feed Post Card feature modular');
+} catch (error) {
+  fail('Feed Post Card feature modular');
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+}
 
 title('FEED PERSON CARD FEATURE');
 
