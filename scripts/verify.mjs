@@ -1377,6 +1377,26 @@ try {
   fail('Auth Utils feature modular');
 }
 
+title('PRIVACY PREFERENCES FEATURE');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-privacy-preferences-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output.trim());
+  ok('Privacy Preferences feature modular');
+} catch (error) {
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+  fail('Privacy Preferences feature modular');
+}
+
 title('LIVING EDITOR FEATURE');
 
 try {
