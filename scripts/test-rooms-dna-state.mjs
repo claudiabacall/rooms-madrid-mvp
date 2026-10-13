@@ -19,14 +19,29 @@ const session = app.slice(
   app.indexOf('function endSession()')
 );
 
-assert(
-  session.includes("db.from('rooms_dna')"),
-  'La sesion no consulta rooms_dna'
+const repository = fs.readFileSync(
+  'assets/js/features/session-repository.js',
+  'utf8'
 );
 
 assert(
-  session.includes('.maybeSingle()'),
+  session.includes('sessionRepository.loadSessionData(state.user.id)'),
+  'La sesion no utiliza el repositorio'
+);
+
+assert(
+  repository.includes("db.from('rooms_dna')"),
+  'El repositorio no consulta rooms_dna'
+);
+
+assert(
+  repository.includes('.maybeSingle()'),
   'Falta lectura opcional'
+);
+
+assert(
+  repository.includes(".eq('user_id', userId)"),
+  'La consulta DNA no filtra por usuario'
 );
 
 assert(

@@ -1397,6 +1397,26 @@ try {
   fail('Privacy Preferences feature modular');
 }
 
+title('SESSION REPOSITORY');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-session-repository.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output.trim());
+  ok('Session Repository');
+} catch (error) {
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+  fail('Session Repository');
+}
+
 title('LIVING EDITOR FEATURE');
 
 try {

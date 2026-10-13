@@ -5,25 +5,18 @@ import { execFileSync } from 'node:child_process';
 
 const previous = execFileSync(
   'git',
-  ['show', 'HEAD:assets/js/supabase-app.js'],
+  ['show', 'HEAD:assets/js/features/privacy-preferences.js'],
   { encoding: 'utf8' }
 );
 
-const start =
-  '  function normalizePreferencesRecord(preferences) {';
-const end = '\n  async function startSession(';
+const previousContext = { window: {} };
+vm.runInNewContext(previous, previousContext);
 
-assert.equal(previous.split(start).length, 2);
-assert.equal(previous.split(end).length, 2);
+const original =
+  previousContext.window.ROOMS_PRIVACY_PREFERENCES
+    ?.normalizePreferencesRecord;
 
-const originalFunction = previous.slice(
-  previous.indexOf(start),
-  previous.indexOf(end, previous.indexOf(start))
-);
-
-const original = vm.runInNewContext(
-  '(' + originalFunction.trim() + ')'
-);
+assert.equal(typeof original, 'function');
 
 const context = { window: {} };
 

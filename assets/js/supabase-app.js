@@ -19,6 +19,13 @@
   const { normalizePreferencesRecord } =
     window.ROOMS_PRIVACY_PREFERENCES;
 
+  const sessionRepository =
+    window.ROOMS_SESSION_REPOSITORY?.create({ db });
+
+  if (!sessionRepository) {
+    throw new Error('Rooms: falta Session Repository');
+  }
+
   const state = {
     user: null,
     profile: null,
@@ -764,31 +771,7 @@
       { data: matchPreferences },
       { data: userIntents },
       { data: roomsDna, error: roomsDnaError }
-    ] = await Promise.all([
-      db.from('profiles')
-        .select('*')
-        .eq('id', state.user.id)
-        .maybeSingle(),
-
-      db.from('onboarding_preferences')
-        .select('answers,updated_at')
-        .eq('user_id', state.user.id)
-        .maybeSingle(),
-
-      db.from('match_preferences')
-        .select('*')
-        .eq('user_id', state.user.id)
-        .maybeSingle(),
-
-      db.from('user_intents')
-        .select('intent')
-        .eq('user_id', state.user.id),
-
-      db.from('rooms_dna')
-        .select('*')
-        .eq('user_id', state.user.id)
-        .maybeSingle()
-    ]);
+    ] = await sessionRepository.loadSessionData(state.user.id);
 
     state.profile = profile;
 
