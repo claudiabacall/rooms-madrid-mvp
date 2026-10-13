@@ -316,7 +316,7 @@ function ensureOwnPublicProfileModal() {
 
       const livingRows =
         roomsDnaLivingRows(
-          state.matchPreferences
+          state.roomsDna
         );
 
       modal.querySelector(

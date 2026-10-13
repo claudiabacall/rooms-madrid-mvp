@@ -128,6 +128,13 @@ const dom =
 const { window } = dom;
 
 window.eval(
+  fs.readFileSync(
+    'assets/js/rooms-match-v2.js',
+    'utf8'
+  )
+);
+
+window.eval(
   featureSource
 );
 
@@ -284,103 +291,112 @@ ok(
 
 
 console.log(
-  '\n=== MATCHING FEATURE · CALCULO ==='
+  '\n=== MATCHING FEATURE · CALCULO V2 ==='
 );
 
-const match =
-  feature.calculateRealMatch({
-    zones: [
-      'chamberí'
-    ],
-
-    budget_min:
-      800,
-
-    budget_max:
-      1200,
-
-    move_in_date:
-      '2026-11-15',
-
-    duration:
-      'long',
-
-    living_visible:
-      true,
-
-    living: {
-      0: {
-        option: 1
-      },
-
-      1: {
-        option: 3
-      }
-    },
-
-    seeking: [
-      'room'
-    ]
-  });
+const match = feature.calculateRealMatch({
+  zones: ['chamberí'],
+  budget_min: 800,
+  budget_max: 1200,
+  move_in_date: '2026-11-15',
+  duration: 'long',
+  seeking: ['room'],
+  living_visible: false
+});
 
 assert(
-  match.comparedFactors === 5,
-  `Esperaba 5 factores y hay ${match.comparedFactors}`
+  match.comparedFactors === 4,
+  `Esperaba 4 factores y hay ${match.comparedFactors}`
+);
+
+for (const key of [
+  'zones',
+  'budget',
+  'date',
+  'duration'
+]) {
+  assert(
+    match.factors.find(item => item.key === key)?.score === 100,
+    `Factor incorrecto: ${key}`
+  );
+}
+
+assert(match.score === 100, 'Viabilidad incorrecta');
+
+assert(
+  !match.factors.some(item => item.key === 'living'),
+  'La convivencia V1 no debe afectar a la viabilidad'
 );
 
 assert(
-  match.factors.find(
-    item =>
-      item.key ===
-      'zones'
-  )?.score === 100,
-  'Zonas compatibles deberían puntuar 100'
+  match.livingMatch.score === null,
+  'Sin DNA autorizado no debe haber porcentaje'
+);
+
+ok('Viabilidad independiente de convivencia');
+
+const layer = score => ({
+  score,
+  confidence: 1
+});
+
+const dnaDimensions = Object.fromEntries(
+  [
+    'privacy',
+    'cleanliness',
+    'visitor_tolerance',
+    'sharing_style'
+  ].map(key => [
+    key,
+    {
+      self: layer(0.5),
+      preferred: layer(0.5),
+      importance: layer(0)
+    }
+  ])
+);
+
+state.roomsDna = {
+  model_version: 2,
+  dimensions: dnaDimensions
+};
+
+const dnaMatch = feature.calculateRealMatch({
+  zones: ['chamberí'],
+  living_visible: true,
+  dna_dimensions: dnaDimensions
+});
+
+assert(
+  dnaMatch.livingMatch.score === 100,
+  'DNA V2 compatible debe puntuar 100'
 );
 
 assert(
-  match.factors.find(
-    item =>
-      item.key ===
-      'budget'
-  )?.score === 100,
-  'Presupuesto solapado debería puntuar 100'
+  dnaMatch.livingMatch.comparedDimensions === 4,
+  'Deben compararse cuatro dimensiones'
 );
 
 assert(
-  match.factors.find(
-    item =>
-      item.key ===
-      'date'
-  )?.score === 100,
-  'Fecha a 14 días debería puntuar 100'
+  dnaMatch.comparedFactors === 1,
+  'Las dimensiones DNA no deben mezclarse con factores practicos'
 );
+
+ok('DNA V2 bidireccional separado de busqueda');
+
+const hiddenDna = feature.calculateRealMatch({
+  living_visible: false,
+  dna_dimensions: dnaDimensions
+});
 
 assert(
-  match.factors.find(
-    item =>
-      item.key ===
-      'duration'
-  )?.score === 100,
-  'Duración igual debería puntuar 100'
+  hiddenDna.livingMatch.score === null,
+  'DNA oculto no debe calcular compatibilidad'
 );
 
-assert(
-  match.factors.find(
-    item =>
-      item.key ===
-      'living'
-  )?.score === 75,
-  'Convivencia debería promediar 75'
-);
+state.roomsDna = null;
 
-assert(
-  match.score === 95,
-  `Score esperado 95 y salió ${match.score}`
-);
-
-ok(
-  'Cálculo de compatibilidad correcto'
-);
+ok('Privacidad V2 respetada');
 
 
 console.log(

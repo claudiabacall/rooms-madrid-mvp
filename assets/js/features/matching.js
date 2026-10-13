@@ -171,95 +171,32 @@ function normalizeMatchValue(value) {
 
 
       /*
-       * CONVIVENCIA
-       *
-       * Solo se usa si la RPC ha autorizado
-       * expresamente esos datos.
-       *
-       * Misma respuesta: 100
-       * Respuestas contiguas: 50
-       * Extremos opuestos: 0
+       * DNA V2: se calcula por separado.
+       * Nunca utilizar respuestas V1 como sustituto.
        */
-      const ownLiving =
-        ownAnswers.living || {};
+      const ownDna = state.roomsDna;
+      const dnaEngine = window.ROOMS_MATCH_V2;
 
-      const targetLiving =
-        target?.living_visible
-          ? target.living || {}
-          : {};
+      const targetDnaAllowed =
+        target?.living_visible === true &&
+        target?.dna_dimensions &&
+        typeof target.dna_dimensions === 'object' &&
+        !Array.isArray(target.dna_dimensions);
 
-      const livingNames = [
-        'Limpieza',
-        'Horarios',
-        'Ruido',
-        'Visitas',
-        'Fiestas en casa',
-        'Teletrabajo / estudio',
-        'Fumar',
-        'Mascotas'
-      ];
-
-      const livingScores = [];
-
-      Object.keys(ownLiving).forEach(key => {
-        const ownOption =
-          Number(ownLiving?.[key]?.option);
-
-        const targetOption =
-          Number(targetLiving?.[key]?.option);
-
-        if (
-          !Number.isInteger(ownOption) ||
-          !Number.isInteger(targetOption)
-        ) {
-          return;
-        }
-
-        const distance =
-          Math.abs(
-            ownOption -
-            targetOption
-          );
-
-        const score =
-          distance === 0
-            ? 100
-            : distance === 1
-              ? 50
-              : 0;
-
-        livingScores.push({
-          category:
-            livingNames[Number(key)] ||
-            `Convivencia ${key}`,
-          score
-        });
-      });
-
-      if (livingScores.length) {
-        const livingScore =
-          Math.round(
-            livingScores.reduce(
-              (total, item) =>
-                total + item.score,
-              0
-            ) /
-            livingScores.length
-          );
-
-        factors.push({
-          key: 'living',
-          label: 'Convivencia',
-          score: livingScore,
-          detail:
-            `${livingScores.length} ${
-              livingScores.length === 1
-                ? 'hábito comparado'
-                : 'hábitos comparados'
-            }`,
-          breakdown: livingScores
-        });
-      }
+      const livingMatch =
+        ownDna?.model_version === 2 &&
+        targetDnaAllowed &&
+        dnaEngine
+          ? dnaEngine.calculate(
+              ownDna.dimensions,
+              target.dna_dimensions
+            )
+          : {
+              score: null,
+              comparedDimensions: 0,
+              sufficientEvidence: false,
+              factors: []
+            };
 
 
       /*
@@ -306,7 +243,8 @@ function normalizeMatchValue(value) {
         score,
         factors,
         seekingInfo,
-        comparedFactors: factors.length
+        comparedFactors: factors.length,
+        livingMatch
       };
     }
 
@@ -429,6 +367,16 @@ function normalizeMatchValue(value) {
           ? '—'
           : `${match.score}%`;
 
+      const livingScoreLabel =
+        match.livingMatch?.score == null
+          ? 'Datos insuficientes'
+          : `${match.livingMatch.score}%`;
+
+      const livingDetail =
+        match.livingMatch?.score == null
+          ? 'No hay suficientes dimensiones DNA V2 autorizadas y comparables.'
+          : `${match.livingMatch.comparedDimensions} dimensiones comparadas en ambas direcciones.`;
+
       content.innerHTML = `
         <section class="real-match-hero">
 
@@ -437,9 +385,12 @@ function normalizeMatchValue(value) {
             ${escapeHtml(name.toUpperCase())}
           </small>
 
-          <strong>
-            ${escapeHtml(scoreLabel)}
-          </strong>
+          <h2>Convivencia · ROOMS DNA V2</h2>
+          <strong>${escapeHtml(livingScoreLabel)}</strong>
+          <p>${escapeHtml(livingDetail)}</p>
+
+          <h2>Viabilidad de búsqueda</h2>
+          <strong>${escapeHtml(scoreLabel)}</strong>
 
           <h2>
             ${
@@ -454,9 +405,9 @@ function normalizeMatchValue(value) {
           </h2>
 
           <p>
-            El porcentaje utiliza únicamente información
-            disponible y autorizada por la privacidad de
-            ambos perfiles.
+            Ambos resultados son independientes.
+            Solo se utilizan datos disponibles y autorizados
+            por la privacidad del perfil.
           </p>
 
         </section>
@@ -510,11 +461,11 @@ function normalizeMatchValue(value) {
         <aside class="real-match-method">
           <b>Cómo se calcula</b>
           <p>
-            Zona, presupuesto, fecha, duración y
-            convivencia se comparan solo cuando ambas
-            partes tienen datos disponibles. Ningún
-            dato privado oculto se utiliza para generar
-            este resultado.
+            La viabilidad compara zona, presupuesto,
+            fecha y duración. La convivencia compara
+            dimensiones DNA V2 en ambas direcciones,
+            cuando hay evidencia suficiente y autorización.
+            No se utilizan respuestas V1 ni datos ocultos.
           </p>
         </aside>
 

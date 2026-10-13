@@ -7,500 +7,439 @@
     notify,
     updateOwnProfile
   }) {
-  function ensureLivingEditorModal() {
-    let modal =
-      document.querySelector(
-        '#livingEditorModal'
+    let saving = false;
+    let openedLivingDna = null;
+
+    function getLivingQuestions() {
+      return (
+        window.ROOMS_DNA_V2?.interactions || []
+      ).filter(question =>
+        question.act === 'living'
       );
+    }
 
-    if (modal) return modal;
+    function escapeText(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+    }
 
-    const dna =
-      window.ROOMS_DNA;
+    function hasValidDna() {
+      const config = window.ROOMS_DNA_V2;
+      const dna = state.roomsDna;
 
-    modal =
-      document.createElement('div');
+      return Boolean(
+        state.user &&
+        dna &&
+        config &&
+        Number(dna.model_version) === config.version &&
+        dna.answers &&
+        typeof dna.answers === 'object' &&
+        !Array.isArray(dna.answers)
+      );
+    }
 
-    modal.className = 'modal';
-    modal.id = 'livingEditorModal';
-    modal.setAttribute(
-      'aria-hidden',
-      'true'
-    );
+    function ensureLivingEditorModal() {
+      let modal =
+        document.querySelector('#livingEditorModal');
 
-    modal.innerHTML = `
-      <div
-        class="backdrop"
-        data-close-living-editor>
-      </div>
+      if (modal) return modal;
 
-      <article class="detail living-editor-shell">
-        <header>
-          <div>
-            <small>ROOMS DNA</small>
-            <h2>Cómo vivo</h2>
-            <p>
-              Actualiza las respuestas que Rooms utiliza
-              para calcular compatibilidad de convivencia.
-            </p>
-          </div>
+      modal = document.createElement('div');
+      modal.id = 'livingEditorModal';
+      modal.className = 'modal';
+      modal.setAttribute('aria-hidden', 'true');
 
-          <button
-            type="button"
-            data-close-living-editor
-            aria-label="Cerrar">×</button>
-        </header>
+      const questions = getLivingQuestions();
 
-        <form id="livingEditorForm">
+      modal.innerHTML = `
+        <div class="backdrop"
+          data-close-living-editor></div>
 
-          <div class="living-editor-groups">
+        <article class="detail living-editor-shell">
+          <header>
+            <div>
+              <small>ROOMS DNA V2</small>
+              <h2>Cómo vivo</h2>
+              <p>
+                Actualiza cómo convives.
+                Tu ROOMS DNA se recalculará
+                al guardar los cambios.
+              </p>
+            </div>
 
-            ${dna.thisOrThat
-              .filter(question =>
-                question.target === 'living_self'
-              )
-              .map(question => `
+            <button type="button"
+              data-close-living-editor
+              aria-label="Cerrar">×</button>
+          </header>
+
+          <form id="livingEditorForm">
+            <div class="living-editor-groups">
+              ${questions.map(question => `
                 <section class="living-editor-group">
-                  <small>${question.title}</small>
+                  <small>${escapeText(question.prompt)}</small>
 
                   <div>
-                    <button
-                      type="button"
-                      data-living-dna-this="${question.id}"
-                      data-living-dna-value="${question.left.id}"
-                      aria-pressed="false">
-                      ${question.left.label}
-                    </button>
-
-                    <button
-                      type="button"
-                      data-living-dna-this="${question.id}"
-                      data-living-dna-value="${question.right.id}"
-                      aria-pressed="false">
-                      ${question.right.label}
-                    </button>
+                    ${(question.options || []).map(option => `
+                      <button
+                        type="button"
+                        data-living-v2-question="${escapeText(question.id)}"
+                        data-living-v2-option="${escapeText(option.id)}"
+                        aria-pressed="false">
+                        ${escapeText(option.label)}
+                      </button>
+                    `).join('')}
                   </div>
                 </section>
-              `)
-              .join('')}
+              `).join('')}
+            </div>
 
-            ${dna.scenarios
-              .map(question => `
-                <section class="living-editor-group">
-                  <small>${question.title}</small>
+            <button class="cta" type="submit">
+              Guardar convivencia
+            </button>
+          </form>
+        </article>
+      `;
 
-                  <div>
-                    ${dna.scenarioScale
-                      .map(option => `
-                        <button
-                          type="button"
-                          data-living-dna-scenario="${question.id}"
-                          data-living-dna-value="${option.id}"
-                          aria-pressed="false">
-                          ${option.label}
-                        </button>
-                      `)
-                      .join('')}
-                  </div>
-                </section>
-              `)
-              .join('')}
+      document.body.appendChild(modal);
 
-            ${dna.dynamicImportance
-              .map(question => `
-                <section class="living-editor-group">
-                  <small>${question.prompt}</small>
+      modal.addEventListener('click', event => {
+        const button = event.target.closest(
+          '[data-living-v2-question]'
+        );
 
-                  <div>
-                    ${dna.importanceScale
-                      .map(option => `
-                        <button
-                          type="button"
-                          data-living-dna-importance="${question.id}"
-                          data-living-dna-value="${option.id}"
-                          aria-pressed="false">
-                          ${option.label}
-                        </button>
-                      `)
-                      .join('')}
-                  </div>
-                </section>
-              `)
-              .join('')}
+        if (!button || saving) return;
 
-            ${dna.dealbreakers
-              .map(question => `
-                <section class="living-editor-group">
-                  <small>${question.label}</small>
+        const questionId =
+          button.dataset.livingV2Question;
 
-                  <div>
-                    ${dna.dealbreakerScale
-                      .map(option => `
-                        <button
-                          type="button"
-                          data-living-dna-dealbreaker="${question.id}"
-                          data-living-dna-value="${option.id}"
-                          aria-pressed="false">
-                          ${option.label}
-                        </button>
-                      `)
-                      .join('')}
-                  </div>
-                </section>
-              `)
-              .join('')}
+        modal.querySelectorAll(
+          '[data-living-v2-question]'
+        ).forEach(item => {
+          if (
+            item.dataset.livingV2Question !==
+            questionId
+          ) {
+            return;
+          }
 
-          </div>
+          const active = item === button;
 
-          <button
-            class="cta"
-            type="submit">
-            Guardar cambios
-          </button>
-        </form>
-      </article>
-    `;
-
-    document.body.appendChild(modal);
-
-    const selectionGroups = [
-      'data-living-dna-this',
-      'data-living-dna-scenario',
-      'data-living-dna-importance',
-      'data-living-dna-dealbreaker'
-    ];
-
-    selectionGroups.forEach(attribute => {
-      modal
-        .querySelectorAll(`[${attribute}]`)
-        .forEach(button => {
-          button.addEventListener(
-            'click',
-            () => {
-              const value =
-                button.getAttribute(attribute);
-
-              modal
-                .querySelectorAll(
-                  `[${attribute}="${value}"]`
-                )
-                .forEach(item => {
-                  const active =
-                    item === button;
-
-                  item.classList.toggle(
-                    'active',
-                    active
-                  );
-
-                  item.setAttribute(
-                    'aria-pressed',
-                    active
-                      ? 'true'
-                      : 'false'
-                  );
-                });
-            }
+          item.classList.toggle('active', active);
+          item.setAttribute(
+            'aria-pressed',
+            active ? 'true' : 'false'
           );
         });
-    });
+      });
 
-    modal
-      .querySelector('#livingEditorForm')
-      .addEventListener(
-        'submit',
-        async event => {
+      modal.querySelector('#livingEditorForm')
+        .addEventListener('submit', async event => {
           event.preventDefault();
 
-          const current =
-            state.matchPreferences || {};
+          if (saving) return;
 
-          const livingSelf = {
-            ...(
-              current.living_self || {}
-            ),
+          if (!hasValidDna()) {
+            notify(
+              'Completa primero tu ROOMS DNA V2'
+            );
+            return;
+          }
 
-            this_or_that: {
-              ...(
-                current.living_self
-                  ?.this_or_that || {}
+          const config = window.ROOMS_DNA_V2;
+          const engine = window.ROOMS_DNA_ENGINE;
+          const archetypes =
+            window.ROOMS_DNA_ARCHETYPES;
+
+          if (!engine || !archetypes) {
+            notify(
+              'No se pudo preparar tu ROOMS DNA'
+            );
+            return;
+          }
+
+          if (
+            !openedLivingDna ||
+            openedLivingDna.userId !== state.user?.id ||
+            !Number.isSafeInteger(openedLivingDna.revision) ||
+            openedLivingDna.revision < 0 ||
+            openedLivingDna.revision !== state.roomsDna?.revision
+          ) {
+            notify('Tu DNA ha cambiado. Reabre el editor.');
+            return;
+          }
+
+          const answers = {
+            ...openedLivingDna.answers
+          };
+
+          const questions = getLivingQuestions();
+
+          for (const question of questions) {
+            const selected = [
+              ...modal.querySelectorAll(
+                '[data-living-v2-question].active'
               )
-            },
+            ].find(button =>
+              button.dataset.livingV2Question ===
+              question.id
+            );
 
-            scenarios: {
-              ...(
-                current.living_self
-                  ?.scenarios || {}
+            const optionId =
+              selected?.dataset.livingV2Option;
+
+            if (
+              !question.options?.some(option =>
+                option.id === optionId
               )
+            ) {
+              notify(
+                'Responde todas las preguntas de convivencia'
+              );
+              return;
             }
-          };
 
-          modal
-            .querySelectorAll(
-              '[data-living-dna-this].active'
-            )
-            .forEach(button => {
-              livingSelf.this_or_that[
-                button.dataset.livingDnaThis
-              ] =
-                button.dataset.livingDnaValue;
-            });
+            answers[question.id] = optionId;
+          }
 
-          modal
-            .querySelectorAll(
-              '[data-living-dna-scenario].active'
-            )
-            .forEach(button => {
-              livingSelf.scenarios[
-                button.dataset.livingDnaScenario
-              ] =
-                button.dataset.livingDnaValue;
-            });
+          let payload;
 
-          const livingImportance = {
-            ...(
-              current.living_importance ||
-              {}
-            )
-          };
+          try {
+            const dna =
+              engine.calculate(answers, config);
 
-          modal
-            .querySelectorAll(
-              '[data-living-dna-importance].active'
-            )
-            .forEach(button => {
-              livingImportance[
-                button.dataset
-                  .livingDnaImportance
-              ] =
-                button.dataset.livingDnaValue;
-            });
+            if (
+              dna.version !== config.version ||
+              dna.ignoredAnswers?.length
+            ) {
+              throw new Error(
+                'Respuestas DNA V2 incompatibles'
+              );
+            }
 
-          const dealbreakers = {
-            ...(
-              current.dealbreakers ||
-              {}
-            )
-          };
+            const classification =
+              archetypes.classify(dna);
 
-          modal
-            .querySelectorAll(
-              '[data-living-dna-dealbreaker].active'
-            )
-            .forEach(button => {
-              dealbreakers[
-                button.dataset
-                  .livingDnaDealbreaker
-              ] =
-                button.dataset.livingDnaValue ===
-                'dealbreaker';
-            });
+            if (!classification?.primary) {
+              throw new Error(
+                'Clasificación DNA no disponible'
+              );
+            }
 
-          const { data, error } =
-            await db
-              .from('match_preferences')
-              .update({
-                living_self:
-                  livingSelf,
+            const compact = archetype =>
+              archetype
+                ? {
+                    id: archetype.id,
+                    name: archetype.name,
+                    tagline: archetype.tagline,
+                    fit: archetype.fit
+                  }
+                : null;
 
-                living_importance:
-                  livingImportance,
+            const evidence = [];
 
-                dealbreakers,
+            for (
+              const [dimension, layers] of
+              Object.entries(dna.dimensions || {})
+            ) {
+              for (const layer of [
+                'self',
+                'preferred',
+                'importance'
+              ]) {
+                for (
+                  const item of
+                  layers?.[layer]?.evidence || []
+                ) {
+                  evidence.push({
+                    dimension,
+                    layer,
+                    ...item
+                  });
+                }
+              }
+            }
 
-                updated_at:
-                  new Date().toISOString()
-              })
-              .eq(
-                'user_id',
-                state.user.id
-              )
+            payload = {
+              answers,
+              dimensions: dna.dimensions || {},
+              categories: dna.categorical || {},
+              classification: {
+                primary:
+                  compact(classification.primary),
+                secondary:
+                  compact(classification.secondary),
+                ranked:
+                  (classification.ranked || [])
+                    .map(compact)
+              },
+              evidence,
+              calculated_at:
+                new Date().toISOString(),
+              updated_at:
+                new Date().toISOString()
+            };
+          } catch (error) {
+            console.error(
+              'Rooms: error calculando DNA V2',
+              error
+            );
+
+            notify(
+              'No se pudo recalcular tu ROOMS DNA'
+            );
+            return;
+          }
+
+          saving = true;
+
+          const submitButton = modal.querySelector(
+            '#livingEditorForm [type="submit"]'
+          );
+
+          if (submitButton) {
+            submitButton.disabled = true;
+          }
+
+          try {
+            const userId = state.user.id;
+
+            const { data, error } = await db
+              .from('rooms_dna')
+              .update(payload)
+              .eq('user_id', userId)
+              .eq('model_version', config.version)
+              .eq('revision', openedLivingDna.revision)
               .select()
               .single();
 
-          if (error) {
+            if (error || !data) {
+              throw error ||
+                new Error('DNA V2 no encontrado');
+            }
+
+            // No modificar estado hasta confirmar Supabase.
+            if (state.user?.id !== userId) {
+              return;
+            }
+
+            state.roomsDna = data;
+
+            updateOwnProfile(
+              state.profile,
+              state.preferences
+            );
+
+            modal.classList.remove('open');
+            modal.setAttribute(
+              'aria-hidden',
+              'true'
+            );
+
+            document.body.style.overflow = '';
+
+            notify('Rooms DNA actualizado');
+          } catch (error) {
             console.error(
-              'Rooms: error actualizando ROOMS DNA',
+              'Rooms: error guardando DNA V2',
               error
             );
 
             notify(
               'No se pudieron guardar tus hábitos'
             );
+          } finally {
+            saving = false;
 
-            return;
+            if (submitButton) {
+              submitButton.disabled = false;
+            }
           }
+        });
 
-          state.matchPreferences =
-            data;
+      return modal;
+    }
 
-          updateOwnProfile(
-            state.profile,
-            state.preferences
-          );
+    function openLivingEditor() {
+      if (!state.user) return;
 
-          modal.classList.remove('open');
-          modal.setAttribute(
-            'aria-hidden',
-            'true'
-          );
+      if (!hasValidDna()) {
+        notify(
+          'Completa primero tu ROOMS DNA V2'
+        );
+        return;
+      }
 
-          document.body.style.overflow =
-            '';
+      const modal = ensureLivingEditorModal();
 
-          notify(
-            'Rooms DNA actualizado'
-          );
-        }
+      openedLivingDna = {
+        userId: state.user.id,
+        revision: state.roomsDna.revision,
+        answers: JSON.parse(
+          JSON.stringify(state.roomsDna.answers)
+        )
+      };
+
+      const answers = openedLivingDna.answers;
+
+      modal.querySelectorAll(
+        '[data-living-v2-question]'
+      ).forEach(button => {
+        const active =
+          answers[
+            button.dataset.livingV2Question
+          ] === button.dataset.livingV2Option;
+
+        button.classList.toggle(
+          'active',
+          active
+        );
+
+        button.setAttribute(
+          'aria-pressed',
+          active ? 'true' : 'false'
+        );
+      });
+
+      modal.classList.add('open');
+      modal.setAttribute(
+        'aria-hidden',
+        'false'
       );
 
-    return modal;
-  }
-
-  function openLivingEditor() {
-    if (!state.user) return;
-
-    const modal =
-      ensureLivingEditorModal();
-
-    const current =
-      state.matchPreferences || {};
-
-    const livingSelf =
-      current.living_self || {};
-
-    const thisOrThat =
-      livingSelf.this_or_that || {};
-
-    const scenarios =
-      livingSelf.scenarios || {};
-
-    modal
-      .querySelectorAll(
-        '[data-living-dna-this]'
-      )
-      .forEach(button => {
-        const active =
-          thisOrThat[
-            button.dataset.livingDnaThis
-          ] ===
-          button.dataset.livingDnaValue;
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal
-      .querySelectorAll(
-        '[data-living-dna-scenario]'
-      )
-      .forEach(button => {
-        const active =
-          scenarios[
-            button.dataset
-              .livingDnaScenario
-          ] ===
-          button.dataset.livingDnaValue;
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal
-      .querySelectorAll(
-        '[data-living-dna-importance]'
-      )
-      .forEach(button => {
-        const active =
-          current.living_importance?.[
-            button.dataset
-              .livingDnaImportance
-          ] ===
-          button.dataset.livingDnaValue;
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal
-      .querySelectorAll(
-        '[data-living-dna-dealbreaker]'
-      )
-      .forEach(button => {
-        const value =
-          Boolean(
-            current.dealbreakers?.[
-              button.dataset
-                .livingDnaDealbreaker
-            ]
-          )
-            ? 'dealbreaker'
-            : 'adapt';
-
-        const active =
-          value ===
-          button.dataset.livingDnaValue;
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal.classList.add('open');
-    modal.setAttribute(
-      'aria-hidden',
-      'false'
-    );
-
-    document.body.style.overflow =
-      'hidden';
-  }
-
-  document.addEventListener('click', event => {
-    const livingEdit = event.target.closest('[data-open-living-editor]');
-
-    if (livingEdit) {
-      event.preventDefault();
-      openLivingEditor();
-      return;
+      document.body.style.overflow = 'hidden';
     }
 
-    if (event.target.closest('[data-close-living-editor]')) {
-      const modal = document.querySelector('#livingEditorModal');
-      if (modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
+    document.addEventListener('click', event => {
+      if (
+        event.target.closest(
+          '[data-open-living-editor]'
+        )
+      ) {
+        event.preventDefault();
+        openLivingEditor();
+        return;
       }
-      document.body.style.overflow = '';
-    }
-  });
+
+      if (
+        event.target.closest(
+          '[data-close-living-editor]'
+        )
+      ) {
+        const modal =
+          document.querySelector('#livingEditorModal');
+
+        modal?.classList.remove('open');
+        modal?.setAttribute(
+          'aria-hidden',
+          'true'
+        );
+
+        document.body.style.overflow = '';
+      }
+    });
 
     return {
       ensureLivingEditorModal,

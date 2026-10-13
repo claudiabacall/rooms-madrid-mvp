@@ -15,6 +15,7 @@
     user: null,
     profile: null,
     preferences: null,
+    roomsDna: null,
     targetProfile: null,
     reportTarget: null,
     blockTarget: null,
@@ -843,7 +844,8 @@
       { data: profile },
       { data: preferences },
       { data: matchPreferences },
-      { data: userIntents }
+      { data: userIntents },
+      { data: roomsDna, error: roomsDnaError }
     ] = await Promise.all([
       db.from('profiles')
         .select('*')
@@ -862,7 +864,12 @@
 
       db.from('user_intents')
         .select('intent')
+        .eq('user_id', state.user.id),
+
+      db.from('rooms_dna')
+        .select('*')
         .eq('user_id', state.user.id)
+        .maybeSingle()
     ]);
 
     state.profile = profile;
@@ -872,6 +879,16 @@
 
     state.matchPreferences =
       matchPreferences || null;
+
+    if (roomsDnaError) {
+      console.error(
+        'Rooms: error cargando DNA V2',
+        roomsDnaError
+      );
+    }
+
+    state.roomsDna =
+      roomsDnaError ? null : roomsDna || null;
 
     state.userIntents =
       (userIntents || [])
@@ -1011,6 +1028,7 @@
     state.user = null;
     state.profile = null;
     state.preferences = null;
+    state.roomsDna = null;
     state.targetProfile = null;
     state.reportTarget = null;
     state.blockTarget = null;
@@ -1123,61 +1141,53 @@
     );
   }
 
-  function roomsDnaLivingRows(matchPreferences) {
-    const dna = window.ROOMS_DNA;
-    const livingSelf =
-      matchPreferences?.living_self || {};
+  function roomsDnaLivingRows(roomsDna) {
+    const config = window.ROOMS_DNA_V2;
 
-    const thisOrThat =
-      livingSelf.this_or_that || {};
+    if (
+      !config ||
+      !roomsDna ||
+      Number(roomsDna.model_version) !== config.version
+    ) {
+      return [];
+    }
 
-    const scenarios =
-      livingSelf.scenarios || {};
-
-    if (!dna) return [];
-
+    const dimensions = roomsDna.dimensions || {};
     const rows = [];
 
-    dna.thisOrThat
-      .filter(question =>
-        question.target === 'living_self'
-      )
-      .forEach(question => {
-        const selected =
-          thisOrThat[question.id];
+    for (const [key, definition] of Object.entries(
+      config.dimensions || {}
+    )) {
+      const self = dimensions[key]?.self;
 
-        const option =
-          question.left.id === selected
-            ? question.left.label
-            : question.right.id === selected
-              ? question.right.label
-              : null;
+      if (!self) continue;
 
-        if (option) {
-          rows.push([
-            question.title,
-            option
-          ]);
-        }
-      });
+      const score = Number(self.score);
+      const confidence = Number(self.confidence);
 
-    dna.scenarios.forEach(question => {
-      const selected =
-        scenarios[question.id];
-
-      const option =
-        dna.scenarioScale
-          .find(item =>
-            item.id === selected
-          );
-
-      if (option) {
-        rows.push([
-          question.title,
-          option.label
-        ]);
+      if (
+        !Number.isFinite(score) ||
+        !Number.isFinite(confidence) ||
+        confidence < 0.2 ||
+        !Array.isArray(self.evidence) ||
+        self.evidence.length === 0
+      ) {
+        continue;
       }
-    });
+
+      let label = 'Equilibrado';
+
+      if (score <= -0.25) {
+        label = definition.low;
+      } else if (score >= 0.25) {
+        label = definition.high;
+      }
+
+      rows.push([
+        definition.label,
+        label
+      ]);
+    }
 
     return rows;
   }
@@ -1249,7 +1259,7 @@
     if (livingGrid) {
       const rows =
         roomsDnaLivingRows(
-          state.matchPreferences
+          state.roomsDna
         );
 
       livingGrid.innerHTML =
@@ -1358,10 +1368,11 @@
       profile.move_in_date,
       profile.duration,
       profile.interests?.length,
-      state.matchPreferences?.living_self &&
-        Object.keys(
-          state.matchPreferences.living_self
-        ).length
+      Boolean(
+        state.roomsDna?.model_version ===
+          window.ROOMS_DNA_V2?.version &&
+        roomsDnaLivingRows(state.roomsDna).length
+      )
     ];
 
     const completion =
@@ -2860,6 +2871,8 @@
 
       return false;
     }
+
+    state.roomsDna = roomsDnaResult.data;
 
     const deleteIntentsResult =
       await db
@@ -4386,708 +4399,109 @@
     openLivingEditor
   } = livingEditorFeature;
 
-  function ensureSearchPreferencesModal() {
-    let modal =
-      document.querySelector(
-        '#searchPreferencesModal'
-      );
+  const searchPreferencesEditorFeature =
+    window.ROOMS_SEARCH_PREFERENCES_EDITOR_FEATURE?.create({
+      state,
+      db,
+      notify,
+      seekingFromIntents,
+      updateOwnProfile,
+      openProfileEditor
+    });
 
-    if (modal) return modal;
-
-    modal =
-      document.createElement('div');
-
-    modal.className = 'modal';
-    modal.id =
-      'searchPreferencesModal';
-
-    modal.setAttribute(
-      'aria-hidden',
-      'true'
+  if (!searchPreferencesEditorFeature) {
+    throw new Error(
+      'Rooms: no se ha cargado Search Preferences Editor'
     );
-
-    modal.innerHTML = `
-      <div
-        class="backdrop"
-        data-close-search-preferences>
-      </div>
-
-      <article class="detail search-preferences-shell">
-        <header>
-          <div>
-            <small>TU BÚSQUEDA</small>
-            <h2>Qué busco</h2>
-            <p>
-              Puedes cambiar lo que necesitas ahora
-              sin modificar tu Rooms DNA.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            data-close-search-preferences
-            aria-label="Cerrar">×</button>
-        </header>
-
-        <form id="searchPreferencesForm">
-
-          <section class="search-editor-section">
-            <small>¿QUÉ QUIERES HACER?</small>
-
-            <div class="search-editor-options">
-              <button
-                type="button"
-                data-search-intent="find_room">
-                Encontrar una habitación
-              </button>
-
-              <button
-                type="button"
-                data-search-intent="find_apartment">
-                Encontrar un piso
-              </button>
-
-              <button
-                type="button"
-                data-search-intent="find_mates_for_home">
-                Compañeros para mi casa
-              </button>
-
-              <button
-                type="button"
-                data-search-intent="find_mates_to_search">
-                Compañeros para buscar juntos
-              </button>
-            </div>
-          </section>
-
-          <section class="search-editor-section">
-            <label>
-              Zonas
-              <input
-                id="searchZones"
-                type="text"
-                placeholder="Chamberí, Moncloa, Retiro">
-              <small>
-                Separa varias zonas con comas.
-              </small>
-            </label>
-          </section>
-
-          <section class="search-editor-section">
-            <small>PRESUPUESTO MENSUAL</small>
-
-            <div class="search-budget-grid">
-              <label>
-                Mínimo
-                <input
-                  id="searchBudgetMin"
-                  type="number"
-                  min="0"
-                  step="50"
-                  placeholder="600">
-              </label>
-
-              <label>
-                Máximo
-                <input
-                  id="searchBudgetMax"
-                  type="number"
-                  min="0"
-                  step="50"
-                  placeholder="1000">
-              </label>
-            </div>
-
-            <label class="search-over-budget">
-              <input
-                id="searchBudgetOpen"
-                type="checkbox">
-              Estoy abierto/a a más de 4.000 €
-            </label>
-          </section>
-
-          <section class="search-editor-section">
-            <small>ENTRADA</small>
-
-            <div class="search-date-grid">
-              <label>
-                Fecha
-                <input
-                  id="searchMoveDate"
-                  type="date">
-              </label>
-
-              <label class="search-flexible">
-                <input
-                  id="searchMoveFlexible"
-                  type="checkbox">
-                Soy flexible
-              </label>
-            </div>
-          </section>
-
-          <section class="search-editor-section">
-            <small>DURACIÓN</small>
-
-            <div class="search-editor-options search-duration-options">
-              <button type="button" data-search-duration="1-3">1–3 meses</button>
-              <button type="button" data-search-duration="3-6">3–6 meses</button>
-              <button type="button" data-search-duration="6-12">6–12 meses</button>
-              <button type="button" data-search-duration="12+">Más de 1 año</button>
-              <button type="button" data-search-duration="unknown">No lo sé</button>
-            </div>
-          </section>
-
-          <button
-            class="cta"
-            type="submit">
-            Guardar búsqueda
-          </button>
-        </form>
-      </article>
-    `;
-
-    document.body.appendChild(modal);
-
-    modal
-      .querySelectorAll(
-        '[data-search-intent]'
-      )
-      .forEach(button => {
-        button.addEventListener(
-          'click',
-          () => {
-            const active =
-              !button.classList.contains(
-                'active'
-              );
-
-            button.classList.toggle(
-              'active',
-              active
-            );
-
-            button.setAttribute(
-              'aria-pressed',
-              active ? 'true' : 'false'
-            );
-          }
-        );
-      });
-
-    modal
-      .querySelectorAll(
-        '[data-search-duration]'
-      )
-      .forEach(button => {
-        button.addEventListener(
-          'click',
-          () => {
-            modal
-              .querySelectorAll(
-                '[data-search-duration]'
-              )
-              .forEach(item => {
-                const active =
-                  item === button;
-
-                item.classList.toggle(
-                  'active',
-                  active
-                );
-
-                item.setAttribute(
-                  'aria-pressed',
-                  active
-                    ? 'true'
-                    : 'false'
-                );
-              });
-          }
-        );
-      });
-
-    modal
-      .querySelector(
-        '#searchPreferencesForm'
-      )
-      .addEventListener(
-        'submit',
-        async event => {
-          event.preventDefault();
-
-          const intents = [
-            ...modal.querySelectorAll(
-              '[data-search-intent].active'
-            )
-          ].map(
-            button =>
-              button.dataset.searchIntent
-          );
-
-          if (!intents.length) {
-            notify(
-              'Selecciona al menos qué estás buscando'
-            );
-            return;
-          }
-
-          const seeking =
-            seekingFromIntents(intents);
-
-          const zones =
-            modal
-              .querySelector('#searchZones')
-              .value
-              .split(',')
-              .map(value => value.trim())
-              .filter(Boolean);
-
-          const minValue =
-            modal.querySelector(
-              '#searchBudgetMin'
-            ).value;
-
-          const maxValue =
-            modal.querySelector(
-              '#searchBudgetMax'
-            ).value;
-
-          const over4000 =
-            modal.querySelector(
-              '#searchBudgetOpen'
-            ).checked;
-
-          const budgetMin =
-            minValue
-              ? Number(minValue)
-              : null;
-
-          const budgetMax =
-            over4000
-              ? null
-              : maxValue
-                ? Number(maxValue)
-                : null;
-
-          if (
-            budgetMin &&
-            budgetMax &&
-            budgetMin > budgetMax
-          ) {
-            notify(
-              'El presupuesto mínimo no puede superar el máximo'
-            );
-            return;
-          }
-
-          const moveDate =
-            modal.querySelector(
-              '#searchMoveDate'
-            ).value || null;
-
-          const flexible =
-            modal.querySelector(
-              '#searchMoveFlexible'
-            ).checked;
-
-          const duration =
-            modal.querySelector(
-              '[data-search-duration].active'
-            )?.dataset.searchDuration ||
-            null;
-
-          const answers = {
-            ...(state.preferences?.answers || {}),
-
-            seeking,
-            zones,
-
-            budget: {
-              ...(
-                state.preferences
-                  ?.answers
-                  ?.budget || {}
-              ),
-
-              min: budgetMin,
-              max: budgetMax,
-              over4000
-            },
-
-            move: {
-              ...(
-                state.preferences
-                  ?.answers
-                  ?.move || {}
-              ),
-
-              date: moveDate,
-              flexible,
-              duration
-            }
-          };
-
-          const deleteResult =
-            await db
-              .from('user_intents')
-              .delete()
-              .eq(
-                'user_id',
-                state.user.id
-              );
-
-          if (deleteResult.error) {
-            console.error(
-              'Rooms: error limpiando intenciones',
-              deleteResult.error
-            );
-
-            notify(
-              'No se pudo actualizar tu búsqueda'
-            );
-
-            return;
-          }
-
-          const insertResult =
-            await db
-              .from('user_intents')
-              .insert(
-                intents.map(intent => ({
-                  user_id:
-                    state.user.id,
-                  intent
-                }))
-              );
-
-          if (insertResult.error) {
-            console.error(
-              'Rooms: error guardando intenciones',
-              insertResult.error
-            );
-
-            notify(
-              'No se pudo actualizar tu búsqueda'
-            );
-
-            return;
-          }
-
-          const [
-            profileResult,
-            preferencesResult
-          ] =
-            await Promise.all([
-              db
-                .from('profiles')
-                .update({
-                  seeking,
-                  zones,
-                  budget_min:
-                    budgetMin,
-                  budget_max:
-                    budgetMax,
-                  move_in_date:
-                    moveDate,
-                  duration
-                })
-                .eq(
-                  'id',
-                  state.user.id
-                )
-                .select()
-                .single(),
-
-              db
-                .from(
-                  'onboarding_preferences'
-                )
-                .upsert({
-                  user_id:
-                    state.user.id,
-                  answers
-                })
-            ]);
-
-          if (
-            profileResult.error ||
-            preferencesResult.error
-          ) {
-            console.error(
-              'Rooms: error actualizando búsqueda',
-              profileResult.error,
-              preferencesResult.error
-            );
-
-            notify(
-              'No se pudo actualizar tu búsqueda'
-            );
-
-            return;
-          }
-
-          state.profile =
-            profileResult.data;
-
-          state.preferences = {
-            answers
-          };
-
-          state.userIntents =
-            [...new Set(intents)];
-
-          state.profiles.set(
-            state.profile.id,
-            state.profile
-          );
-
-          updateOwnProfile(
-            state.profile,
-            state.preferences
-          );
-
-          modal.classList.remove('open');
-          modal.setAttribute(
-            'aria-hidden',
-            'true'
-          );
-
-          document.body.style.overflow =
-            '';
-
-          notify(
-            'Tu búsqueda se ha actualizado'
-          );
-        }
-      );
-
-    return modal;
   }
 
-  function openSearchPreferencesEditor() {
-    if (!state.profile) return;
+  const {
+    ensureSearchPreferencesModal,
+    openSearchPreferencesEditor
+  } = searchPreferencesEditorFeature;
 
-    const modal =
-      ensureSearchPreferencesModal();
+  let savingHomePreferences = false;
+  let openedHomeDna = null;
 
-    const intents =
-      new Set(
-        state.userIntents || []
-      );
-
-    modal
-      .querySelectorAll(
-        '[data-search-intent]'
-      )
-      .forEach(button => {
-        const active =
-          intents.has(
-            button.dataset.searchIntent
-          );
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal.querySelector(
-      '#searchZones'
-    ).value =
-      (state.profile.zones || [])
-        .join(', ');
-
-    modal.querySelector(
-      '#searchBudgetMin'
-    ).value =
-      state.profile.budget_min ?? '';
-
-    modal.querySelector(
-      '#searchBudgetMax'
-    ).value =
-      state.profile.budget_max ?? '';
-
-    modal.querySelector(
-      '#searchBudgetOpen'
-    ).checked =
-      Boolean(
-        state.preferences
-          ?.answers
-          ?.budget
-          ?.over4000
-      );
-
-    modal.querySelector(
-      '#searchMoveDate'
-    ).value =
-      state.profile.move_in_date ||
-      '';
-
-    modal.querySelector(
-      '#searchMoveFlexible'
-    ).checked =
-      Boolean(
-        state.preferences
-          ?.answers
-          ?.move
-          ?.flexible
-      );
-
-    modal
-      .querySelectorAll(
-        '[data-search-duration]'
-      )
-      .forEach(button => {
-        const active =
-          button.dataset
-            .searchDuration ===
-          state.profile.duration;
-
-        button.classList.toggle(
-          'active',
-          active
-        );
-
-        button.setAttribute(
-          'aria-pressed',
-          active ? 'true' : 'false'
-        );
-      });
-
-    modal.classList.add('open');
-
-    modal.setAttribute(
-      'aria-hidden',
-      'false'
-    );
-
-    document.body.style.overflow =
-      'hidden';
+  function getHomeV2Question() {
+    return window.ROOMS_DNA_V2?.interactions
+      ?.find(item =>
+        item.id === 'home_priorities' &&
+        item.type === 'priority_board'
+      ) || null;
   }
 
-  document.addEventListener('click', event => {
-    if (
-      event.target.closest(
-        '[data-open-search-preferences]'
-      )
-    ) {
-      event.preventDefault();
-      openSearchPreferencesEditor();
-      return;
-    }
+  function hasHomeV2Dna() {
+    const dna = state.roomsDna;
+    const config = window.ROOMS_DNA_V2;
 
-    const completionAction =
-      event.target.closest(
-        '[data-profile-completion-action]'
-      );
-
-    if (completionAction) {
-      event.preventDefault();
-
-      if (
-        completionAction.dataset
-          .profileCompletionAction === 'search'
-      ) {
-        openSearchPreferencesEditor();
-      } else {
-        openProfileEditor();
-      }
-    }
-  });
-
-
-  document.addEventListener('click', event => {
-    if (event.target.closest('[data-close-search-preferences]')) {
-      const modal = document.querySelector('#searchPreferencesModal');
-
-      if (modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-
-      document.body.style.overflow = '';
-    }
-  });
-
+    return Boolean(
+      state.user &&
+      dna &&
+      config &&
+      Number(dna.model_version) === config.version &&
+      dna.answers &&
+      typeof dna.answers === 'object' &&
+      !Array.isArray(dna.answers)
+    );
+  }
 
   function ensureHomePreferencesModal() {
     let modal =
-      document.querySelector(
-        '#homePreferencesModal'
-      );
+      document.querySelector('#homePreferencesModal');
 
     if (modal) return modal;
 
-    const dna =
-      window.ROOMS_DNA;
+    const question = getHomeV2Question();
+    if (!question) return null;
 
-    modal =
-      document.createElement('div');
+    const escapeText = value =>
+      String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
 
+    modal = document.createElement('div');
     modal.className = 'modal';
-    modal.id =
-      'homePreferencesModal';
-
-    modal.setAttribute(
-      'aria-hidden',
-      'true'
-    );
+    modal.id = 'homePreferencesModal';
+    modal.setAttribute('aria-hidden', 'true');
 
     modal.innerHTML = `
-      <div
-        class="backdrop"
-        data-close-home-preferences>
-      </div>
+      <div class="backdrop"
+        data-close-home-preferences></div>
 
       <article class="detail home-preferences-shell">
         <header>
           <div>
-            <small>ROOMS DNA</small>
+            <small>ROOMS DNA V2</small>
             <h2>Tu vivienda ideal</h2>
-            <p>
-              Indica cuánto pesa cada característica
-              para ti.
-            </p>
+            <p>${escapeText(question.prompt)}</p>
           </div>
 
-          <button
-            type="button"
+          <button type="button"
             data-close-home-preferences
             aria-label="Cerrar">×</button>
         </header>
 
         <form id="homePreferencesForm">
           <div class="living-editor-groups">
-
-            ${dna.homePreferences
-              .map(question => `
-                <section class="living-editor-group">
-                  <small>${question.label}</small>
-
-                  <div>
-                    ${dna.homePreferenceScale
-                      .map(option => `
-                        <button
-                          type="button"
-                          data-home-dna="${question.id}"
-                          data-home-dna-value="${option.id}"
-                          aria-pressed="false">
-                          ${option.label}
-                        </button>
-                      `)
-                      .join('')}
-                  </div>
-                </section>
-              `)
-              .join('')}
-
+            ${(question.items || []).map(item => `
+              <section class="living-editor-group">
+                <small>${escapeText(item.label)}</small>
+                <div>
+                  ${(question.levels || []).map(level => `
+                    <button
+                      type="button"
+                      data-home-v2-item="${escapeText(item.id)}"
+                      data-home-v2-level="${escapeText(level.id)}"
+                      aria-pressed="false">
+                      ${escapeText(level.label)}
+                    </button>
+                  `).join('')}
+                </div>
+              </section>
+            `).join('')}
           </div>
 
           <div class="home-preferences-footer">
@@ -5095,10 +4509,7 @@
               Puedes cambiar estas preferencias
               cuando quieras.
             </small>
-
-            <button
-              class="cta"
-              type="submit">
+            <button class="cta" type="submit">
               Guardar preferencias
             </button>
           </div>
@@ -5108,117 +4519,226 @@
 
     document.body.appendChild(modal);
 
-    modal
-      .querySelectorAll(
-        '[data-home-dna]'
-      )
-      .forEach(button => {
-        button.addEventListener(
-          'click',
-          () => {
-            const question =
-              button.dataset.homeDna;
+    modal.addEventListener('click', event => {
+      const button = event.target.closest(
+        '[data-home-v2-item]'
+      );
 
-            modal
-              .querySelectorAll(
-                `[data-home-dna="${question}"]`
-              )
-              .forEach(item => {
-                const active =
-                  item === button;
+      if (!button || savingHomePreferences) return;
 
-                item.classList.toggle(
-                  'active',
-                  active
-                );
+      const itemId = button.dataset.homeV2Item;
 
-                item.setAttribute(
-                  'aria-pressed',
-                  active
-                    ? 'true'
-                    : 'false'
-                );
-              });
-          }
-        );
-      });
-
-    modal
-      .querySelector(
-        '#homePreferencesForm'
-      )
-      .addEventListener(
-        'submit',
-        async event => {
-          event.preventDefault();
-
-          const homePreferences = {
-            ...(
-              state.matchPreferences
-                ?.home_preferences ||
-              {}
-            )
-          };
-
-          modal
-            .querySelectorAll(
-              '[data-home-dna].active'
-            )
-            .forEach(button => {
-              homePreferences[
-                button.dataset.homeDna
-              ] =
-                button.dataset.homeDnaValue;
-            });
-
-          const { data, error } =
-            await db
-              .from('match_preferences')
-              .update({
-                home_preferences:
-                  homePreferences,
-
-                updated_at:
-                  new Date().toISOString()
-              })
-              .eq(
-                'user_id',
-                state.user.id
-              )
-              .select()
-              .single();
-
-          if (error) {
-            console.error(
-              'Rooms: error actualizando preferencias de hogar',
-              error
-            );
-
-            notify(
-              'No se pudieron guardar tus preferencias'
-            );
-
+      modal.querySelectorAll('[data-home-v2-item]')
+        .forEach(other => {
+          if (other.dataset.homeV2Item !== itemId) {
             return;
           }
 
-          state.matchPreferences =
-            data;
+          const active = other === button;
+
+          other.classList.toggle('active', active);
+          other.setAttribute(
+            'aria-pressed',
+            active ? 'true' : 'false'
+          );
+        });
+    });
+
+    modal.querySelector('#homePreferencesForm')
+      .addEventListener('submit', async event => {
+        event.preventDefault();
+
+        if (savingHomePreferences) return;
+
+        if (!hasHomeV2Dna()) {
+          notify('Completa primero tu ROOMS DNA V2');
+          return;
+        }
+
+        const config = window.ROOMS_DNA_V2;
+        const engine = window.ROOMS_DNA_ENGINE;
+        const archetypes = window.ROOMS_DNA_ARCHETYPES;
+        const currentQuestion = getHomeV2Question();
+
+        if (!engine || !archetypes || !currentQuestion) {
+          notify('No se pudo preparar tu ROOMS DNA');
+          return;
+        }
+
+        const selectedOptions = [];
+
+        for (const item of currentQuestion.items || []) {
+          const selected = [
+            ...modal.querySelectorAll(
+              '[data-home-v2-item].active'
+            )
+          ].find(button =>
+            button.dataset.homeV2Item === item.id
+          );
+
+          if (!selected) {
+            notify(
+              'Selecciona una prioridad para cada característica'
+            );
+            return;
+          }
+
+          const optionId =
+            `${item.id}_${selected.dataset.homeV2Level}`;
+
+          if (!currentQuestion.options?.some(
+            option => option.id === optionId
+          )) {
+            notify('Prioridad de vivienda no válida');
+            return;
+          }
+
+          selectedOptions.push(optionId);
+        }
+
+        if (
+          !openedHomeDna ||
+          openedHomeDna.userId !== state.user?.id ||
+          !Number.isSafeInteger(openedHomeDna.revision) ||
+          openedHomeDna.revision < 0 ||
+          openedHomeDna.revision !== state.roomsDna?.revision
+        ) {
+          notify('Tu DNA ha cambiado. Reabre el editor.');
+          return;
+        }
+
+        const answers = {
+          ...openedHomeDna.answers,
+          home_priorities: selectedOptions
+        };
+
+        let payload;
+
+        try {
+          const dna = engine.calculate(answers, config);
+
+          if (
+            dna.version !== config.version ||
+            dna.ignoredAnswers?.length
+          ) {
+            throw new Error('Respuestas V2 incompatibles');
+          }
+
+          const classification = archetypes.classify(dna);
+
+          if (!classification?.primary) {
+            throw new Error('Clasificación no disponible');
+          }
+
+          const compact = archetype =>
+            archetype
+              ? {
+                  id: archetype.id,
+                  name: archetype.name,
+                  tagline: archetype.tagline,
+                  fit: archetype.fit
+                }
+              : null;
+
+          const evidence = [];
+
+          for (
+            const [dimension, layers] of
+            Object.entries(dna.dimensions || {})
+          ) {
+            for (const layer of [
+              'self', 'preferred', 'importance'
+            ]) {
+              for (
+                const item of
+                layers?.[layer]?.evidence || []
+              ) {
+                evidence.push({
+                  dimension,
+                  layer,
+                  ...item
+                });
+              }
+            }
+          }
+
+          const now = new Date().toISOString();
+
+          payload = {
+            answers,
+            dimensions: dna.dimensions || {},
+            categories: dna.categorical || {},
+            classification: {
+              primary: compact(classification.primary),
+              secondary: compact(classification.secondary),
+              ranked: (classification.ranked || [])
+                .map(compact)
+            },
+            evidence,
+            calculated_at: now,
+            updated_at: now
+          };
+        } catch (error) {
+          console.error(
+            'Rooms: error calculando HOME V2',
+            error
+          );
+          notify('No se pudo recalcular tu ROOMS DNA');
+          return;
+        }
+
+        savingHomePreferences = true;
+
+        const submitButton = modal.querySelector(
+          '#homePreferencesForm [type="submit"]'
+        );
+
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+          const userId = state.user.id;
+
+          const { data, error } = await db
+            .from('rooms_dna')
+            .update(payload)
+            .eq('user_id', userId)
+            .eq('model_version', config.version)
+            .eq('revision', openedHomeDna.revision)
+            .select()
+            .single();
+
+          if (error || !data) {
+            throw error || new Error('DNA V2 no encontrado');
+          }
+
+          if (state.user?.id !== userId) return;
+
+          state.roomsDna = data;
+
+          updateOwnProfile(
+            state.profile,
+            state.preferences
+          );
 
           modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
 
-          modal.setAttribute(
-            'aria-hidden',
-            'true'
+          notify('Preferencias actualizadas');
+        } catch (error) {
+          console.error(
+            'Rooms: error guardando HOME V2',
+            error
           );
+          notify('No se pudieron guardar tus preferencias');
+        } finally {
+          savingHomePreferences = false;
 
-          document.body.style.overflow =
-            '';
-
-          notify(
-            'Preferencias actualizadas'
-          );
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
         }
-      );
+      });
 
     return modal;
   }
@@ -5226,29 +4746,40 @@
   function openHomePreferencesEditor() {
     if (!state.user) return;
 
-    const modal =
-      ensureHomePreferencesModal();
+    if (!hasHomeV2Dna()) {
+      notify('Completa primero tu ROOMS DNA V2');
+      return;
+    }
+
+    const modal = ensureHomePreferencesModal();
+    const question = getHomeV2Question();
+
+    if (!modal || !question) {
+      notify('No se pudo abrir el editor de vivienda');
+      return;
+    }
+
+    openedHomeDna = {
+      userId: state.user.id,
+      revision: state.roomsDna.revision,
+      answers: JSON.parse(
+        JSON.stringify(state.roomsDna.answers)
+      )
+    };
 
     const selected =
-      state.matchPreferences
-        ?.home_preferences || {};
+      openedHomeDna.answers.home_priorities || [];
 
-    modal
-      .querySelectorAll(
-        '[data-home-dna]'
-      )
+    modal.querySelectorAll('[data-home-v2-item]')
       .forEach(button => {
+        const optionId =
+          `${button.dataset.homeV2Item}_${button.dataset.homeV2Level}`;
+
         const active =
-          selected[
-            button.dataset.homeDna
-          ] ===
-          button.dataset.homeDnaValue;
+          Array.isArray(selected) &&
+          selected.includes(optionId);
 
-        button.classList.toggle(
-          'active',
-          active
-        );
-
+        button.classList.toggle('active', active);
         button.setAttribute(
           'aria-pressed',
           active ? 'true' : 'false'
@@ -5256,30 +4787,27 @@
       });
 
     modal.classList.add('open');
-
-    modal.setAttribute(
-      'aria-hidden',
-      'false'
-    );
-
-    document.body.style.overflow =
-      'hidden';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
   }
 
   document.addEventListener('click', event => {
     if (event.target.closest('#editHomePreferences')) {
+      event.preventDefault();
       openHomePreferencesEditor();
       return;
     }
 
-    if (event.target.closest('[data-close-home-preferences]')) {
-      const modal = document.querySelector('#homePreferencesModal');
+    if (
+      event.target.closest(
+        '[data-close-home-preferences]'
+      )
+    ) {
+      const modal =
+        document.querySelector('#homePreferencesModal');
 
-      if (modal) {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-
+      modal?.classList.remove('open');
+      modal?.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
     }
   });

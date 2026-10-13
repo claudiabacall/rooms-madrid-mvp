@@ -1289,6 +1289,74 @@ if (
 
 
 
+title('DNA V2 CONCURRENCY');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-rooms-dna-concurrency.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Concurrencia DNA V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Concurrencia DNA V2');
+}
+
+title('MATCHING DNA V2');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-rooms-match-v2.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Motor Matching DNA V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Motor Matching DNA V2');
+}
+
+title('MATCH RPC V2 CONTRACT');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-match-rpc-v2.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Contrato Matching RPC V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Contrato Matching RPC V2');
+}
+
+title('HOME PREFERENCES V2');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-home-preferences-v2.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Home Preferences V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Home Preferences V2');
+}
+
 title('LIVING EDITOR FEATURE');
 
 try {
@@ -2474,6 +2542,40 @@ try {
 }
 
 title('ROOMS DNA V2');
+
+console.log('\n=== ROOMS DNA PROFILE V2 ===');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-rooms-dna-profile-v2.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Perfil ROOMS DNA V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Perfil ROOMS DNA V2');
+}
+
+console.log('\n=== ROOMS DNA V2 STATE ===');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-rooms-dna-state.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Estado ROOMS DNA V2');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Estado ROOMS DNA V2');
+}
 
 try {
   const outputV2 =

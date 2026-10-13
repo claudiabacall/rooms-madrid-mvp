@@ -11,11 +11,7 @@ grant execute on function
 to authenticated;
 
 
-revoke execute on function
-from public;
-
-grant execute on function
-to authenticated;
+-- Removed incomplete permission statements.
 
 
 revoke execute on function

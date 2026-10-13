@@ -242,9 +242,21 @@ assert(
   'Editores legacy mantienen match_preferences'
 );
 
+const searchEditor =
+  fs.readFileSync(
+    'assets/js/features/search-preferences-editor.js',
+    'utf8'
+  );
+
 assert(
+  searchEditor.includes('data-search-intent') &&
+  searchEditor.includes(".from('user_intents')") &&
+  searchEditor.includes('seekingFromIntents(intents)') &&
   supabaseApp.includes(
-    'data-search-intent'
+    'ROOMS_SEARCH_PREFERENCES_EDITOR_FEATURE?.create'
+  ) &&
+  html.includes(
+    'assets/js/features/search-preferences-editor.js'
   ),
   'Editor de búsqueda usa intenciones reales'
 );

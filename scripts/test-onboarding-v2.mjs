@@ -398,28 +398,51 @@ console.log(
   '\n=== ONBOARDING V2 · PERSISTENCIA ==='
 );
 
-const provisionalIndex =
+const onboardingStart =
   supabase.indexOf(
+    'async function saveRoomsDnaOnboarding()'
+  );
+
+const onboardingEnd =
+  supabase.indexOf(
+    'window.saveRoomsDnaOnboarding =',
+    onboardingStart
+  );
+
+assert(
+  onboardingStart >= 0 &&
+  onboardingEnd > onboardingStart,
+  'Existe funcion de guardado del onboarding'
+);
+
+const onboardingSave =
+  supabase.slice(
+    onboardingStart,
+    onboardingEnd
+  );
+
+const provisionalIndex =
+  onboardingSave.indexOf(
     'onboarding_completed: false'
   );
 
 const roomsDnaIndex =
-  supabase.indexOf(
+  onboardingSave.indexOf(
     ".from('rooms_dna')"
   );
 
 const intentsIndex =
-  supabase.indexOf(
+  onboardingSave.indexOf(
     ".from('user_intents')"
   );
 
 const avatarCallIndex =
-  supabase.indexOf(
+  onboardingSave.indexOf(
     'await uploadProfilePhoto('
   );
 
 const finalIndex =
-  supabase.indexOf(
+  onboardingSave.indexOf(
     'onboarding_completed: true'
   );
 
