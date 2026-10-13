@@ -17,6 +17,11 @@ const leaflet = fs.readFileSync(
   'utf8'
 );
 
+const exploreRender = fs.readFileSync(
+  'assets/js/features/explore-render.js',
+  'utf8'
+);
+
 const html = fs.readFileSync('index.html', 'utf8');
 
 const exploreView = fs.readFileSync(
@@ -58,7 +63,7 @@ assert(
 assert(
   leaflet.includes('renderRealMapCard(item)') &&
   leaflet.includes('renderRealMapCard(next)') &&
-  app.includes('renderRealMapCard(first)')
+  exploreRender.includes('renderRealMapCard(first)')
 );
 
 assert(leaflet.includes('let exploreLeafletMap = null;'));
@@ -84,6 +89,24 @@ assert(
 
 assert(
   app.includes('ROOMS_EXPLORE_LEAFLET_MAP_FEATURE?.create')
+);
+
+assert(
+  html.indexOf('assets/js/features/explore-leaflet-map.js') <
+  html.indexOf('assets/js/features/explore-render.js')
+);
+
+assert(
+  html.indexOf('assets/js/features/explore-render.js') <
+  html.indexOf('assets/js/supabase-app.js')
+);
+
+assert(
+  app.includes('ROOMS_EXPLORE_RENDER_FEATURE?.create')
+);
+
+assert(
+  !app.includes('function renderRealExplore(listings)')
 );
 
 assert(

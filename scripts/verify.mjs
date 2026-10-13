@@ -1289,6 +1289,23 @@ if (
 
 
 
+title('EXPLORE RENDER FEATURE');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-explore-render-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Explore Render feature modular');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Explore Render feature modular');
+}
+
 title('EXPLORE LEAFLET MAP FEATURE');
 
 try {
