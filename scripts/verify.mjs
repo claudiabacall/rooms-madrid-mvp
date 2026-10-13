@@ -1357,6 +1357,26 @@ try {
   fail('Home Preferences V2');
 }
 
+title('AUTH UTILS FEATURE');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-auth-utils-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output.trim());
+  ok('Auth Utils feature modular');
+} catch (error) {
+  console.error(
+    error.stdout?.toString() ||
+    error.stderr?.toString() ||
+    error.message
+  );
+  fail('Auth Utils feature modular');
+}
+
 title('LIVING EDITOR FEATURE');
 
 try {
