@@ -1289,6 +1289,23 @@ if (
 
 
 
+title('LIVING EDITOR FEATURE');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-living-editor-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Living Editor feature modular');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Living Editor feature modular');
+}
+
 title('OWN ACTIVITY FEATURE');
 
 try {

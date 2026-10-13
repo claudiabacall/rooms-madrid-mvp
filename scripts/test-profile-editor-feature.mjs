@@ -74,11 +74,40 @@ for (const fn of [
   );
 }
 
+const livingSource = fs.readFileSync(
+  'assets/js/features/living-editor.js',
+  'utf8'
+);
+
 assert(
   /function\s+ensureLivingEditorModal\s*\(/.test(
+    livingSource
+  ),
+  'Living Editor debe estar en su propio modulo'
+);
+
+assert(
+  !/function\s+ensureLivingEditorModal\s*\(/.test(
     appSource
   ),
-  'Living Editor no debe moverse'
+  'Living Editor no debe duplicarse'
+);
+
+assert(
+  appSource.includes(
+    'ROOMS_LIVING_EDITOR_FEATURE?.create'
+  ),
+  'Living Editor debe estar integrado'
+);
+
+assert(
+  htmlSource.indexOf(
+    'assets/js/features/living-editor.js'
+  ) <
+  htmlSource.indexOf(
+    'assets/js/supabase-app.js'
+  ),
+  'Living Editor debe cargar antes de supabase-app.js'
 );
 
 assert(
