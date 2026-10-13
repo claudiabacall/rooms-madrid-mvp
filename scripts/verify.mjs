@@ -1159,95 +1159,19 @@ if (
     [files.supabase]: read(files.supabase)
   };
 
-  const js =
-    [
-    fs.existsSync(files.exploreMapCard)
-      ? read(files.exploreMapCard)
-      : '',
+  const featureDirectory = 'assets/js/features';
 
-    fs.existsSync(files.explorePeople)
-      ? read(files.explorePeople)
-      : '',
+  for (const name of fs.readdirSync(featureDirectory).sort()) {
+    if (!name.endsWith('.js')) continue;
 
-    fs.existsSync(files.exploreCommunities)
-      ? read(files.exploreCommunities)
-      : '',
+    const file = `${featureDirectory}/${name}`;
+    contents[file] = read(file);
+  }
 
-    fs.existsSync(files.feedCore)
-      ? read(files.feedCore)
-      : '',
-
-    fs.existsSync(files.feedCommunityCard)
-      ? read(files.feedCommunityCard)
-      : '',
-
-    fs.existsSync(files.feedPostCard)
-      ? read(files.feedPostCard)
-      : '',
-
-    fs.existsSync(files.feedPersonCard)
-      ? read(files.feedPersonCard)
-      : '',
-
-    fs.existsSync(files.feedListingCard)
-      ? read(files.feedListingCard)
-      : '',
-
-    fs.existsSync(files.publishSteps)
-      ? read(files.publishSteps)
-      : '',
-    fs.existsSync(files.publishCommunityFields)
-      ? read(files.publishCommunityFields)
-      : '',
-    fs.existsSync(files.publishComposer)
-      ? read(files.publishComposer)
-      : '',
-    fs.existsSync(files.publishGeocoding)
-      ? read(files.publishGeocoding)
-      : '',
-
-      contents[files.app],
-      contents[files.supabase],
-      fs.existsSync('assets/js/features/saved.js')
-        ? read('assets/js/features/saved.js')
-        : '',
-      fs.existsSync('assets/js/features/moderation.js')
-        ? read('assets/js/features/moderation.js')
-        : '',
-      fs.existsSync(files.profileEditor)
-        ? read(files.profileEditor)
-        : '',
-      fs.existsSync(files.ownProfile)
-        ? read(files.ownProfile)
-        : '',
-      fs.existsSync(files.profilePrivacy)
-        ? read(files.profilePrivacy)
-        : '',
-      fs.existsSync(files.accountSettings)
-        ? read(files.accountSettings)
-        : '',
-      fs.existsSync(files.exploreView)
-        ? read(files.exploreView)
-        : '',
-      fs.existsSync(files.exploreFilters)
-        ? read(files.exploreFilters)
-        : '',
-      fs.existsSync(files.exploreController)
-        ? read(files.exploreController)
-        : '',
-      fs.existsSync(files.householdGroupPicker)
-        ? read(files.householdGroupPicker)
-        : '',
-      fs.existsSync(files.householdInvites)
-        ? read(files.householdInvites)
-        : '',
-      fs.existsSync(files.householdCandidates)
-        ? read(files.householdCandidates)
-        : '',
-      fs.existsSync(files.householdEvents)
-        ? read(files.householdEvents)
-        : ''
-    ].join('\n');
+  const js = Object.entries(contents)
+    .filter(([file]) => file !== files.html)
+    .map(([, content]) => content)
+    .join('\n');
 
   const declared = new Map();
 
@@ -1284,7 +1208,20 @@ if (
           (_, c) => c.toUpperCase()
         );
 
+    const normalizedJs = js.replace(
+      /\\s*\\.\\s*/g,
+      '.'
+    ).replace(
+      /\\s+/g,
+      ' '
+    );
+
+    const datasetConsumer = new RegExp(
+      `\\bdataset\\s*\\.\\s*${datasetName}\\b`
+    ).test(js);
+
     const explicitConsumer =
+      datasetConsumer ||
       [
         `dataset.${datasetName}`,
         `dataset['${datasetName}']`,
@@ -1295,7 +1232,7 @@ if (
         `hasAttribute("${attr}")`,
         `closest('[${attr}]')`,
         `closest("[${attr}]")`
-      ].some(token => js.includes(token));
+      ].some(token => normalizedJs.includes(token));
 
     const escaped =
       attr.replace(
@@ -1351,6 +1288,23 @@ if (
 }
 
 
+
+title('EXPLORE LEAFLET MAP FEATURE');
+
+try {
+  const outputExploreLeafletMap = execFileSync(
+    process.execPath,
+    ['scripts/test-explore-leaflet-map-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(outputExploreLeafletMap);
+  ok('Explore Leaflet Map feature modular');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Explore Leaflet Map feature modular');
+}
 
 title('SUPABASE MIGRATIONS');
 

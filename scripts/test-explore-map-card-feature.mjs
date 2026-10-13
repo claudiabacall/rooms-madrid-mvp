@@ -12,6 +12,11 @@ const app = fs.readFileSync(
   'utf8'
 );
 
+const leaflet = fs.readFileSync(
+  'assets/js/features/explore-leaflet-map.js',
+  'utf8'
+);
+
 const html = fs.readFileSync('index.html', 'utf8');
 
 const exploreView = fs.readFileSync(
@@ -51,14 +56,38 @@ assert(
 );
 
 assert(
-  app.includes('renderRealMapCard(item)') &&
-  app.includes('renderRealMapCard(next)') &&
+  leaflet.includes('renderRealMapCard(item)') &&
+  leaflet.includes('renderRealMapCard(next)') &&
   app.includes('renderRealMapCard(first)')
 );
 
-assert(app.includes('let exploreLeafletMap = null;'));
+assert(leaflet.includes('let exploreLeafletMap = null;'));
 assert(
-  app.includes('let exploreLeafletMarkers = new Map();')
+  leaflet.includes('let exploreLeafletMarkers = new Map();')
+);
+
+assert(
+  html.includes(
+    'src="assets/js/features/explore-leaflet-map.js"'
+  )
+);
+
+assert(
+  html.indexOf('assets/js/features/explore-map-card.js') <
+  html.indexOf('assets/js/features/explore-leaflet-map.js')
+);
+
+assert(
+  html.indexOf('assets/js/features/explore-leaflet-map.js') <
+  html.indexOf('assets/js/supabase-app.js')
+);
+
+assert(
+  app.includes('ROOMS_EXPLORE_LEAFLET_MAP_FEATURE?.create')
+);
+
+assert(
+  !app.includes('let exploreLeafletMap = null;')
 );
 
 console.log('OK  Extraccion e integracion');
