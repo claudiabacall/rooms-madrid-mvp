@@ -1289,6 +1289,23 @@ if (
 
 
 
+title('OWN ACTIVITY FEATURE');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-own-activity-feature.mjs'],
+    { encoding: 'utf8' }
+  );
+
+  console.log(output);
+  ok('Own Activity feature modular');
+} catch (error) {
+  console.log(error.stdout?.toString() || '');
+  console.log(error.stderr?.toString() || '');
+  fail('Own Activity feature modular');
+}
+
 title('EXPLORE RENDER FEATURE');
 
 try {
