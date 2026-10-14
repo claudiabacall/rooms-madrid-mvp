@@ -56,10 +56,16 @@ async function openRealUser(profile) {
           ? profile.zones.join(' · ')
           : 'Sin definir';
 
-      const interests =
-        Array.isArray(profile.interests)
-          ? profile.interests
-          : [];
+      const interestLabels = {
+        sport: 'Deporte', music: 'Música', food: 'Food', travel: 'Viajes',
+        nightlife: 'Salir', cinema: 'Cine', gaming: 'Gaming', art: 'Arte',
+        reading: 'Leer', nature: 'Naturaleza', fashion: 'Fashion', pets: 'Animales',
+        cooking: 'Cocina', gym: 'Gym', 'going-out': 'Salir',
+        'quiet-plans': 'Planes tranquilos'
+      };
+      const interests = Array.isArray(profile.interests)
+        ? profile.interests.map(id => interestLabels[id]).filter(Boolean)
+        : [];
 
       const traits =
         Array.isArray(profile.traits)

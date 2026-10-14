@@ -1682,7 +1682,7 @@
 
   async function loadOtherProfile() {
     const { data, error } = await db.rpc(
-      'get_visible_profiles',
+      'get_visible_profiles_v2',
       { _target_user_id: null }
     );
 
@@ -2974,7 +2974,7 @@
     if (!unique.length) return new Map();
 
     const { data, error } = await db.rpc(
-      'get_visible_profiles',
+      'get_visible_profiles_v2',
       { _target_user_id: null }
     );
 
