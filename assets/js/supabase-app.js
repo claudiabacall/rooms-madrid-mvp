@@ -62,6 +62,7 @@
 
   let connectionsFeature;
   let messagingFeature;
+  let communityMembershipFeature;
 
   const savedFeature =
     window.ROOMS_SAVED_FEATURE?.create({
