@@ -24,8 +24,11 @@ check('Intenciones se persisten separadas', /\.from\('user_intents'\)\s*\.insert
 check('Onboarding solo se completa al final', /\.update\(\{\s*onboarding_completed:\s*true/, backend);
 check('Perfil propio lee convivencia del DNA V2', /roomsDnaLivingRows\(\s*state\.roomsDna\s*\)/, own);
 check('Editor de convivencia usa DNA V2', /state\.roomsDna/, living);
-check('Editor general modifica intereses de profiles', /interests\s*\}\)\s*\.eq\('id', state\.user\.id\)/, editor);
+check('Editor V2 guarda ambas fuentes en una RPC', /db\.rpc\('update_profile_interests_v2'/, editor);
+check('Editor V2 verifica revision esperada', /p_expected_revision:\s*openedDnaRevision/, editor);
+check('Editor V2 actualiza estado DNA tras guardar', /state\.roomsDna\s*=\s*result\.dna/, editor);
+check('Editor legacy conserva actualizacion de profiles', /db\.from\('profiles'\)\.update\(/, editor);
 
-console.log('ATENCION  El editor general cambia profiles.interests, pero no rooms_dna.answers.world_interests.');
+console.log('ATENCION  La escritura atomica V2 requiere la RPC instalada en Supabase.');
 console.log('ATENCION  Este contrato verifica conexiones de codigo, no persistencia en Supabase real.');
 console.log('ROOMS ONBOARDING PROFILE CONTRACT OK');

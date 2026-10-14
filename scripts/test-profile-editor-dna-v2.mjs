@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const editor = fs.readFileSync('assets/js/features/profile-editor.js', 'utf8');
+const sql = fs.readFileSync('supabase/migrations/20261014_update_profile_interests_v2.sql', 'utf8');
+const config = fs.readFileSync('assets/js/rooms-dna-v2-config.js', 'utf8');
+assert.match(editor, /db\.rpc\('update_profile_interests_v2'/);
+assert.match(editor, /p_expected_revision: openedDnaRevision/);
+assert.match(editor, /p_interests: interests/);
+assert.match(editor, /state\.roomsDna = result\.dna/);
+assert.match(editor, /state\.profile = result\.profile/);
+assert.match(editor, /interests\.length > question\.maxSelections/);
+assert.doesNotMatch(editor, /p_dimensions:|p_evidence:|p_classification:|p_answers:/);
+assert.match(sql, /security invoker/i);
+assert.match(sql, /auth\.uid\(\)/);
+assert.match(sql, /for update/i);
+assert.match(sql, /v_current\.revision <> p_expected_revision/);
+assert.match(sql, /jsonb_set\(v_current\.answers, '\{world_interests\}', p_interests, true\)/);
+assert.match(sql, /jsonb_set\(v_current\.categories, '\{interests\}', p_interests, true\)/);
+assert.match(sql, /update public\.rooms_dna/);
+assert.match(sql, /update public\.profiles/);
+assert.match(sql, /grant execute.*?to authenticated/s);
+assert.doesNotMatch(sql, /p_dimensions|p_evidence|p_classification|p_answers/);
+assert.match(config, /id: 'world_interests'/);
+const section = config.slice(config.indexOf("id: 'world_interests'"), config.indexOf("id: 'self_description'"));
+const ids = ['sport','music','food','travel','nightlife','cinema','gaming','art','reading','nature','fashion','pets'];
+for (const id of ids) {
+  assert.match(sql, new RegExp(`'${id}'`));
+  assert.match(section, new RegExp(`id: '${id}'[^\n]*signals: \\[\\]`));
+}
+console.log('ROOMS PROFILE EDITOR DNA V2 SAFE CONTRACT OK');

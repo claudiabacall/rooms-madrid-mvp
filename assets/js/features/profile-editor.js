@@ -7,6 +7,15 @@
     notify,
     updateOwnProfile
   }) {
+    let saving = false;
+    let openedDnaRevision = null;
+    const worldQuestion = () => window.ROOMS_DNA_V2?.interactions?.find(q => q.id === 'world_interests');
+    const v2Available = () => state.roomsDna?.model_version === window.ROOMS_DNA_V2?.version &&
+      Array.isArray(state.roomsDna?.answers?.world_interests);
+    function selectedInterests() {
+      if (v2Available()) return state.roomsDna.answers.world_interests;
+      return state.profile?.interests || [];
+    }
 function ensureProfileEditorModal() {
       let modal = document.querySelector('#profileEditorModal');
       if (modal) return modal;
@@ -49,16 +58,15 @@ function ensureProfileEditorModal() {
             <fieldset class="profile-editor-interests">
               <legend>Intereses</legend>
               <div>
-                <button type="button" data-edit-interest="sport">Deporte</button>
-                <button type="button" data-edit-interest="music">Música</button>
-                <button type="button" data-edit-interest="cooking">Cocina</button>
-                <button type="button" data-edit-interest="travel">Viajes</button>
-                <button type="button" data-edit-interest="gym">Gym</button>
-                <button type="button" data-edit-interest="gaming">Gaming</button>
-                <button type="button" data-edit-interest="reading">Lectura</button>
-                <button type="button" data-edit-interest="going-out">Salir</button>
-                <button type="button" data-edit-interest="quiet-plans">Planes tranquilos</button>
-                <button type="button" data-edit-interest="pets">Mascotas</button>
+                ${(worldQuestion()?.options || [
+                  { id: 'sport', label: 'Deporte' }, { id: 'music', label: 'Música' },
+                  { id: 'cooking', label: 'Cocina' }, { id: 'travel', label: 'Viajes' },
+                  { id: 'gym', label: 'Gym' }, { id: 'gaming', label: 'Gaming' },
+                  { id: 'reading', label: 'Lectura' }, { id: 'going-out', label: 'Salir' },
+                  { id: 'quiet-plans', label: 'Planes tranquilos' }, { id: 'pets', label: 'Mascotas' }
+                ]).map(option => `
+                  <button type="button" data-edit-interest="${option.id}">${option.label}</button>
+                `).join('')}
               </div>
             </fieldset>
 
@@ -71,6 +79,12 @@ function ensureProfileEditorModal() {
 
       modal.querySelectorAll('[data-edit-interest]').forEach(button => {
         button.addEventListener('click', () => {
+          const max = worldQuestion()?.maxSelections || 5;
+          if (!button.classList.contains('active') &&
+              modal.querySelectorAll('[data-edit-interest].active').length >= max) {
+            notify(`Selecciona un máximo de ${max} intereses`);
+            return;
+          }
           button.classList.toggle('active');
           button.setAttribute(
             'aria-pressed',
@@ -89,28 +103,71 @@ function ensureProfileEditorModal() {
         const interests = [...modal.querySelectorAll('[data-edit-interest].active')]
           .map(button => button.dataset.editInterest);
 
-        const { data, error } = await db
-          .from('profiles')
-          .update({
-            name,
-            alias: name,
-            age: ageValue ? Number(ageValue) : null,
-            bio,
-            interests
-          })
-          .eq('id', state.user.id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Rooms: error actualizando perfil', error);
-          notify('No se pudo actualizar tu perfil');
+        if (saving || !state.user) return;
+        const userId = state.user.id;
+        if (v2Available() && (!Number.isSafeInteger(openedDnaRevision) ||
+            openedDnaRevision !== state.roomsDna.revision)) {
+          notify('Tu DNA ha cambiado. Reabre el editor.');
           return;
         }
-
-        state.profile = data;
-        state.profiles.set(data.id, data);
-        updateOwnProfile(state.profile, state.preferences);
+        if (!v2Available()) {
+          saving = true;
+          try {
+            const { data, error } = await db.from('profiles').update({
+              name, alias: name, age: ageValue ? Number(ageValue) : null,
+              bio, interests
+            }).eq('id', userId).select().single();
+            if (error || !data) throw error || new Error('Perfil no encontrado');
+            if (state.user?.id !== userId) return;
+            state.profile = data;
+            state.profiles.set(data.id, data);
+            updateOwnProfile(state.profile, state.preferences);
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            notify('Perfil actualizado');
+          } catch (error) {
+            console.error('Rooms: error actualizando perfil', error);
+            notify('No se pudo actualizar tu perfil');
+          } finally {
+            saving = false;
+          }
+          return;
+        }
+        const question = worldQuestion();
+        if (!question || interests.length > question.maxSelections ||
+            new Set(interests).size !== interests.length ||
+            interests.some(id => !question.options.some(o => o.id === id))) {
+          notify('Revisa los intereses seleccionados');
+          return;
+        }
+        saving = true;
+        const submit = modal.querySelector('#profileEditorForm [type="submit"]');
+        if (submit) submit.disabled = true;
+        try {
+          const { data: result, error } = await db.rpc('update_profile_interests_v2', {
+            p_expected_revision: openedDnaRevision,
+            p_interests: interests,
+            p_name: name,
+            p_age: ageValue ? Number(ageValue) : null,
+            p_bio: bio
+          });
+          if (error || !result?.dna || !result?.profile) {
+            throw error || new Error('Respuesta de guardado incompleta');
+          }
+          if (state.user?.id !== userId) return;
+          state.roomsDna = result.dna;
+          state.profile = result.profile;
+          state.profiles.set(result.profile.id, result.profile);
+          updateOwnProfile(state.profile, state.preferences);
+        } catch (error) {
+          console.error('Rooms: error guardando intereses DNA', error);
+          notify('No se pudo actualizar tu perfil');
+          return;
+        } finally {
+          saving = false;
+          if (submit) submit.disabled = false;
+        }
 
         modal.classList.remove('open');
         modal.setAttribute('aria-hidden', 'true');
@@ -136,7 +193,8 @@ function ensureProfileEditorModal() {
       modal.querySelector('#editProfileBio').value =
         state.profile.bio || '';
 
-      const interests = new Set(state.profile.interests || []);
+      openedDnaRevision = v2Available() ? state.roomsDna.revision : null;
+      const interests = new Set(selectedInterests());
 
       modal.querySelectorAll('[data-edit-interest]').forEach(button => {
         const active = interests.has(button.dataset.editInterest);
