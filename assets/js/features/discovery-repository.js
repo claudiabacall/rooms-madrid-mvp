@@ -15,7 +15,13 @@
       ]);
     }
 
-    return { loadDiscoveryData };
+    function loadActiveCommunityMembers() {
+      return db.from('community_members')
+        .select('community_id')
+        .eq('status', 'active');
+    }
+
+    return { loadDiscoveryData, loadActiveCommunityMembers };
   }
 
   window.ROOMS_DISCOVERY_REPOSITORY = { create };

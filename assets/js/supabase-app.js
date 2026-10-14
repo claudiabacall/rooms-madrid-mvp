@@ -1802,10 +1802,7 @@
     const {
       data: communityMemberRows,
       error: communityMemberCountError
-    } = await db
-      .from('community_members')
-      .select('community_id')
-      .eq('status', 'active');
+    } = await discoveryRepository.loadActiveCommunityMembers();
 
     if (communityMemberCountError) {
       console.error(
