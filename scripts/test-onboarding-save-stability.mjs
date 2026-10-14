@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source = fs.readFileSync('assets/js/supabase-app.js','utf8');
+const start = source.indexOf('  async function persistRoomsDnaOnboarding() {');
+const end = source.indexOf('  window.saveRoomsDnaOnboarding =', start);
+assert.ok(start !== -1 && end > start, 'Onboarding save block present');
+const block = source.slice(start,end);
+assert.match(block, /onboarding_completed:\s*true/, 'Success flag is persisted');
+assert.match(block, /Promise\.allSettled\(\[/, 'Post-save refresh is failure-tolerant');
+assert.match(block, /refreshes\.forEach/, 'Failed refresh is logged');
+assert.match(block, /return true;\s*}\s*\/\/ A second click/, 'Refresh failures do not reject committed save');
+assert.match(block, /if \(onboardingSavePromise\) return onboardingSavePromise;/, 'Concurrent saves share promise');
+assert.match(block, /\.finally\(\(\) => \{ onboardingSavePromise = null; \}\)/, 'Retry is allowed after completion');
+assert.doesNotMatch(block, /await loadRealContent\(\)/, 'No unguarded post-save loading');
+console.log('ROOMS ONBOARDING SAVE STABILITY OK');

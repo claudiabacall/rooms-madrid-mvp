@@ -2700,6 +2700,13 @@ try {
     outputOnboardingV2.trim()
   );
 
+  const outputSaveStability = execFileSync(
+    process.execPath,
+    ['scripts/test-onboarding-save-stability.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log(outputSaveStability.trim());
+
   const outputEngine =
     execFileSync(
       process.execPath,

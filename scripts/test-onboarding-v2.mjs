@@ -400,7 +400,7 @@ console.log(
 
 const onboardingStart =
   supabase.indexOf(
-    'async function saveRoomsDnaOnboarding()'
+    'async function persistRoomsDnaOnboarding()'
   );
 
 const onboardingEnd =

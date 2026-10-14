@@ -69,7 +69,7 @@ assert(
 console.log('OK  Limpieza al cerrar sesion');
 
 const onboarding = app.slice(
-  app.indexOf('async function saveRoomsDnaOnboarding()'),
+  app.indexOf('async function persistRoomsDnaOnboarding()'),
   app.indexOf('window.saveRoomsDnaOnboarding =')
 );
 

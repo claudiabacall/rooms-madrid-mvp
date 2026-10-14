@@ -2567,7 +2567,7 @@
     return [...seeking];
   }
 
-  async function saveRoomsDnaOnboarding() {
+  async function persistRoomsDnaOnboarding() {
     if (!state.user) {
       notify('Inicia sesión para guardar tu perfil');
       return false;
@@ -2895,17 +2895,33 @@
       'Tu Rooms DNA se ha guardado'
     );
 
-    await loadOtherProfile();
-    await loadRealContent();
-
-    await Promise.all([
-      loadSavedItems(),
-      loadSavedCollections(),
-      loadRealNotifications(),
-      loadRealInbox()
+    // The onboarding is committed already. Feed/inbox failures must not
+    // turn a successful save into an apparent onboarding failure.
+    const refreshes = await Promise.allSettled([
+      Promise.resolve().then(() => loadOtherProfile()),
+      Promise.resolve().then(() => loadRealContent()),
+      Promise.resolve().then(() => loadSavedItems()),
+      Promise.resolve().then(() => loadSavedCollections()),
+      Promise.resolve().then(() => loadRealNotifications()),
+      Promise.resolve().then(() => loadRealInbox())
     ]);
+    refreshes.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.warn('Rooms: error refrescando datos tras onboarding', index, result.reason);
+      }
+    });
 
     return true;
+  }
+
+  // A second click shares the current attempt instead of rewriting DNA,
+  // deleting and reinserting intents, or uploading the same photo twice.
+  let onboardingSavePromise = null;
+  function saveRoomsDnaOnboarding() {
+    if (onboardingSavePromise) return onboardingSavePromise;
+    onboardingSavePromise = persistRoomsDnaOnboarding()
+      .finally(() => { onboardingSavePromise = null; });
+    return onboardingSavePromise;
   }
 
   window.saveRoomsDnaOnboarding =
