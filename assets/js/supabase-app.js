@@ -554,7 +554,7 @@
       manualAuthNavigationPending = true;
 
       const result = mode === 'signup'
-        ? await db.auth.signUp({ email, password, options: { data: { name, alias: name } } })
+        ? await db.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}`, data: { name, alias: name } } })
         : await db.auth.signInWithPassword({ email, password });
 
       submit.disabled = false;
