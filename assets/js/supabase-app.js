@@ -26,6 +26,13 @@
     throw new Error('Rooms: falta Session Repository');
   }
 
+  const discoveryRepository =
+    window.ROOMS_DISCOVERY_REPOSITORY?.create({ db });
+
+  if (!discoveryRepository) {
+    throw new Error('Rooms: falta Discovery Repository');
+  }
+
   const state = {
     user: null,
     profile: null,
@@ -1750,12 +1757,8 @@
 
   async function loadRealContent() {
     await loadAllConnections();
-    const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] = await Promise.all([
-      db.from('listings').select('*').eq('status', 'published').order('created_at', { ascending: false }),
-      db.rpc('get_visible_profiles', { _target_user_id: null }),
-      db.from('posts').select('*').eq('status', 'published').order('created_at', { ascending: false }),
-      db.from('communities').select('*').eq('status', 'active').order('created_at', { ascending: false })
-    ]);
+    const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] =
+      await discoveryRepository.loadDiscoveryData();
     const visibleListings =
       (listings || []).filter(listing =>
         !listing.owner_id ||

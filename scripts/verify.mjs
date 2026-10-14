@@ -1417,6 +1417,21 @@ try {
   fail('Session Repository');
 }
 
+title('DISCOVERY REPOSITORY');
+
+try {
+  const output = execFileSync(
+    process.execPath,
+    ['scripts/test-discovery-repository.mjs'],
+    { encoding: 'utf8' }
+  );
+  console.log(output.trim());
+  ok('Discovery Repository');
+} catch (error) {
+  console.error(error.stdout?.toString() || error.stderr?.toString() || error.message);
+  fail('Discovery Repository');
+}
+
 title('LIVING EDITOR FEATURE');
 
 try {
