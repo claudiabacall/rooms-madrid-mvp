@@ -2349,6 +2349,16 @@ try {
   console.error(error.stdout?.toString() || error.message);
 }
 
+title('OWN PROFILE DNA INTERESTS');
+try {
+  console.log(execFileSync(process.execPath,
+    ['scripts/test-own-profile-dna-interests.mjs'], { encoding: 'utf8' }).trim());
+  ok('Intereses DNA V2 en perfil propio');
+} catch (error) {
+  fail('Intereses DNA V2 en perfil propio');
+  console.error(error.stdout?.toString() || error.message);
+}
+
 title('OWN PROFILE FEATURE');
 
 try {

@@ -151,7 +151,9 @@ function ensureOwnPublicProfileModal() {
         reading: 'Lectura',
         'going-out': 'Salir',
         'quiet-plans': 'Planes tranquilos',
-        pets: 'Mascotas'
+        pets: 'Mascotas',
+        food: 'Food', nightlife: 'Salir', cinema: 'Cine', art: 'Arte',
+        nature: 'Naturaleza', fashion: 'Fashion'
       };
 
       const durationLabels = {
@@ -209,7 +211,11 @@ function ensureOwnPublicProfileModal() {
       modal.querySelector('#ownPublicAbout').textContent =
         profile.bio || 'Aún no has añadido información sobre ti.';
 
-      const interests = (profile.interests || [])
+      const sourceInterests = state.roomsDna?.model_version === window.ROOMS_DNA_V2?.version &&
+        Array.isArray(state.roomsDna?.answers?.world_interests)
+          ? state.roomsDna.answers.world_interests
+          : (profile.interests || []);
+      const interests = sourceInterests
         .map(value => interestLabels[value])
         .filter(Boolean);
 
