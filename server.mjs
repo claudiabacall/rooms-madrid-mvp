@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, join, resolve, relative, sep } from "node:path";
 import dotenv from "dotenv";
 import { geocodeMadridAddress } from "./lib/geocode.mjs";
 
@@ -136,29 +136,28 @@ createServer(async (request, response) => {
       }
     }
 
-    const pathname =
-      decodeURIComponent(url.pathname);
-
-    const requested =
-      pathname === "/"
-        ? "index.html"
-        : pathname.replace(/^\/+/, "");
-
-    const safePath =
-      normalize(requested)
-        .replace(
-          /^(\.\.(\/|\\|$))+/,
-          ""
-        );
-
-    let filePath =
-      join(root, safePath);
-
-    if (
-      (await stat(filePath)).isDirectory()
-    ) {
-      filePath =
-        join(filePath, "index.html");
+    // Serve only public frontend resources. Never expose local configuration,
+    // migration files, scripts, source maps, or installed dependencies.
+    const pathname = decodeURIComponent(url.pathname);
+    const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+    const allowed = requested === "index.html" || requested.startsWith("assets/");
+    const segments = requested.split(/[\\/]+/);
+    if (!allowed || segments.some(part => !part || part === "." || part === ".." || part.startsWith("."))) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Archivo no encontrado");
+      return;
+    }
+    const filePath = resolve(root, requested);
+    const rel = relative(root, filePath);
+    if (rel.startsWith(".." + sep) || rel === ".." || rel.startsWith(sep)) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Archivo no encontrado");
+      return;
+    }
+    if (!(await stat(filePath)).isFile()) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Archivo no encontrado");
+      return;
     }
 
     const body =

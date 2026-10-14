@@ -14,3 +14,9 @@ dist/
 .env*
 
 scripts/.alpha-seed-manifest.json
+
+.env.rooms-test.local
+
+.env.rooms-test-b.local
+test-results/
+server.mjs.backup
