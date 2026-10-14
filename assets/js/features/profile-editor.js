@@ -248,51 +248,81 @@ function ensureProfileEditorModal() {
         return false;
       }
 
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `${state.user.id}/avatar.${extension}`;
+      const userId = state.user.id;
+      const extensionByType = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp'
+      };
+      const extension = extensionByType[file.type];
+      // Each upload gets a new object: never overwrite the current avatar
+      // before the profile row is successfully updated.
+      const uniqueId = window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const path = `${userId}/avatar-${uniqueId}.${extension}`;
+      const storage = db.storage.from('avatars');
 
-      const { error: uploadError } = await db.storage
-        .from('avatars')
-        .upload(path, file, {
-          upsert: true,
-          contentType: file.type
-        });
+      const { error: uploadError } = await storage.upload(path, file, {
+        upsert: false,
+        contentType: file.type
+      });
 
       if (uploadError) {
         console.error('Rooms: error subiendo avatar', uploadError);
-        notify('No se pudo subir la foto');
+        if (!silent) notify('No se pudo subir la foto');
         return false;
       }
 
-      const { data: publicData } = db.storage
-        .from('avatars')
-        .getPublicUrl(path);
+      async function cleanNewUpload() {
+        try {
+          const { error } = await storage.remove([path]);
+          if (error) console.error('Rooms: error limpiando avatar sin guardar', error);
+        } catch (error) {
+          console.error('Rooms: error limpiando avatar sin guardar', error);
+        }
+      }
 
-      const avatarUrl = `${publicData.publicUrl}?v=${Date.now()}`;
-
-      const { data, error } = await db
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', state.user.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Rooms: error guardando avatar', error);
-        notify('No se pudo actualizar tu perfil');
+      if (state.user?.id !== userId) {
+        await cleanNewUpload();
         return false;
       }
+
+      const { data: publicData } = storage.getPublicUrl(path);
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        await cleanNewUpload();
+        if (!silent) notify('No se pudo actualizar tu perfil');
+        return false;
+      }
+
+      const avatarUrl = `${publicUrl}?v=${Date.now()}`;
+      let data, error;
+      try {
+        ({ data, error } = await db.from('profiles')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', userId)
+          .select()
+          .single());
+      } catch (updateError) {
+        error = updateError;
+      }
+
+      if (error || !data) {
+        await cleanNewUpload();
+        console.error('Rooms: error guardando avatar', error || 'Perfil no encontrado');
+        if (!silent) notify('No se pudo actualizar tu perfil');
+        return false;
+      }
+
+      // A session switch after the remote update must never mutate the
+      // newly signed-in user's local profile.
+      if (state.user?.id !== userId) return false;
 
       state.profile = data;
       state.profiles.set(data.id, data);
-      updateOwnProfile(
-        state.profile,
-        state.preferences
-      );
+      updateOwnProfile(state.profile, state.preferences);
 
-      if (!silent) {
-        notify('Foto de perfil actualizada');
-      }
+      if (!silent) notify('Foto de perfil actualizada');
 
       return data;
     }

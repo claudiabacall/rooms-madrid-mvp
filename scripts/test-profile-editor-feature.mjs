@@ -260,6 +260,8 @@ let uploadedOptions =
 
 let uploadError =
   null;
+let removedPaths = [];
+let removeError = null;
 
 const db = {
   from(table) {
@@ -329,6 +331,11 @@ const db = {
             error:
               uploadError
           };
+        },
+
+        async remove(paths) {
+          removedPaths.push(...paths);
+          return { error: removeError };
         },
 
         getPublicUrl(path) {
@@ -719,15 +726,14 @@ const photoResult =
   );
 
 assert(
-  uploadedPath ===
-    'user-me/avatar.webp',
+  /^user-me\/avatar-[a-zA-Z0-9-]+\.webp$/.test(uploadedPath),
   `Ruta de avatar incorrecta: ${uploadedPath}`
 );
 
 assert(
   uploadedOptions?.upsert ===
-    true,
-  'Upload debe usar upsert'
+    false,
+  'Upload no debe sobrescribir el avatar anterior'
 );
 
 assert(
@@ -738,7 +744,7 @@ assert(
 
 assert(
   profileUpdatePayload?.avatar_url?.startsWith(
-    'https://cdn.example.com/user-me/avatar.webp?v='
+    `https://cdn.example.com/${uploadedPath}?v=`
   ),
   'URL pública del avatar incorrecta'
 );
@@ -759,6 +765,18 @@ assert(
 ok(
   'Subida de foto correcta'
 );
+
+console.log('\n=== PROFILE EDITOR · ROLLBACK FOTO ===');
+const avatarBeforeFailure = state.profile.avatar_url;
+profileUpdateError = { message: 'database unavailable' };
+const badSaveResult = await feature.uploadProfilePhoto(validFile);
+assert(badSaveResult === false, 'Error de DB debe devolver false');
+assert(removedPaths.includes(uploadedPath), 'Una foto sin guardar debe eliminarse de Storage');
+assert(state.profile.avatar_url === avatarBeforeFailure,
+  'Error de DB no debe reemplazar el avatar visible');
+profileUpdateError = null;
+ok('Rollback de foto no confirmada');
+
 
 
 console.log(
