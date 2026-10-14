@@ -2338,6 +2338,17 @@ try {
 }
 
 
+title('ONBOARDING -> PROFILE CONTRACT');
+try {
+  const output = execFileSync(process.execPath,
+    ['scripts/test-onboarding-profile-contract.mjs'], { encoding: 'utf8' });
+  console.log(output.trim());
+  ok('Contrato onboarding V2 -> perfil');
+} catch (error) {
+  fail('Contrato onboarding V2 -> perfil');
+  console.error(error.stdout?.toString() || error.message);
+}
+
 title('OWN PROFILE FEATURE');
 
 try {
