@@ -40,15 +40,22 @@
       const price = Number(item.price);
       const priceText = item.price !== null && item.price !== undefined && Number.isFinite(price)
         ? `${price.toLocaleString('es-ES')} €/mes` : 'Precio por consultar';
+      // ROOMS HOME 04: CONTEXTO PUBLICO
       const category = item.kind === 'apartment' ? 'Piso completo' : 'Habitación';
-      const reason = shared ? `Coincide con tu zona: ${shared}` : 'Vivienda publicada en Rooms';
-      return `<article class="rooms-home-rec-card"><span class="rooms-home-rec-kicker">${escapeHtml(category)}</span><h3>${escapeHtml(title)}</h3><strong class="rooms-home-rec-price">${escapeHtml(priceText)}</strong><p>${escapeHtml(reason)}</p><button type="button" data-home-discover="homes">Explorar viviendas →</button></article>`;
+      const zone = typeof item.zone === 'string' ? item.zone.trim() : '';
+      const reason = shared ? `Está en una de tus zonas: ${shared}` : 'Anuncio disponible para explorar';
+      return `<article class="rooms-home-rec-card"><span class="rooms-home-rec-kicker">${escapeHtml(category)}</span><h3>${escapeHtml(title)}</h3>${zone ? `<span class="rooms-home-rec-sub">Zona: ${escapeHtml(zone)}</span>` : ''}<strong class="rooms-home-rec-price">${escapeHtml(priceText)}</strong><p>${escapeHtml(reason)}</p><button type="button" data-home-discover="homes">Explorar viviendas →</button></article>`;
     }
     function personCard({ item, shared }) {
       const name = item.alias || item.name || 'Persona en Rooms';
-      const reason = shared ? `Coincide con tu zona: ${shared}` : 'Perfil disponible en Rooms';
-      const seeking = Array.isArray(item.seeking) && item.seeking.length ? 'Buscando vivienda o compañía' : 'Conoce su perfil';
-      return `<article class="rooms-home-rec-card"><span class="rooms-home-rec-kicker">PERSONA</span><h3>${escapeHtml(name)}</h3><span class="rooms-home-rec-sub">${escapeHtml(seeking)}</span><p>${escapeHtml(reason)}</p><button type="button" data-home-discover="people">Explorar personas →</button></article>`;
+      const seekingLabels = { room: 'Busca habitación', home: 'Busca piso', mates: 'Busca compañeros' };
+      const seeking = [...new Set((Array.isArray(item.seeking) ? item.seeking : [])
+        .map(value => seekingLabels[value]).filter(Boolean))].join(' · ');
+      const zones = (Array.isArray(item.zones) ? item.zones : [])
+        .filter(value => typeof value === 'string' && value.trim())
+        .slice(0, 2);
+      const reason = shared ? `Buscáis en la misma zona: ${shared}` : 'Perfil disponible para explorar';
+      return `<article class="rooms-home-rec-card"><span class="rooms-home-rec-kicker">PERSONA</span><h3>${escapeHtml(name)}</h3><span class="rooms-home-rec-sub">${escapeHtml(seeking || 'Búsqueda no especificada')}</span>${zones.length ? `<span class="rooms-home-rec-sub">Zonas: ${escapeHtml(zones.join(' · '))}</span>` : ''}<p>${escapeHtml(reason)}</p><button type="button" data-home-discover="people">Explorar personas →</button></article>`;
     }
 
     container.hidden = false;
