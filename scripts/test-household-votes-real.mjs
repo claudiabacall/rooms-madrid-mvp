@@ -109,11 +109,27 @@ try {
   if (oldA.error) throw Error(`Lectura votos: ${oldA.error.message}`);
   const aId = await a.evaluate(() => window.roomsBackend.state.user.id);
   const bId = await b.evaluate(() => window.roomsBackend.state.user.id);
-  if (oldA.votes.find(v=>v.user_id===aId)?.vote === 'like' || oldA.votes.find(v=>v.user_id===bId)?.vote === 'maybe') {
-    throw Error('El candidato ya tiene uno de los votos previstos. Usa otro hogar/candidato QA para no sobrescribirlos.');
+  const previousA = oldA.votes.find(v => v.user_id === aId)?.vote;
+  const previousB = oldA.votes.find(v => v.user_id === bId)?.vote;
+
+  if (previousA && previousA !== 'like') {
+    throw Error('A tiene un voto diferente; no se modifica.');
   }
-  await castVote(a, 'like', 'A');
-  await castVote(b, 'maybe', 'B');
+  if (previousB && previousB !== 'maybe') {
+    throw Error('B tiene un voto diferente; no se modifica.');
+  }
+
+  if (previousA === 'like') {
+    console.log('OK A ya habia votado like');
+  } else {
+    await castVote(a, 'like', 'A');
+  }
+
+  if (previousB === 'maybe') {
+    console.log('OK B ya habia votado maybe');
+  } else {
+    await castVote(b, 'maybe', 'B');
+  }
   await a.reload(); await b.reload();
   await Promise.all([a.waitForFunction(() => !!window.roomsBackend?.state?.user), b.waitForFunction(() => !!window.roomsBackend?.state?.user)]);
   const resultA = await readVotes(a, groupId, listingId);
