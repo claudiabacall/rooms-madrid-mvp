@@ -104,11 +104,10 @@
 
                   ${
                     seeking || zone
-                      ? `<p class="explore-person-search">
-                          ${escapeHtml(
-                            [seeking, zone].filter(Boolean).join(' · ')
-                          )}
-                        </p>`
+                      ? `<div class="explore-person-search explore-person-match-meta">
+                          ${seeking ? `<p><span>Busca</span><strong>${escapeHtml(seeking)}</strong></p>` : ''}
+                          ${zone ? `<p><span>Zona</span><strong>${escapeHtml(zone)}</strong></p>` : ''}
+                        </div>`
                       : `<p class="explore-person-search">
                           Perfil en Rooms
                         </p>`

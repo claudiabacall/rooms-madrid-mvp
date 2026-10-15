@@ -18805,3 +18805,28 @@ i:nth-child(3n+2){
     max-width: 100%;
   }
 }
+
+/* ROOMS DISCOVERY CARD HIERARCHY 01 */
+/* Datos relevantes visibles y acciones comodas, sin cambiar funcionalidad. */
+.explore-property-body,
+.explore-person-body { min-width: 0; }
+.explore-property-top > div { min-width: 0; }
+.explore-property-top h2 { overflow-wrap: anywhere; }
+.explore-property-price b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.explore-person-match-meta { display: grid !important; gap: 7px !important; min-height: 0 !important; }
+.explore-person-match-meta p { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 9px; margin: 0; min-width: 0; }
+.explore-person-match-meta p span { flex: 0 0 41px; color: #77736c; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; font-weight: 750; }
+.explore-person-match-meta p strong { flex: 1 1 100px; min-width: 0; font-size: 13px; color: #161616; font-weight: 700; overflow-wrap: anywhere; }
+.explore-property-actions button { min-height: 44px; padding: 10px 12px; box-sizing: border-box; }
+.explore-property-open { background: var(--acid); color: var(--ink); border: 1px solid var(--ink); font-weight: 800; }
+.explore-send-home { border: 1px solid var(--line); color: var(--ink); }
+@media (max-width: 620px) {
+  .explore-property-top { display: flex; flex-direction: column; gap: 8px; }
+  .explore-property-price { margin-top: 0; text-align: left; }
+  .explore-property-price b { font-size: 25px; }
+  .explore-property-footer { flex-direction: column; align-items: stretch; gap: 12px; }
+  .explore-property-footer > span { order: 2; }
+  .explore-property-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 8px; }
+  .explore-property-actions button { white-space: normal; line-height: 1.15; }
+  .explore-person-match-meta p strong { font-size: 13px; }
+}
