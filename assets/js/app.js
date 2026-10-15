@@ -3350,6 +3350,15 @@ function showMainView(view){
   });
 }
 document.querySelectorAll('[data-bottom-nav]').forEach(button=>button.addEventListener('click',()=>{showMainView(button.dataset.bottomNav)}));
+// ROOMS HOME WAYFINDING V1 — reuse Explore's existing controller and filters.
+document.querySelectorAll('[data-home-discover]').forEach(button => {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.homeDiscover;
+    if (!['homes', 'people', 'communities'].includes(mode)) return;
+    showMainView('explore');
+    document.querySelector(`[data-explore-mode="${mode}"]`)?.click();
+  });
+});
 document.querySelector('#openChats').addEventListener('click',()=>open(chatInboxModal));
 document.querySelector('#openNotifications').addEventListener('click',()=>open(notificationsModal));
 document.querySelector('#conversationBack').addEventListener('click',()=>{conversationModal.classList.remove('open');conversationModal.setAttribute('aria-hidden','true');open(chatInboxModal)});
