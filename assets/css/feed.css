@@ -2867,13 +2867,17 @@
   .explore-mode-switch{
     width:100%;
     display:grid;
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    min-width:0;
   }
 
   .explore-mode-switch button{
+    min-width:0;
     margin:0;
-    padding:0 0 11px;
+    padding:0 4px 11px;
     text-align:center;
+    font-size:12px;
+    white-space:nowrap;
   }
 
   .explore-mode-switch button.active::after{
