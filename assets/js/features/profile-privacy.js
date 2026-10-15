@@ -19,7 +19,7 @@ function renderProfilePrivacySettings() {
 
       document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
         const key = row.dataset.profilePrivacyRow;
-        const value = controls[key] || 'public';
+        const value = controls[key] || (key === 'living' ? 'private' : 'public');
 
         row.querySelectorAll('[data-privacy-value]').forEach(button => {
           const active = button.dataset.privacyValue === value;
@@ -37,7 +37,7 @@ function renderProfilePrivacySettings() {
         activity: 'public'
       },
       balanced: {
-        living: 'public',
+        living: 'private',
         search: 'public',
         budget: 'connections',
         activity: 'public'
@@ -53,7 +53,7 @@ function renderProfilePrivacySettings() {
     function applyProfilePrivacyControls(controls) {
       document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
         const key = row.dataset.profilePrivacyRow;
-        const value = controls[key] || 'public';
+        const value = controls[key] || (key === 'living' ? 'private' : 'public');
 
         row.querySelectorAll('[data-privacy-value]').forEach(button => {
           const active = button.dataset.privacyValue === value;
@@ -69,7 +69,7 @@ function renderProfilePrivacySettings() {
       document.querySelectorAll('[data-profile-privacy-row]').forEach(row => {
         current[row.dataset.profilePrivacyRow] =
           row.querySelector('[data-privacy-value].active')
-            ?.dataset.privacyValue || 'public';
+            ?.dataset.privacyValue || (key === 'living' ? 'private' : 'public');
       });
 
       return Object.entries(profilePrivacyPresets).find(([, preset]) =>
@@ -133,7 +133,7 @@ function renderProfilePrivacySettings() {
           const key = row.dataset.profilePrivacyRow;
           const value =
             row.querySelector('[data-privacy-value].active')
-              ?.dataset.privacyValue || 'public';
+              ?.dataset.privacyValue || (key === 'living' ? 'private' : 'public');
 
           controls[key] = value;
         });
