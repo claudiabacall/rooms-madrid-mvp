@@ -8,6 +8,43 @@
     renderPostCard,
     renderCommunityCard
   }) {
+    // ROOMS HOME FEED PAGING 03
+    const PAGE_SIZE = 12;
+    let shown = PAGE_SIZE;
+    let currentType = 'all';
+    let moreButton = null;
+
+    function applyFilter(type = 'all', reset = false) {
+      const feed = document.querySelector('#personalFeed');
+      if (!feed) return;
+      if (reset || currentType !== type) shown = PAGE_SIZE;
+      currentType = type;
+      const cards = [...feed.querySelectorAll('[data-feed-type]')];
+      const matches = cards.filter(card => type === 'all' || card.dataset.feedType === type);
+      cards.forEach(card => { card.hidden = true; });
+      matches.slice(0, shown).forEach(card => { card.hidden = false; });
+      if (moreButton) {
+        const remaining = Math.max(0, matches.length - shown);
+        moreButton.hidden = remaining === 0;
+        moreButton.textContent = `Ver más publicaciones (${remaining} restantes)`;
+      }
+    }
+
+    function ensureButton(feed) {
+      if (!moreButton || !moreButton.isConnected) {
+        moreButton = document.createElement('button');
+        moreButton.type = 'button';
+        moreButton.className = 'rooms-home-more';
+        moreButton.setAttribute('aria-controls', 'personalFeed');
+        moreButton.addEventListener('click', () => {
+          shown += PAGE_SIZE;
+          applyFilter(currentType);
+        });
+      }
+      feed.insertAdjacentElement('afterend', moreButton);
+    }
+    window.ROOMS_HOME_FEED_PAGING = { applyFilter };
+
     function renderRealFeed(listings, profiles, posts, communities) {
       const feed = document.querySelector('#personalFeed');
       if (!feed) return;
@@ -55,19 +92,9 @@
           <button type="button" data-open-real-publish>Crear lo primero</button>
         </section>`;
 
-      const activeFeedFilter =
-        document.querySelector('[data-feed-filter].active');
-
-      const activeFeedType =
-        activeFeedFilter?.dataset.feedFilter || 'all';
-
-      document
-        .querySelectorAll('#personalFeed [data-feed-type]')
-        .forEach(card => {
-          card.hidden =
-            activeFeedType !== 'all' &&
-            card.dataset.feedType !== activeFeedType;
-        });
+      ensureButton(feed);
+      const type = document.querySelector('[data-feed-filter].active')?.dataset.feedFilter || 'all';
+      applyFilter(type, true);
     }
 
     return { renderRealFeed };
