@@ -1826,6 +1826,7 @@
 
     renderRealFeed(listings || [], profiles || [], posts || [], communities || []);
     renderFilteredExplore();
+    window.ROOMS_HOME_RECOMMENDATIONS?.render({ state });
 
     // Las cards acaban de recrearse: aplicar ahora
     // el estado real de conexión de cada usuario.
