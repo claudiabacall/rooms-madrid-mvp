@@ -18708,3 +18708,96 @@ i:nth-child(3n+2){
     width:76px;
   }
 }
+
+
+/* ROOMS QA RESPONSIVE FIX 2026-10-14: profile intrinsic grid overflow */
+@media (max-width: 620px) {
+  .own-profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .own-profile-content,
+  .own-profile-content > section,
+  .own-profile-content .manage-section-title,
+  .own-profile-content .lifestyle-grid,
+  .own-profile-content .looking-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .own-profile-content {
+    padding-inline: 16px;
+  }
+  .own-profile-content .lifestyle-grid,
+  .own-profile-content .looking-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .own-profile-content .lifestyle-grid > *,
+  .own-profile-content .looking-grid > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .own-profile-content .manage-section-title {
+    gap: 10px;
+  }
+  .own-profile-content .manage-section-title h2 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .own-profile-content .manage-section-title button {
+    flex-shrink: 0;
+  }
+}
+
+
+/* ROOMS MOBILE QUICK FILTERS FIX */
+@media (max-width: 620px) {
+  .feed-filter-row {
+    min-width: 0;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+
+  .feed-filter-row .quick-filters {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .feed-filter-row .quick-filters button {
+    flex: 0 0 auto;
+  }
+
+  .feed-filter-row .feed-filter-button {
+    flex-shrink: 0;
+  }
+}
+
+
+/* ROOMS MOBILE VIEWPORT CONTAINMENT */
+@media (max-width: 620px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .feed-main {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .feed-filter-row {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .feed-bottom-nav {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+  }
+}
