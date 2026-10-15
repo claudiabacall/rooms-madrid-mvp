@@ -7,8 +7,14 @@
   }) {
   let exploreLeafletMap = null;
   let exploreLeafletMarkers = new Map();
+  let pendingMapResize = null;
 
   function destroyExploreLeafletMap() {
+    if (pendingMapResize !== null) {
+      window.clearTimeout(pendingMapResize);
+      pendingMapResize = null;
+    }
+
     if (exploreLeafletMap) {
       exploreLeafletMap.remove();
       exploreLeafletMap = null;
@@ -188,11 +194,15 @@
 
     exploreLeafletMap.on('moveend zoomend', updateVisibleMapListings);
 
-    window.setTimeout(() => {
-      if (exploreLeafletMap) {
-        exploreLeafletMap.invalidateSize();
-        updateVisibleMapListings();
-      }
+    const initializedMap = exploreLeafletMap;
+
+    pendingMapResize = window.setTimeout(() => {
+      pendingMapResize = null;
+
+      if (exploreLeafletMap !== initializedMap) return;
+
+      initializedMap.invalidateSize();
+      updateVisibleMapListings();
     }, 80);
   }
 
