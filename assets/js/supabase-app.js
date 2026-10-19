@@ -4206,6 +4206,15 @@
     }
 
     if (session) {
+      // INITIAL_SESSION puede llegar despues de SIGNED_IN
+      // durante la misma restauracion. Evitar carga duplicada.
+      if (
+        event === 'INITIAL_SESSION' &&
+        state.user?.id === session.user.id
+      ) {
+        return;
+      }
+
       const forceHome =
         event === 'SIGNED_IN' &&
         manualAuthNavigationPending;
@@ -4224,10 +4233,8 @@
       startupAuthUrlError?.code === 'otp_expired';
 
     if (data.session) {
-      await startSession(data.session, {
-        forceHome: false
-      });
-
+      // La sesion se inicializa desde onAuthStateChange.
+      // Evitamos una segunda carga desde getSession().
       if (expiredAuthLink) {
         notify(
           'El enlace de recuperación ha caducado. Tu sesión actual sigue activa.'
