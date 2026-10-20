@@ -18910,3 +18910,20 @@ i:nth-child(3n+2){
     margin: 0;
   }
 }
+
+/* ROOMS HOME PROPERTY TOUCH TARGET FIX */
+.rooms-home-property-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rooms-home-property-open:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
