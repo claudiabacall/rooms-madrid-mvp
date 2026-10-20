@@ -18892,3 +18892,21 @@ i:nth-child(3n+2){
   position: relative;
   z-index: 100;
 }
+
+/* ROOMS MOBILE INTRO RESPONSIVE FIX */
+@media (max-width: 390px) {
+  .feed-intro {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .feed-intro h1 {
+    min-width: 0;
+  }
+
+  .feed-intro p {
+    white-space: normal;
+    max-width: 100%;
+    margin: 0;
+  }
+}
