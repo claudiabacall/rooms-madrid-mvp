@@ -67,7 +67,7 @@ createServer(async (request, response) => {
       const address =
         String(body.address || "").trim();
 
-      if (address.length < 5) {
+      if (address.length < 5 || address.length > 200) {
         response.writeHead(400, {
           "Content-Type":
             "application/json; charset=utf-8"

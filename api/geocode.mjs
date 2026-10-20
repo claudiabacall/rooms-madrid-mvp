@@ -20,7 +20,7 @@ export default async function handler(request, response) {
     const address =
       String(body.address || '').trim();
 
-    if (address.length < 5) {
+    if (address.length < 5 || address.length > 200) {
       response.status(400).json({
         error: 'Introduce una dirección válida'
       });
