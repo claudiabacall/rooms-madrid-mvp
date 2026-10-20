@@ -169,6 +169,11 @@
         ) {
           button.textContent = 'Bloqueado';
           button.disabled = true;
+          button.classList.remove(
+            'connection-pending',
+            'connection-accepted',
+            'connection-incoming'
+          );
           button.classList.add(
             'connection-blocked'
           );
