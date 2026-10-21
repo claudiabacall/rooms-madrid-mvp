@@ -23,7 +23,7 @@ function audit() {
     storage_verified: false,
     auth_verified: false,
     database_verified: false,
-    shared_impact_verified: false
+    shared_impact_verified: true
   };
 }
 
@@ -113,4 +113,30 @@ test('auditoria finalizada no puede reutilizarse', () => {
     })),
     /incompatible/
   );
+});
+
+test('completed exige evidencia compartida ya registrada', () => {
+  assert.throws(
+    () => buildCompletedAuditPatch(args({
+      audit: { ...audit(), shared_impact_verified: false }
+    })),
+    /Falta evidencia previa/
+  );
+});
+
+test('failed permite evidencia compartida aun pendiente', () => {
+  const result = buildFailedAuditPatch(args({
+    audit: { ...audit(), shared_impact_verified: false }
+  }));
+
+  assert.equal(result.status, 'failed');
+  assert.equal(
+    Object.hasOwn(result, 'shared_impact_verified'),
+    false
+  );
+});
+
+test('failed acepta evidencia previa existente', () => {
+  const result = buildFailedAuditPatch(args());
+  assert.equal(result.status, 'failed');
 });

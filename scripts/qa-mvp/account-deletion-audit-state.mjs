@@ -21,7 +21,9 @@ function assertClaimedAudit(audit, targetId, claimToken) {
     typeof audit.claimed_at !== 'string' ||
     !Number.isFinite(Date.parse(audit.claimed_at)) ||
     audit.finished_at !== null ||
-    FLAGS.some(field => audit[field] !== false)
+    FLAGS.some(field => typeof audit[field] !== 'boolean') ||
+    ['storage_verified', 'auth_verified', 'database_verified']
+      .some(field => audit[field] !== false)
   ) {
     throw new Error('Auditoria reclamada o token incompatible');
   }
@@ -45,6 +47,12 @@ export function buildCompletedAuditPatch({
 }) {
   assertClaimedAudit(audit, targetId, claimToken);
   assertFinishedAt(finishedAt);
+
+  if (audit.shared_impact_verified !== true) {
+    throw new Error(
+      'Falta evidencia previa de impacto compartido'
+    );
+  }
 
   if (
     !evidence ||

@@ -47,7 +47,12 @@ export async function simulateDeletionFailureHandling({
       outcome: 'VERIFIED_IN_SIMULATION',
       stages,
       auditPatch: buildCompletedAuditPatch({
-        audit,
+        // Simulacion: la ultima etapa representa una
+        // atestacion previa realizada con exito.
+        audit: {
+          ...audit,
+          shared_impact_verified: true
+        },
         targetId,
         claimToken: audit.claim_token,
         evidence: {
