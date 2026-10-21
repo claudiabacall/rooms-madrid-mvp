@@ -21,20 +21,26 @@ const types = {
   ".svg": "image/svg+xml"
 };
 
+const MAX_GEOCODE_BODY_BYTES = 4096;
+
 async function readJsonBody(request) {
   const chunks = [];
+  let totalBytes = 0;
 
   for await (const chunk of request) {
+    totalBytes += chunk.length;
+
+    if (totalBytes > MAX_GEOCODE_BODY_BYTES) {
+      const error = new Error("Request body too large");
+      error.code = "BODY_TOO_LARGE";
+      throw error;
+    }
+
     chunks.push(chunk);
   }
 
-  const raw = Buffer
-    .concat(chunks)
-    .toString("utf8");
-
-  if (!raw) return {};
-
-  return JSON.parse(raw);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  return raw ? JSON.parse(raw) : {};
 }
 
 createServer(async (request, response) => {
@@ -61,8 +67,21 @@ createServer(async (request, response) => {
         return;
       }
 
-      const body =
-        await readJsonBody(request);
+      let body;
+
+      try {
+        body = await readJsonBody(request);
+      } catch (error) {
+        if (error.code !== "BODY_TOO_LARGE") throw error;
+
+        response.writeHead(413, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        response.end(JSON.stringify({
+          error: "Petición demasiado grande"
+        }));
+        return;
+      }
 
       const address =
         String(body.address || "").trim();

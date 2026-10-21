@@ -12,10 +12,30 @@ export default async function handler(request, response) {
   }
 
   try {
-    const body =
-      typeof request.body === 'string'
-        ? JSON.parse(request.body || '{}')
-        : request.body || {};
+    const maxBytes = 4096;
+    const contentLength = Number(request.headers?.['content-length']);
+
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      response.status(413).json({
+        error: 'Petición demasiado grande'
+      });
+      return;
+    }
+
+    const rawBody = typeof request.body === 'string'
+      ? request.body
+      : JSON.stringify(request.body || {});
+
+    if (Buffer.byteLength(rawBody, 'utf8') > maxBytes) {
+      response.status(413).json({
+        error: 'Petición demasiado grande'
+      });
+      return;
+    }
+
+    const body = typeof request.body === 'string'
+      ? JSON.parse(request.body || '{}')
+      : request.body || {};
 
     const address =
       String(body.address || '').trim();
