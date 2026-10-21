@@ -384,6 +384,11 @@
 
   let manualAuthNavigationPending = false;
 
+  // El registro permanece cerrado hasta aprobar los
+  // documentos legales y configurar su publicacion.
+  const ROOMS_LEGAL_REGISTRATION_READY = false;
+  const ROOMS_TERMS_VERSION = null;
+
   function injectAuthGate() {
     const gate = document.createElement('section');
     gate.className = 'auth-gate';
@@ -417,6 +422,17 @@
             ¿Has olvidado tu contraseña?
           </button>
 
+          <div id="authSignupLegal" hidden>
+            <label>
+              <input id="authAcceptTerms" type="checkbox">
+              He leído y acepto las condiciones de uso de ROOMS.
+            </label>
+            <p id="authLegalNotice" role="status">
+              Registro temporalmente cerrado hasta la
+              aprobación de los documentos legales.
+            </p>
+          </div>
+
           <button class="auth-submit" id="authSubmit" type="submit">Entrar</button>
           <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </form>
@@ -429,6 +445,8 @@
       mode = button.dataset.authMode;
       gate.querySelectorAll('[data-auth-mode]').forEach(item => item.classList.toggle('active', item === button));
       document.querySelector('#authNameField').hidden = mode !== 'signup';
+      document.querySelector('#authSignupLegal').hidden = mode !== 'signup';
+      document.querySelector('#authAcceptTerms').checked = false;
       document.querySelector('#authName').required = mode === 'signup';
 
       const passwordInput =
@@ -543,6 +561,24 @@
 
     document.querySelector('#roomsAuthForm').addEventListener('submit', async event => {
       event.preventDefault();
+
+      if (mode === 'signup') {
+        const message = document.querySelector('#authMessage');
+
+        if (!ROOMS_LEGAL_REGISTRATION_READY || !ROOMS_TERMS_VERSION) {
+          message.textContent =
+            'El registro está temporalmente cerrado mientras ' +
+            'preparamos la documentación legal de ROOMS.';
+          return;
+        }
+
+        if (!document.querySelector('#authAcceptTerms').checked) {
+          message.textContent =
+            'Debes aceptar las condiciones de uso para crear tu cuenta.';
+          return;
+        }
+      }
+
       const email = document.querySelector('#authEmail').value.trim();
       const password = document.querySelector('#authPassword').value;
       const name = document.querySelector('#authName').value.trim();
