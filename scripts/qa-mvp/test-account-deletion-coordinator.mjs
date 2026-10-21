@@ -14,6 +14,8 @@ const user = {
 function fixture({
   members = 0,
   householdMembers = 0,
+  ownedCommunities = 0,
+  ownedHouseholds = 0,
   removalError = false,
   authSuccess = true
 } = {}) {
@@ -69,7 +71,9 @@ function fixture({
         operations.push('impact');
         return {
           communityMembersAffected: members,
-          householdMembersAffected: householdMembers
+          householdMembersAffected: householdMembers,
+          ownedCommunities,
+          ownedHouseholds
         };
       },
       async deleteAuthUser() {
@@ -84,7 +88,7 @@ const blocked = fixture({ members: 2 });
 
 await assert.rejects(
   executeDisposableAccountDeletion(blocked.args),
-  /otros miembros afectados/
+  /titularidad o miembros afectados/
 );
 
 assert.deepEqual(blocked.operations, ['impact']);
@@ -94,11 +98,35 @@ const household = fixture({ householdMembers: 1 });
 
 await assert.rejects(
   executeDisposableAccountDeletion(household.args),
-  /otros miembros afectados/
+  /titularidad o miembros afectados/
 );
 
 assert.deepEqual(household.operations, ['impact']);
 console.log('OK Hogar compartido protegido');
+
+const communityOwner = fixture({
+  ownedCommunities: 1
+});
+
+await assert.rejects(
+  executeDisposableAccountDeletion(communityOwner.args),
+  /titularidad o miembros afectados/
+);
+
+assert.deepEqual(communityOwner.operations, ['impact']);
+console.log('OK Propietario de comunidad protegido');
+
+const householdOwner = fixture({
+  ownedHouseholds: 1
+});
+
+await assert.rejects(
+  executeDisposableAccountDeletion(householdOwner.args),
+  /titularidad o miembros afectados/
+);
+
+assert.deepEqual(householdOwner.operations, ['impact']);
+console.log('OK Propietario de hogar protegido');
 
 const unauthorized = fixture();
 

@@ -8,7 +8,9 @@ import {
 
 const IMPACT_FIELDS = [
   'communityMembersAffected',
-  'householdMembersAffected'
+  'householdMembersAffected',
+  'ownedCommunities',
+  'ownedHouseholds'
 ];
 
 export async function executeDisposableAccountDeletion({
@@ -52,7 +54,7 @@ export async function executeDisposableAccountDeletion({
   if (IMPACT_FIELDS.some(field => impact[field] > 0)) {
     throw new Error(
       'Baja detenida: existen comunidades u hogares ' +
-      'con otros miembros afectados'
+      'con titularidad o miembros afectados'
     );
   }
 
