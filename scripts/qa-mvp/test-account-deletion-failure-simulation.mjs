@@ -8,10 +8,12 @@ import {
 const TARGET = 'd022e620-aedb-4ee0-8995-c15c4ac5545f';
 
 const AUDIT = {
-  id: 'simulated-audit',
+  id: '11111111-1111-4111-8111-111111111111',
   target_user_id: TARGET,
-  operator_id: 'simulated-operator',
-  status: 'started',
+  operator_id: '33333333-3333-4333-8333-333333333333',
+  status: 'processing',
+  claim_token: '22222222-2222-4222-8222-222222222222',
+  claimed_at: '2026-10-21T17:00:00.000Z',
   storage_verified: false,
   auth_verified: false,
   database_verified: false,

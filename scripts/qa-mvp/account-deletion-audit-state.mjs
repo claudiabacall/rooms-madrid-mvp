@@ -1,3 +1,5 @@
+import { validate as isUuid } from './account-deletion-uuid.mjs';
+
 const FLAGS = Object.freeze([
   'storage_verified',
   'auth_verified',
@@ -5,30 +7,30 @@ const FLAGS = Object.freeze([
   'shared_impact_verified'
 ]);
 
-function assertStarted(audit) {
+function assertClaimedAudit(audit, targetId, claimToken) {
   if (
     !audit ||
     typeof audit !== 'object' ||
-    typeof audit.id !== 'string' ||
-    !audit.id ||
-    typeof audit.target_user_id !== 'string' ||
-    !audit.target_user_id ||
-    typeof audit.operator_id !== 'string' ||
-    !audit.operator_id ||
-    audit.status !== 'started' ||
+    !isUuid(audit.id) ||
+    !isUuid(audit.target_user_id) ||
+    !isUuid(audit.operator_id) ||
+    !isUuid(claimToken) ||
+    audit.target_user_id !== targetId ||
+    audit.status !== 'processing' ||
+    audit.claim_token !== claimToken ||
+    typeof audit.claimed_at !== 'string' ||
+    !Number.isFinite(Date.parse(audit.claimed_at)) ||
     audit.finished_at !== null ||
     FLAGS.some(field => audit[field] !== false)
   ) {
-    throw new Error(
-      'Auditoria inicial incompatible con la ejecucion'
-    );
+    throw new Error('Auditoria reclamada o token incompatible');
   }
 }
 
-function assertFinishedAt(value) {
+function assertFinishedAt(finishedAt) {
   if (
-    typeof value !== 'string' ||
-    !Number.isFinite(Date.parse(value))
+    typeof finishedAt !== 'string' ||
+    !Number.isFinite(Date.parse(finishedAt))
   ) {
     throw new Error('Fecha de finalizacion invalida');
   }
@@ -37,15 +39,12 @@ function assertFinishedAt(value) {
 export function buildCompletedAuditPatch({
   audit,
   targetId,
+  claimToken,
   evidence,
   finishedAt
 }) {
-  assertStarted(audit);
+  assertClaimedAudit(audit, targetId, claimToken);
   assertFinishedAt(finishedAt);
-
-  if (audit.target_user_id !== targetId) {
-    throw new Error('La auditoria corresponde a otra cuenta');
-  }
 
   if (
     !evidence ||
@@ -70,14 +69,11 @@ export function buildCompletedAuditPatch({
 export function buildFailedAuditPatch({
   audit,
   targetId,
+  claimToken,
   finishedAt
 }) {
-  assertStarted(audit);
+  assertClaimedAudit(audit, targetId, claimToken);
   assertFinishedAt(finishedAt);
-
-  if (audit.target_user_id !== targetId) {
-    throw new Error('La auditoria corresponde a otra cuenta');
-  }
 
   return {
     status: 'failed',

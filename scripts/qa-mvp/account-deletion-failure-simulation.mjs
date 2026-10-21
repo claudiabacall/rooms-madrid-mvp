@@ -49,6 +49,7 @@ export async function simulateDeletionFailureHandling({
       auditPatch: buildCompletedAuditPatch({
         audit,
         targetId,
+        claimToken: audit.claim_token,
         evidence: {
           storage_verified: true,
           auth_verified: true,
@@ -71,6 +72,7 @@ export async function simulateDeletionFailureHandling({
       auditPatch: buildFailedAuditPatch({
         audit,
         targetId,
+        claimToken: audit.claim_token,
         finishedAt
       }),
       auditWritten: false,

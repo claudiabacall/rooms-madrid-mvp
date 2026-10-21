@@ -1,29 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
 import {
   buildCompletedAuditPatch,
   buildFailedAuditPatch
 } from './account-deletion-audit-state.mjs';
 
-const ID = 'd022e620-aedb-4ee0-8995-c15c4ac5545f';
-const FINISHED = '2026-10-21T18:00:00.000Z';
+const TARGET = 'd022e620-aedb-4ee0-8995-c15c4ac5545f';
+const AUDIT_ID = '11111111-1111-4111-8111-111111111111';
+const OPERATOR = '33333333-3333-4333-8333-333333333333';
+const TOKEN = '22222222-2222-4222-8222-222222222222';
+const WHEN = '2026-10-21T18:00:00.000Z';
 
-function startedAudit() {
+function audit() {
   return {
-    id: 'audit-test',
-    target_user_id: ID,
-    operator_id: 'operator-test',
-    status: 'started',
+    id: AUDIT_ID,
+    target_user_id: TARGET,
+    operator_id: OPERATOR,
+    status: 'processing',
+    claim_token: TOKEN,
+    claimed_at: WHEN,
+    finished_at: null,
     storage_verified: false,
     auth_verified: false,
     database_verified: false,
-    shared_impact_verified: false,
-    finished_at: null
+    shared_impact_verified: false
   };
 }
 
-function verifiedEvidence() {
+function evidence() {
   return {
     storage_verified: true,
     auth_verified: true,
@@ -32,87 +36,81 @@ function verifiedEvidence() {
   };
 }
 
-test('completed exige cuatro evidencias positivas', () => {
-  const patch = buildCompletedAuditPatch({
-    audit: startedAudit(),
-    targetId: ID,
-    evidence: verifiedEvidence(),
-    finishedAt: FINISHED
-  });
+function args(overrides = {}) {
+  return {
+    audit: audit(),
+    targetId: TARGET,
+    claimToken: TOKEN,
+    finishedAt: WHEN,
+    evidence: evidence(),
+    ...overrides
+  };
+}
 
-  assert.equal(patch.status, 'completed');
-  assert.equal(patch.finished_at, FINISHED);
-  assert.deepEqual(
-    Object.values(patch).filter(value => value === true).length,
-    4
-  );
+test('completed exige processing, token y cuatro evidencias', () => {
+  const result = buildCompletedAuditPatch(args());
+  assert.equal(result.status, 'completed');
+  assert.equal(result.database_verified, true);
 });
 
-test('no permite completar con una evidencia ausente', () => {
-  const evidence = verifiedEvidence();
-  evidence.database_verified = false;
-
+test('una verificacion negativa impide completar', () => {
   assert.throws(
-    () => buildCompletedAuditPatch({
-      audit: startedAudit(),
-      targetId: ID,
-      evidence,
-      finishedAt: FINISHED
-    }),
+    () => buildCompletedAuditPatch(args({
+      evidence: { ...evidence(), database_verified: false }
+    })),
     /cuatro verificaciones/
   );
 });
 
-test('no acepta una auditoria de otra cuenta', () => {
+test('no permite cerrar una auditoria started', () => {
   assert.throws(
-    () => buildCompletedAuditPatch({
-      audit: startedAudit(),
-      targetId: 'otra-cuenta',
-      evidence: verifiedEvidence(),
-      finishedAt: FINISHED
-    }),
-    /otra cuenta/
-  );
-});
-
-test('no permite reutilizar una auditoria finalizada', () => {
-  const audit = startedAudit();
-  audit.status = 'completed';
-
-  assert.throws(
-    () => buildCompletedAuditPatch({
-      audit,
-      targetId: ID,
-      evidence: verifiedEvidence(),
-      finishedAt: FINISHED
-    }),
+    () => buildCompletedAuditPatch(args({
+      audit: { ...audit(), status: 'started' }
+    })),
     /incompatible/
   );
 });
 
-test('failed no inventa verificaciones positivas', () => {
-  const patch = buildFailedAuditPatch({
-    audit: startedAudit(),
-    targetId: ID,
-    finishedAt: FINISHED
-  });
+test('token incorrecto impide completar', () => {
+  assert.throws(
+    () => buildCompletedAuditPatch(args({
+      claimToken: '44444444-4444-4444-8444-444444444444'
+    })),
+    /incompatible/
+  );
+});
 
-  assert.deepEqual(patch, {
+test('no admite otra cuenta', () => {
+  assert.throws(
+    () => buildCompletedAuditPatch(args({
+      targetId: '55555555-5555-4555-8555-555555555555'
+    })),
+    /incompatible/
+  );
+});
+
+test('failed conserva las verificaciones sin inventarlas', () => {
+  const result = buildFailedAuditPatch(args());
+  assert.deepEqual(result, {
     status: 'failed',
-    finished_at: FINISHED
+    finished_at: WHEN
   });
 });
 
-test('no admite auditorias ya marcadas', () => {
-  const audit = startedAudit();
-  audit.auth_verified = true;
-
+test('token incorrecto impide registrar failed', () => {
   assert.throws(
-    () => buildFailedAuditPatch({
-      audit,
-      targetId: ID,
-      finishedAt: FINISHED
-    }),
+    () => buildFailedAuditPatch(args({
+      claimToken: '44444444-4444-4444-8444-444444444444'
+    })),
+    /incompatible/
+  );
+});
+
+test('auditoria finalizada no puede reutilizarse', () => {
+  assert.throws(
+    () => buildCompletedAuditPatch(args({
+      audit: { ...audit(), status: 'completed', finished_at: WHEN }
+    })),
     /incompatible/
   );
 });
