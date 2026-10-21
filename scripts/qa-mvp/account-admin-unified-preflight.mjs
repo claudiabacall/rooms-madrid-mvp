@@ -35,6 +35,12 @@ const CHECKS = [
     ]
   },
   {
+    file: 'account-admin-storage-db-read.mjs',
+    success: [
+      'STORAGE DB INTEGRAL VERIFICADO'
+    ]
+  },
+  {
     file: 'account-admin-storage-read.mjs',
     success: [
       'Total archivos: 0',
@@ -203,7 +209,7 @@ async function main() {
   console.log('PREFLIGHT UNIFICADO SUPERADO');
   console.log('Inventario directo: 22/22');
   console.log('Relaciones compartidas: 9/9');
-  console.log('Storage: 4 buckets, 0 archivos');
+  console.log('Storage: 4 buckets y propietarios/rutas DB verificados');
   console.log('Auditoria: started');
   console.log('Cobertura FK directa: verificada dinamicamente');
   console.log('Triggers externos y otras funciones: no certificados');
