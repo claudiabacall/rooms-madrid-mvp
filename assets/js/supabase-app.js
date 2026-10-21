@@ -424,6 +424,10 @@
 
           <div id="authSignupLegal" hidden>
             <label>
+              <input id="authConfirmAdult" type="checkbox">
+              Confirmo que tengo 18 años o más.
+            </label>
+            <label>
               <input id="authAcceptTerms" type="checkbox">
               He leído y acepto las condiciones de uso de ROOMS.
             </label>
@@ -447,6 +451,7 @@
       document.querySelector('#authNameField').hidden = mode !== 'signup';
       document.querySelector('#authSignupLegal').hidden = mode !== 'signup';
       document.querySelector('#authAcceptTerms').checked = false;
+      document.querySelector('#authConfirmAdult').checked = false;
       document.querySelector('#authName').required = mode === 'signup';
 
       const passwordInput =
@@ -572,6 +577,12 @@
           return;
         }
 
+        if (!document.querySelector('#authConfirmAdult').checked) {
+          message.textContent =
+            'Debes confirmar que tienes 18 años o más para crear una cuenta.';
+          return;
+        }
+
         if (!document.querySelector('#authAcceptTerms').checked) {
           message.textContent =
             'Debes aceptar las condiciones de uso para crear tu cuenta.';
@@ -595,7 +606,8 @@
             name,
             alias: name,
             rooms_terms_accepted: true,
-            rooms_terms_version: ROOMS_TERMS_VERSION
+            rooms_terms_version: ROOMS_TERMS_VERSION,
+            rooms_age_18_confirmed: true
           } } })
         : await db.auth.signInWithPassword({ email, password });
 
