@@ -20,6 +20,7 @@ function fakeDb(counts = {}) {
           return {
             async eq(field, value) {
               requests.push({ table, field, value });
+
               const result = Object.hasOwn(counts, table)
                 ? counts[table]
                 : 0;
@@ -38,36 +39,47 @@ function fakeDb(counts = {}) {
   };
 }
 
-const owned = fakeDb({
-  communities: 2,
-  households: 1
+const db = fakeDb({
+  communities: 1,
+  households: 0,
+  community_members: 2,
+  household_members: 1
 });
 
-const impact = await inspectAccountSharedImpact(owned, id);
+const impact = await inspectAccountSharedImpact(db, id);
 
-assert.equal(impact.ownedCommunities, 2);
-assert.equal(impact.ownedHouseholds, 1);
+assert.deepEqual(impact, {
+  ownedCommunities: 1,
+  ownedHouseholds: 0,
+  communityMembersAffected: 2,
+  householdMembersAffected: 1
+});
 
 assert.deepEqual(
-  owned.requests.map(r => `${r.table}.${r.field}`),
-  ['communities.owner_id', 'households.owner_id']
+  db.requests.map(r => `${r.table}.${r.field}`),
+  [
+    'communities.owner_id',
+    'households.owner_id',
+    'community_members.user_id',
+    'household_members.user_id'
+  ]
 );
 
-console.log('OK Titularidades consultadas');
+console.log('OK Cuatro dependencias consultadas');
 
 await assert.rejects(
   inspectAccountSharedImpact(
-    fakeDb({ communities: new Error('Acceso denegado') }),
+    fakeDb({ community_members: new Error('Acceso denegado') }),
     id
   ),
   /No se pudo consultar/
 );
 
-console.log('OK Errores de Supabase bloquean la baja');
+console.log('OK Errores de Supabase rechazados');
 
 await assert.rejects(
   inspectAccountSharedImpact(
-    fakeDb({ communities: null }),
+    fakeDb({ households: null }),
     id
   ),
   /Recuento no verificable/
@@ -80,13 +92,12 @@ await assert.rejects(
   /Inspeccion incompleta/
 );
 
-console.log('OK Una inspeccion parcial nunca autoriza bajas');
+console.log('OK Ausencia de relaciones no autoriza baja');
 
 await assert.rejects(
-  inspectAccountSharedImpact(fakeDb(), 'usuario-invalido'),
+  inspectAccountSharedImpact(fakeDb(), 'invalido'),
   /Identificador de usuario no valido/
 );
 
 console.log('OK UUID validado');
-
 console.log('ROOMS ACCOUNT SHARED IMPACT OK');

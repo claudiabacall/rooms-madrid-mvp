@@ -1,12 +1,17 @@
 /**
- * ROOMS M4 - Inspector de dependencias de cuentas.
- *
- * Solo lectura.
- * Requiere un cliente proporcionado por backend administrativo.
- * Una inspeccion incompleta nunca autoriza una eliminacion.
+ * ROOMS M4 - Inspector conservador de dependencias.
+ * Solo lectura. Cliente proporcionado por backend autorizado.
+ * No autoriza eliminaciones mientras falten comprobaciones.
  */
 
 import { validate as isUuid } from './account-deletion-uuid.mjs';
+
+const CHECKS = [
+  ['ownedCommunities', 'communities', 'owner_id'],
+  ['ownedHouseholds', 'households', 'owner_id'],
+  ['communityMembersAffected', 'community_members', 'user_id'],
+  ['householdMembersAffected', 'household_members', 'user_id']
+];
 
 async function countRows(db, table, field, userId) {
   const { count, error } = await db
@@ -38,27 +43,24 @@ export async function inspectAccountSharedImpact(db, userId) {
     throw new Error('Identificador de usuario no valido');
   }
 
-  const [
-    ownedCommunities,
-    ownedHouseholds
-  ] = await Promise.all([
-    countRows(db, 'communities', 'owner_id', userId),
-    countRows(db, 'households', 'owner_id', userId)
-  ]);
+  const counts = await Promise.all(
+    CHECKS.map(async ([key, table, field]) => [
+      key,
+      await countRows(db, table, field, userId)
+    ])
+  );
 
-  if (ownedCommunities > 0 || ownedHouseholds > 0) {
-    return {
-      ownedCommunities,
-      ownedHouseholds,
-      communityMembersAffected: 0,
-      householdMembersAffected: 0
-    };
+  const impact = Object.fromEntries(counts);
+
+  if (Object.values(impact).some(value => value > 0)) {
+    // El coordinador bloquea si alguno es positivo.
+    return impact;
   }
 
-  // No declarar que una baja es segura mientras no se
-  // hayan verificado las demas dependencias compartidas.
+  // Otras referencias, contenidos y efectos indirectos
+  // aun deben verificarse antes de autorizar una baja.
   throw new Error(
-    'Inspeccion incompleta: dependencias compartidas ' +
+    'Inspeccion incompleta: otras dependencias ' +
     'pendientes de verificar'
   );
 }
