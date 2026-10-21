@@ -591,7 +591,12 @@
       manualAuthNavigationPending = true;
 
       const result = mode === 'signup'
-        ? await db.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}`, data: { name, alias: name } } })
+        ? await db.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}`, data: {
+            name,
+            alias: name,
+            rooms_terms_accepted: true,
+            rooms_terms_version: ROOMS_TERMS_VERSION
+          } } })
         : await db.auth.signInWithPassword({ email, password });
 
       submit.disabled = false;
