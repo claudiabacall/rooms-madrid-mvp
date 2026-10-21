@@ -388,6 +388,86 @@
   // documentos legales y configurar su publicacion.
   const ROOMS_LEGAL_REGISTRATION_READY = false;
   const ROOMS_TERMS_VERSION = null;
+  let signupTermsVersion = null;
+  let signupLegalRequestId = 0;
+
+  async function loadSignupLegalDocuments() {
+    const requestId = ++signupLegalRequestId;
+    const termsLink = document.querySelector('#authTermsLink');
+    const privacyLink = document.querySelector('#authPrivacyLink');
+    const notice = document.querySelector('#authLegalNotice');
+    const checkbox = document.querySelector('#authAcceptTerms');
+
+    signupTermsVersion = null;
+    checkbox.checked = false;
+    checkbox.disabled = true;
+
+    for (const link of [termsLink, privacyLink]) {
+      link.hidden = true;
+      link.removeAttribute('href');
+    }
+
+    notice.textContent = 'Comprobando documentos legales...';
+
+    try {
+      const { data, error } = await db
+        .from('legal_document_versions')
+        .select('document_type,version,document_url,document_sha256')
+        .eq('is_current', true)
+        .in('document_type', ['terms', 'privacy']);
+
+      if (error) throw error;
+
+      if (
+        requestId !== signupLegalRequestId ||
+        !document.querySelector('[data-auth-mode="signup"].active')
+      ) return;
+
+      const terms = (data || []).find(
+        row => row.document_type === 'terms'
+      );
+      const privacy = (data || []).find(
+        row => row.document_type === 'privacy'
+      );
+
+      const valid = row => {
+        if (
+          !row ||
+          typeof row.version !== 'string' ||
+          !/^[0-9a-f]{64}$/.test(row.document_sha256 || '')
+        ) return false;
+
+        try {
+          return new URL(row.document_url).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      };
+
+      if (!valid(terms) || !valid(privacy)) {
+        notice.textContent =
+          'Registro cerrado: documentos legales pendientes.';
+        return;
+      }
+
+      termsLink.href = terms.document_url;
+      privacyLink.href = privacy.document_url;
+      termsLink.hidden = false;
+      privacyLink.hidden = false;
+
+      signupTermsVersion = terms.version;
+      checkbox.disabled = false;
+
+      notice.textContent = ROOMS_LEGAL_REGISTRATION_READY
+        ? 'Lee las condiciones y la politica de privacidad.'
+        : 'Documentos disponibles. Registro aun cerrado.';
+    } catch (error) {
+      if (requestId !== signupLegalRequestId) return;
+      console.error('Rooms: error consultando documentos legales', error);
+      notice.textContent =
+        'No podemos verificar los documentos. Registro cerrado.';
+    }
+  }
 
   function injectAuthGate() {
     const gate = document.createElement('section');
@@ -429,8 +509,16 @@
             </label>
             <label>
               <input id="authAcceptTerms" type="checkbox">
-              He leído y acepto las condiciones de uso de ROOMS.
+              He leído y acepto las
+              <a id="authTermsLink" hidden target="_blank"
+                 rel="noopener noreferrer">Condiciones de uso</a>
+              de ROOMS.
             </label>
+            <p>
+              Consulta nuestra
+              <a id="authPrivacyLink" hidden target="_blank"
+                 rel="noopener noreferrer">Política de privacidad</a>.
+            </p>
             <p id="authLegalNotice" role="status">
               Registro temporalmente cerrado hasta la
               aprobación de los documentos legales.
@@ -452,6 +540,11 @@
       document.querySelector('#authSignupLegal').hidden = mode !== 'signup';
       document.querySelector('#authAcceptTerms').checked = false;
       document.querySelector('#authConfirmAdult').checked = false;
+      signupTermsVersion = null;
+      ++signupLegalRequestId;
+      if (mode === 'signup') {
+        void loadSignupLegalDocuments();
+      }
       document.querySelector('#authName').required = mode === 'signup';
 
       const passwordInput =
@@ -570,7 +663,7 @@
       if (mode === 'signup') {
         const message = document.querySelector('#authMessage');
 
-        if (!ROOMS_LEGAL_REGISTRATION_READY || !ROOMS_TERMS_VERSION) {
+        if (!ROOMS_LEGAL_REGISTRATION_READY || !signupTermsVersion) {
           message.textContent =
             'El registro está temporalmente cerrado mientras ' +
             'preparamos la documentación legal de ROOMS.';
@@ -606,7 +699,7 @@
             name,
             alias: name,
             rooms_terms_accepted: true,
-            rooms_terms_version: ROOMS_TERMS_VERSION,
+            rooms_terms_version: signupTermsVersion,
             rooms_age_18_confirmed: true
           } } })
         : await db.auth.signInWithPassword({ email, password });
