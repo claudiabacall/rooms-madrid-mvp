@@ -28,6 +28,17 @@ export async function checkPostDeletion({
     fetchImpl
   });
 
+  const storageDatabaseVerified =
+    await readers.getStorageDatabaseVerification({
+      auditId,
+      targetId,
+      claimToken
+    });
+
+  if (storageDatabaseVerified !== true) {
+    throw new Error('Storage DB no verificado');
+  }
+
   return verifyAdministrativeDeletion({
     targetId,
     auditId,

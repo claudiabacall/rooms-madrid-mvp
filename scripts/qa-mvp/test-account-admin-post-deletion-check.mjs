@@ -14,7 +14,9 @@ function fixture({
   remainingRows = 0,
   checked = 35,
   files = [],
-  databaseStatus = 200
+  databaseStatus = 200,
+  storageDatabaseStatus = 200,
+  storageRows = 0
 } = {}) {
   const calls = [];
 
@@ -37,6 +39,22 @@ function fixture({
           status: authStatus,
           ok: authStatus >= 200 && authStatus < 300,
           json: async () => ({ id: TARGET })
+        };
+      }
+
+      if (path === '/rest/v1/rpc/rooms_admin_verify_deleted_storage') {
+        return {
+          status: storageDatabaseStatus,
+          ok: storageDatabaseStatus >= 200 &&
+              storageDatabaseStatus < 300,
+          json: async () => [{
+            archivos_restantes: storageRows,
+            por_owner: 0,
+            por_owner_id: 0,
+            por_ruta: 0,
+            fuera_de_buckets_previstos: 0,
+            buckets_afectados: 0
+          }]
         };
       }
 
@@ -85,10 +103,10 @@ test('integra Auth, RPC y Storage sin borrar datos', async () => {
   assert.equal(result.authVerified, true);
   assert.equal(result.databaseVerified, true);
   assert.equal(result.storageVerified, true);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.deepEqual(
     calls.map(call => call.method),
-    ['GET', 'POST']
+    ['POST', 'GET', 'POST']
   );
 });
 
@@ -121,5 +139,23 @@ test('bloquea errores de la RPC', async () => {
       databaseStatus: 503
     }).config),
     /HTTP 503/
+  );
+});
+
+test('bloquea si Storage DB conserva archivos', async () => {
+  await assert.rejects(
+    checkPostDeletion(fixture({
+      storageRows: 1
+    }).config),
+    /Storage DB no acredita ausencia total/
+  );
+});
+
+test('bloquea si falla la RPC de Storage', async () => {
+  await assert.rejects(
+    checkPostDeletion(fixture({
+      storageDatabaseStatus: 503
+    }).config),
+    /Storage DB HTTP 503/
   );
 });

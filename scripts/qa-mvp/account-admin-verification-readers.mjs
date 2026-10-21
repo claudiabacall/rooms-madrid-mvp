@@ -59,6 +59,62 @@ export function createVerificationReaders({
       return { absent: false };
     },
 
+    async getStorageDatabaseVerification({
+      auditId,
+      targetId,
+      claimToken
+    }) {
+      if (![auditId, targetId, claimToken].every(isUuid)) {
+        throw new Error('Identificadores de Storage invalidos');
+      }
+
+      const response = await request(
+        '/rest/v1/rpc/rooms_admin_verify_deleted_storage',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_audit_id: auditId,
+            p_target_id: targetId,
+            p_claim_token: claimToken
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Verificacion Storage DB HTTP ${response.status}`
+        );
+      }
+
+      const rows = await response.json();
+      const fields = [
+        'archivos_restantes',
+        'por_owner',
+        'por_owner_id',
+        'por_ruta',
+        'fuera_de_buckets_previstos',
+        'buckets_afectados'
+      ];
+
+      if (
+        !Array.isArray(rows) ||
+        rows.length !== 1 ||
+        fields.some(field =>
+          !Number.isSafeInteger(rows[0]?.[field]) ||
+          rows[0][field] !== 0
+        )
+      ) {
+        throw new Error(
+          'Storage DB no acredita ausencia total'
+        );
+      }
+
+      return true;
+    },
+
     async getDatabaseVerification({
       auditId,
       targetId,
