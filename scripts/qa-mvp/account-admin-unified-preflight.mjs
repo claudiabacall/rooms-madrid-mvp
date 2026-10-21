@@ -27,6 +27,14 @@ const CHECKS = [
     ]
   },
   {
+    file: 'account-admin-fk-read.mjs',
+    success: [
+      'Registros esperados: 2',
+      'Relaciones inesperadas: 0',
+      'FK DINAMICAS VERIFICADAS'
+    ]
+  },
+  {
     file: 'account-admin-storage-read.mjs',
     success: [
       'Total archivos: 0',
@@ -197,7 +205,7 @@ async function main() {
   console.log('Relaciones compartidas: 9/9');
   console.log('Storage: 4 buckets, 0 archivos');
   console.log('Auditoria: started');
-  console.log('Cobertura total de FK: pendiente de integrar');
+  console.log('Cobertura FK directa: verificada dinamicamente');
   console.log('Triggers externos y otras funciones: no certificados');
   console.log('Resultado no atomico: requiere revision final');
   console.log('ELIMINACION: NO AUTORIZADA');
