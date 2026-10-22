@@ -67,6 +67,19 @@ function fixture({
       targetId: id,
       confirmation: `DELETE ACCOUNT ${id}`,
       storage,
+      auditId: '11111111-1111-4111-8111-111111111111',
+      claimToken: '22222222-2222-4222-8222-222222222222',
+      async verifyDeletionClaim({ auditId, targetId, claimToken }) {
+        operations.push('claim');
+        return {
+          id: auditId,
+          target_user_id: targetId,
+          claim_token: claimToken,
+          status: 'processing',
+          claimed_at: '2026-10-22T10:00:00.000Z',
+          finished_at: null
+        };
+      },
       async inspectSharedImpact() {
         operations.push('impact');
         return {
@@ -84,6 +97,56 @@ function fixture({
   };
 }
 
+const missingClaim = fixture();
+delete missingClaim.args.verifyDeletionClaim;
+
+await assert.rejects(
+  executeDisposableAccountDeletion(missingClaim.args),
+  /Reclamacion administrativa requerida/
+);
+assert.deepEqual(missingClaim.operations, []);
+console.log('OK Sin verificador administrativo no se inicia baja');
+
+const invalidClaim = fixture();
+invalidClaim.args.verifyDeletionClaim = async () => {
+  invalidClaim.operations.push('claim');
+  return {
+    id: invalidClaim.args.auditId,
+    target_user_id: id,
+    claim_token: invalidClaim.args.claimToken,
+    status: 'started',
+    claimed_at: null,
+    finished_at: null
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(invalidClaim.args),
+  /Reclamacion administrativa no vigente/
+);
+assert.deepEqual(invalidClaim.operations, ['claim']);
+console.log('OK Auditoria started bloquea toda operacion');
+
+const wrongToken = fixture();
+wrongToken.args.verifyDeletionClaim = async () => {
+  wrongToken.operations.push('claim');
+  return {
+    id: wrongToken.args.auditId,
+    target_user_id: id,
+    claim_token: '44444444-4444-4444-8444-444444444444',
+    status: 'processing',
+    claimed_at: '2026-10-22T10:00:00.000Z',
+    finished_at: null
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(wrongToken.args),
+  /Reclamacion administrativa no vigente/
+);
+assert.deepEqual(wrongToken.operations, ['claim']);
+console.log('OK Token incorrecto bloquea toda operacion');
+
 const blocked = fixture({ members: 2 });
 
 await assert.rejects(
@@ -91,7 +154,7 @@ await assert.rejects(
   /titularidad o miembros afectados/
 );
 
-assert.deepEqual(blocked.operations, ['impact']);
+assert.deepEqual(blocked.operations, ['claim', 'impact']);
 console.log('OK Comunidad compartida bloquea toda eliminacion');
 
 const household = fixture({ householdMembers: 1 });
@@ -101,7 +164,7 @@ await assert.rejects(
   /titularidad o miembros afectados/
 );
 
-assert.deepEqual(household.operations, ['impact']);
+assert.deepEqual(household.operations, ['claim', 'impact']);
 console.log('OK Hogar compartido protegido');
 
 const communityOwner = fixture({
@@ -113,7 +176,7 @@ await assert.rejects(
   /titularidad o miembros afectados/
 );
 
-assert.deepEqual(communityOwner.operations, ['impact']);
+assert.deepEqual(communityOwner.operations, ['claim', 'impact']);
 console.log('OK Propietario de comunidad protegido');
 
 const householdOwner = fixture({
@@ -125,7 +188,7 @@ await assert.rejects(
   /titularidad o miembros afectados/
 );
 
-assert.deepEqual(householdOwner.operations, ['impact']);
+assert.deepEqual(householdOwner.operations, ['claim', 'impact']);
 console.log('OK Propietario de hogar protegido');
 
 const unauthorized = fixture();

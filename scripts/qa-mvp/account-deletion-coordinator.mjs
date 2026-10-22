@@ -3,6 +3,10 @@ import {
 } from './account-deletion-guards.mjs';
 
 import {
+  validate as isUuid
+} from './account-deletion-uuid.mjs';
+
+import {
   deleteDisposableAccountStorage
 } from './account-storage-cleanup.mjs';
 
@@ -18,6 +22,9 @@ export async function executeDisposableAccountDeletion({
   targetId,
   confirmation,
   storage,
+  auditId,
+  claimToken,
+  verifyDeletionClaim,
   inspectSharedImpact,
   deleteAuthUser
 }) {
@@ -28,10 +35,38 @@ export async function executeDisposableAccountDeletion({
   }
 
   if (
+    !isUuid(auditId) ||
+    !isUuid(claimToken) ||
+    typeof verifyDeletionClaim !== 'function'
+  ) {
+    throw new Error('Reclamacion administrativa requerida');
+  }
+
+  if (
     typeof inspectSharedImpact !== 'function' ||
     typeof deleteAuthUser !== 'function'
   ) {
     throw new Error('Faltan operaciones administrativas');
+  }
+
+  // Esta consulta debe realizarse en el backend administrativo.
+  // No confiar en estados de auditoria enviados por el cliente.
+  const claim = await verifyDeletionClaim({
+    auditId,
+    targetId,
+    claimToken
+  });
+
+  if (
+    !claim ||
+    claim.id !== auditId ||
+    claim.target_user_id !== targetId ||
+    claim.claim_token !== claimToken ||
+    claim.status !== 'processing' ||
+    !claim.claimed_at ||
+    claim.finished_at != null
+  ) {
+    throw new Error('Reclamacion administrativa no vigente');
   }
 
   // El inventario compartido debe consultarse en el backend
