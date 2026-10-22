@@ -23,8 +23,14 @@ assert.match(source, /type="checkbox"/);
 console.log('OK Casilla de aceptacion preparada');
 
 const guard = source.indexOf(
-  "if (!ROOMS_LEGAL_REGISTRATION_READY || !ROOMS_TERMS_VERSION)"
+  "if (!ROOMS_LEGAL_REGISTRATION_READY || !signupTermsVersion)"
 );
+
+assert.match(
+  source,
+  /signupTermsVersion\s*=\s*terms\.version/
+);
+console.log('OK Version legal obtenida del documento vigente');
 const signup = source.indexOf('db.auth.signUp(');
 
 assert(guard >= 0 && signup > guard);

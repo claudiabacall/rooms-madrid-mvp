@@ -55,7 +55,7 @@ check(
 
 check(
   /rooms_terms_accepted:\s*true/.test(app) &&
-  /rooms_terms_version:\s*ROOMS_TERMS_VERSION/.test(app),
+  /rooms_terms_version:\s*signupTermsVersion/.test(app),
   'Cliente envia declaracion y version'
 );
 

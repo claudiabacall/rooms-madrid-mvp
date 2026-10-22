@@ -40,8 +40,20 @@ const checks = [
   },
   {
     name: 'Aceptacion legal verificable',
-    status: 'BLOQUEADO',
-    detail: 'Falta persistencia segura, version y fecha'
+    status: (
+      existsSync(
+        'supabase/migrations/20261021_legal_acceptances.sql'
+      ) &&
+      existsSync(
+        'supabase/migrations/20261021_current_legal_terms.sql'
+      ) &&
+      existsSync(
+        'supabase/migrations/20261021_signup_adult_guard.sql'
+      ) &&
+      /signupTermsVersion/.test(app) &&
+      /rooms_terms_accepted/.test(app)
+    ) ? 'PENDIENTE DE VALIDAR' : 'BLOQUEADO',
+    detail: 'Persistencia, version, fecha y guardas implementadas en codigo; faltan documentos aprobados y prueba integral remota'
   },
   {
     name: 'Eliminacion real de cuentas',
