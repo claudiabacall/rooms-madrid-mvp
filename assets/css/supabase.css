@@ -193,3 +193,96 @@ body .auth-gate .auth-panel {
     box-shadow: none;
   }
 }
+
+
+/* ROOMS BETA - AUTH FORM REFINEMENT */
+
+body .auth-gate .auth-panel {
+  width: min(640px, 100%);
+  padding: 48px clamp(24px, 5vw, 56px);
+}
+
+body .auth-gate .auth-panel > h1 {
+  font-size: clamp(38px, 4.5vw, 58px);
+  line-height: 1;
+}
+
+body .auth-gate .auth-panel > p:not(.auth-legal) {
+  font-size: 17px;
+  line-height: 1.45;
+  margin: 20px 0 32px;
+}
+
+body .auth-gate .auth-tabs {
+  margin-bottom: 26px;
+}
+
+body .auth-gate .auth-form {
+  gap: 14px;
+}
+
+body .auth-gate .auth-form label {
+  margin-bottom: 8px;
+}
+
+body .auth-gate .auth-form input:not([type="checkbox"]) {
+  min-height: 52px;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+/* Casillas legales: nunca aplicar medidas de campos de texto. */
+body .auth-gate input[type="checkbox"] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  display: inline-block !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 2px;
+  flex: 0 0 18px;
+  accent-color: #d9ff43;
+  vertical-align: middle;
+}
+
+/* Mantener casilla y texto en la misma fila. */
+body .auth-gate label:has(input[type="checkbox"]) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  margin: 10px 0 !important;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+body .auth-gate .auth-submit {
+  min-height: 54px;
+  font-size: 15px;
+}
+
+@media (max-width: 700px) {
+  body .auth-gate .auth-panel {
+    width: 100%;
+    min-height: 100dvh;
+    padding: 32px 24px 40px;
+  }
+
+  body .auth-gate .auth-panel > h1 {
+    font-size: clamp(38px, 10vw, 52px);
+  }
+
+  body .auth-gate .auth-panel > p:not(.auth-legal) {
+    font-size: 16px;
+    margin-bottom: 28px;
+  }
+}
