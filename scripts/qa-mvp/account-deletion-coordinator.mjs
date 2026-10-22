@@ -26,6 +26,7 @@ export async function executeDisposableAccountDeletion({
   claimToken,
   verifyDeletionClaim,
   inspectSharedImpact,
+  verifyStorageEmpty,
   deleteAuthUser
 }) {
   assertDisposableAccount(user, targetId);
@@ -44,6 +45,7 @@ export async function executeDisposableAccountDeletion({
 
   if (
     typeof inspectSharedImpact !== 'function' ||
+    typeof verifyStorageEmpty !== 'function' ||
     typeof deleteAuthUser !== 'function'
   ) {
     throw new Error('Faltan operaciones administrativas');
@@ -129,6 +131,21 @@ export async function executeDisposableAccountDeletion({
   ) {
     throw new Error(
       'Reclamacion administrativa revocada antes de Auth'
+    );
+  }
+
+  // Comprobacion independiente despues de revalidar el
+  // claim. Debe inspeccionar Storage desde el backend.
+  // No garantiza ausencia de escrituras posteriores.
+  const finalStorage = await verifyStorageEmpty(targetId);
+
+  if (
+    !finalStorage ||
+    finalStorage.verified !== true ||
+    finalStorage.remainingFiles !== 0
+  ) {
+    throw new Error(
+      'Storage ha cambiado antes de eliminar Auth'
     );
   }
 

@@ -89,6 +89,13 @@ function fixture({
           ownedHouseholds
         };
       },
+      async verifyStorageEmpty() {
+        operations.push('final-storage');
+        return {
+          verified: true,
+          remainingFiles: files.size
+        };
+      },
       async deleteAuthUser() {
         operations.push('auth');
         return { deleted: authSuccess };
@@ -241,6 +248,58 @@ assert.equal(claimReads, 2);
 assert(revoked.operations.includes('remove'));
 assert(!revoked.operations.includes('auth'));
 console.log('OK Claim revocado impide eliminar Auth');
+
+const lateUpload = fixture();
+let lateClaimReads = 0;
+let lateFile = false;
+
+const originalClaim = lateUpload.args.verifyDeletionClaim;
+
+lateUpload.args.verifyDeletionClaim = async args => {
+  const claim = await originalClaim(args);
+  lateClaimReads++;
+
+  // La subida aparece tras la limpieza inicial
+  // y antes de la ultima verificacion de Storage.
+  if (lateClaimReads === 2) lateFile = true;
+
+  return claim;
+};
+
+lateUpload.args.verifyStorageEmpty = async () => {
+  lateUpload.operations.push('final-storage');
+  return {
+    verified: true,
+    remainingFiles: lateFile ? 1 : 0
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(lateUpload.args),
+  /Storage ha cambiado antes de eliminar Auth/
+);
+
+assert.equal(lateClaimReads, 2);
+assert(lateUpload.operations.includes('remove'));
+assert(lateUpload.operations.includes('final-storage'));
+assert(!lateUpload.operations.includes('auth'));
+
+console.log(
+  'OK Archivo tardio detectado: Auth no eliminado'
+);
+
+const missingFinalCheck = fixture();
+delete missingFinalCheck.args.verifyStorageEmpty;
+
+await assert.rejects(
+  executeDisposableAccountDeletion(missingFinalCheck.args),
+  /Faltan operaciones administrativas/
+);
+
+assert.deepEqual(missingFinalCheck.operations, []);
+console.log(
+  'OK Sin verificacion independiente no comienza la baja'
+);
 
 const success = fixture();
 const result = await executeDisposableAccountDeletion(
