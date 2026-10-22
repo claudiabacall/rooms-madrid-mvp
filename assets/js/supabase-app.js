@@ -402,10 +402,12 @@
     checkbox.checked = false;
     checkbox.disabled = true;
 
-    for (const link of [termsLink, privacyLink]) {
-      link.hidden = true;
-      link.removeAttribute('href');
-    }
+    // Enlaces publicos de la documentacion Beta 1.0.
+    // La validacion de Supabase sigue controlando el alta.
+    termsLink.href = '/assets/legal/condiciones.html';
+    privacyLink.href = '/assets/legal/privacidad.html';
+    termsLink.hidden = false;
+    privacyLink.hidden = false;
 
     notice.textContent = 'Comprobando documentos legales...';
 
