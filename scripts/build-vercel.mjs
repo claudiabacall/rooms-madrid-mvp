@@ -4,7 +4,7 @@ import {
 import { join, dirname, extname, relative } from 'node:path';
 
 const allowed = new Set([
-  '.js', '.mjs', '.css', '.json',
+  '.html', '.js', '.mjs', '.css', '.json',
   '.png', '.jpg', '.jpeg', '.webp',
   '.gif', '.svg', '.ico', '.avif',
   '.woff', '.woff2', '.ttf', '.otf',
