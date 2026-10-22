@@ -49,7 +49,7 @@ BEGIN
     SELECT 1
     FROM public.account_deletion_audit a
     WHERE a.target_user_id = v_actor
-      AND a.status = 'processing'
+      AND a.status IN ('started', 'processing')
   ) THEN
     RAISE EXCEPTION
       'Cuenta en proceso de eliminacion';
