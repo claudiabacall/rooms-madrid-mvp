@@ -51,7 +51,9 @@ function makeReadOnlyClient(config, fetchImpl = fetch) {
         ...options,
         headers: {
           apikey: config.key,
-          Authorization: `Bearer ${config.key}`,
+          ...(config.key.startsWith('eyJ')
+            ? { Authorization: `Bearer ${config.key}` }
+            : {}),
           ...(options.headers || {})
         },
         signal: AbortSignal.timeout(15000)

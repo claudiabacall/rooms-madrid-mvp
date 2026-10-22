@@ -105,7 +105,9 @@ async function main() {
     const response = await fetch(`${url}${path}`, {
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`
+        ...(key.startsWith('eyJ')
+          ? { Authorization: `Bearer ${key}` }
+          : {})
       },
       signal: AbortSignal.timeout(15000)
     });

@@ -33,7 +33,9 @@ async function main() {
       ...options,
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
+        ...(key.startsWith('eyJ')
+          ? { Authorization: `Bearer ${key}` }
+          : {}),
         ...(options.headers || {})
       },
       signal: AbortSignal.timeout(15000)

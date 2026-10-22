@@ -47,7 +47,9 @@ async function main() {
       method,
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
+        ...(key.startsWith('eyJ')
+          ? { Authorization: `Bearer ${key}` }
+          : {}),
         ...(method === 'HEAD'
           ? { Prefer: 'count=exact' }
           : {})

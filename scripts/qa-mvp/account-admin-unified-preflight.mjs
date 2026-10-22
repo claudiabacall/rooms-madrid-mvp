@@ -110,7 +110,9 @@ async function main() {
       method: 'GET',
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`
+        ...(key.startsWith('eyJ')
+          ? { Authorization: `Bearer ${key}` }
+          : {})
       },
       signal: AbortSignal.timeout(15000)
     });
