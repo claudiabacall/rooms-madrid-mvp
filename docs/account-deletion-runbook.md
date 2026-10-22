@@ -82,9 +82,24 @@ La tabla account_deletion_requests referencia auth.users
 con ON DELETE CASCADE: su fila desaparecera cuando
 se elimine Auth.
 
-Por tanto, antes de ejecutar bajas reales se necesita
-un registro administrativo de cierre independiente,
-con minimizacion de datos y retencion definida.
+Existe un registro administrativo independiente:
+`public.account_deletion_audit`.
+
+Su infraestructura de comprobacion es parcial y el
+cierre `completed` permanece intencionadamente
+deshabilitado. No se ha validado una baja real completa
+de extremo a extremo.
+
+Antes de tramitar bajas reales es obligatorio:
+- Definir minimizacion y conservacion de la auditoria.
+- Verificar que la operacion autorizada es segura.
+- Completar una prueba controlada con cuenta desechable.
+- Verificar Storage, Auth, BD e impacto compartido.
+- Registrar evidencias sin exponer claves ni datos
+  personales innecesarios.
+
+Matriz de criterios pendiente de aprobacion:
+`docs/legal/matriz-conservacion-beta-revision.md`.
 
 ## 6. Criterio de lanzamiento
 

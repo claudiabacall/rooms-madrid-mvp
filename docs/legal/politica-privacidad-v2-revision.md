@@ -191,9 +191,14 @@ Las solicitudes de baja se tramitan actualmente mediante
 un procedimiento administrativo. La eliminacion completa
 no es automatica.
 
-[PENDIENTE: definir plazos verificables por categoria,
-copias de seguridad, logs, reportes, mensajes y
-documentacion de reclamaciones.]
+[PENDIENTE DE VALIDACION JURIDICA Y OPERATIVA:
+definir plazos, criterios, excepciones y procedimientos
+verificables por categoria de datos, incluyendo backups,
+logs, reportes, mensajes y reclamaciones.
+
+Inventario de trabajo:
+`docs/legal/matriz-conservacion-beta-revision.md`.
+Esta matriz no establece todavia plazos aprobados.]
 
 ## 10. Derechos de las personas
 
