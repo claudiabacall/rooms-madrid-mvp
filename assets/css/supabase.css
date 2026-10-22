@@ -300,3 +300,17 @@ body .auth-gate #authSignupLegal a:visited {
 body .auth-gate #authSignupLegal a:hover {
   text-decoration-thickness: 2px;
 }
+
+
+/* ROOMS BETA - ENLACES CONSENTIMIENTO */
+body .auth-gate #authSignupLegal a,
+body .auth-gate #authSignupLegal a:visited {
+  color: #171717;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  font-weight: inherit;
+}
+body .auth-gate #authSignupLegal a:hover {
+  text-decoration-thickness: 2px;
+}
