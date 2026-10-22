@@ -286,3 +286,17 @@ body .auth-gate .auth-submit {
     margin-bottom: 28px;
   }
 }
+
+
+/* ROOMS beta - enlaces legales de registro */
+body .auth-gate #authSignupLegal a,
+body .auth-gate #authSignupLegal a:visited {
+  color: #171717;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  font-weight: inherit;
+}
+body .auth-gate #authSignupLegal a:hover {
+  text-decoration-thickness: 2px;
+}

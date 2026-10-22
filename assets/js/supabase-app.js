@@ -507,20 +507,17 @@
           <div id="authSignupLegal" hidden>
             <label>
               <input id="authConfirmAdult" type="checkbox">
-              Confirmo que tengo 18 años o más.
+              Confirmo que soy mayor de 18 años.
             </label>
             <label>
               <input id="authAcceptTerms" type="checkbox">
               He leído y acepto las
               <a id="authTermsLink" hidden target="_blank"
                  rel="noopener noreferrer">Condiciones de uso</a>
-              de ROOMS.
-            </label>
-            <p>
-              Consulta nuestra
+              y la
               <a id="authPrivacyLink" hidden target="_blank"
                  rel="noopener noreferrer">Política de privacidad</a>.
-            </p>
+            </label>
             <p id="authLegalNotice" role="status">
               Registro temporalmente cerrado hasta la
               aprobación de los documentos legales.
