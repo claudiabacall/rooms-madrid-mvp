@@ -158,3 +158,38 @@
   .edit-listing-save { grid-row: 1; }
   .edit-own-listing { padding: 8px; font-size: 11px; }
 }
+
+
+/* ROOMS BETA - AUTH RESPONSIVE FIX */
+/* Evita la columna estrecha y el recorte vertical. */
+
+body .auth-gate {
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 40px 24px;
+  box-sizing: border-box;
+}
+
+body .auth-gate .auth-panel {
+  width: min(840px, 100%);
+  min-height: auto;
+  margin: 0 auto;
+  padding: clamp(36px, 5vw, 72px);
+  box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+  body .auth-gate {
+    padding: 0;
+  }
+
+  body .auth-gate .auth-panel {
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 42px 24px 40px;
+    border: 0;
+    box-shadow: none;
+  }
+}
