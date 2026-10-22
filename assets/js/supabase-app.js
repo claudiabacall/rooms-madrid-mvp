@@ -386,7 +386,7 @@
 
   // El registro permanece cerrado hasta aprobar los
   // documentos legales y configurar su publicacion.
-  const ROOMS_LEGAL_REGISTRATION_READY = false;
+  const ROOMS_LEGAL_REGISTRATION_READY = true;
   const ROOMS_TERMS_VERSION = null;
   let signupTermsVersion = null;
   let signupLegalRequestId = 0;
