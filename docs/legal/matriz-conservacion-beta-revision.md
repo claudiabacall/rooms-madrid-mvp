@@ -50,3 +50,39 @@ https://www.aepd.es/derechos-y-deberes/ejerce-tus-derechos
 **NO GO** hasta completar las decisiones pendientes,
 validar juridicamente la documentacion y confirmar
 un procedimiento operativo seguro.
+
+## Decision de producto: mensajes tras una baja
+
+**PROPUESTA. NO IMPLEMENTADA NI APROBADA JURIDICAMENTE.**
+
+ROOMS pretende permitir que la persona que permanece
+en la plataforma consulte su historial de mensajes
+con una cuenta eliminada, cuando exista una base
+juridica valida para conservar esa informacion.
+
+Comportamiento previsto:
+- Mostrar "Usuario eliminado".
+- No mostrar fotografia ni enlace al perfil eliminado.
+- Impedir el envio de nuevos mensajes.
+- Restringir el historial a su participante autorizado.
+- No conservar identificadores operativos del usuario
+  eliminado en la vista historica.
+- Revisar textos identificativos y datos sensibles,
+  especialmente direcciones privadas.
+- Definir plazo, finalidad y mecanismo de supresion.
+
+El texto libre puede contener datos personales aunque
+se retire el nombre del remitente. La desvinculacion
+de identidad no equivale necesariamente a anonimizacion.
+
+Estado tecnico actual: messages y connections utilizan
+claves foraneas ON DELETE CASCADE hacia auth.users.
+La eliminacion en Auth provoca perdida del historial
+actual. No existe aun un almacenamiento historico
+autorizado ni un flujo probado de conservacion.
+
+El componente deleted-chat-view.js es una vista
+aislada de demostracion, sin conexion a datos reales.
+
+Hasta completar la validacion juridica y tecnica,
+NO se copiaran ni retendran mensajes para este fin.

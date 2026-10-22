@@ -110,3 +110,23 @@ NO GO para tramitar bajas reales hasta que:
   creada especificamente para ello
 - Se verifique la eliminacion de Storage y BD
 - El texto legal refleje el procedimiento real
+
+## 7. Mensajeria y derechos de terceros
+
+Decision de producto propuesta, NO IMPLEMENTADA:
+
+Permitir consultar el historial a la otra persona
+con la etiqueta "Usuario eliminado", sin posibilidad
+de nuevos mensajes, exclusivamente cuando su
+conservacion resulte juridicamente justificada.
+
+La estructura actual usa ON DELETE CASCADE y no
+preserva esas conversaciones al borrar Auth.
+
+Antes de habilitar bajas reales deben resolverse
+la retencion justificada, el contenido identificable,
+el acceso restringido, los plazos y los derechos de
+ambos participantes.
+
+La vista local de demostracion no habilita por si
+misma la conservacion de mensajes.
