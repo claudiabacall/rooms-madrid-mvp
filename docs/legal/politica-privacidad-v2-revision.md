@@ -4,6 +4,37 @@
 **Fecha de redaccion: 21/10/2026**
 **Version legal publicada: pendiente.**
 
+## Titularidad durante la beta privada
+
+**Estado: decision operativa pendiente de completar
+con datos identificativos y validacion juridica.**
+
+Durante las pruebas internas y la beta privada,
+ROOMS sera gestionada por una persona fisica,
+sin sociedad constituida para el proyecto.
+
+La persona fisica titular asumira las
+responsabilidades aplicables al funcionamiento
+del servicio y al tratamiento de datos personales.
+
+**Datos pendientes antes de publicar:**
+- Nombre y apellidos completos del titular.
+- Identificacion fiscal y domicilio de contacto,
+  segun las obligaciones legales aplicables.
+- Correo electronico de contacto validado.
+- Informacion adicional legalmente exigible.
+
+La futura constitucion de una sociedad para el
+lanzamiento comercial requerira actualizar la
+identificacion del titular, revisar las relaciones
+contractuales y determinar las comunicaciones
+o actuaciones de privacidad correspondientes.
+
+Este apartado no implica que los textos esten
+aprobados ni autoriza abrir el registro.
+
+---
+
 ## 1. Responsable del tratamiento
 
 ROOMS es una plataforma digital orientada a facilitar la
