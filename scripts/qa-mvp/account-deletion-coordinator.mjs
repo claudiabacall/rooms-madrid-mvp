@@ -26,6 +26,7 @@ export async function executeDisposableAccountDeletion({
   claimToken,
   verifyDeletionClaim,
   inspectSharedImpact,
+  verifyWriteBarrier,
   verifyStorageEmpty,
   deleteAuthUser
 }) {
@@ -45,6 +46,7 @@ export async function executeDisposableAccountDeletion({
 
   if (
     typeof inspectSharedImpact !== 'function' ||
+    typeof verifyWriteBarrier !== 'function' ||
     typeof verifyStorageEmpty !== 'function' ||
     typeof deleteAuthUser !== 'function'
   ) {
@@ -92,6 +94,28 @@ export async function executeDisposableAccountDeletion({
     throw new Error(
       'Baja detenida: existen comunidades u hogares ' +
       'con titularidad o miembros afectados'
+    );
+  }
+
+  // Requisito previo a cualquier operacion destructiva.
+  // El backend debe demostrar que las escrituras estan
+  // bloqueadas, incluidas las rutas Storage y privilegiadas.
+  // Un mero estado processing NO constituye esta prueba.
+  const barrier = await verifyWriteBarrier({
+    auditId,
+    targetId,
+    claimToken
+  });
+
+  if (
+    !barrier ||
+    barrier.verified !== true ||
+    barrier.databaseWritesBlocked !== true ||
+    barrier.storageWritesBlocked !== true ||
+    barrier.inFlightWritesDrained !== true
+  ) {
+    throw new Error(
+      'Barrera de escrituras no verificada'
     );
   }
 

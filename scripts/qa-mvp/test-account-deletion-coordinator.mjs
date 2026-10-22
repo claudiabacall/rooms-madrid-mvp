@@ -89,6 +89,15 @@ function fixture({
           ownedHouseholds
         };
       },
+      async verifyWriteBarrier() {
+        operations.push('barrier');
+        return {
+          verified: true,
+          databaseWritesBlocked: true,
+          storageWritesBlocked: true,
+          inFlightWritesDrained: true
+        };
+      },
       async verifyStorageEmpty() {
         operations.push('final-storage');
         return {
@@ -299,6 +308,42 @@ await assert.rejects(
 assert.deepEqual(missingFinalCheck.operations, []);
 console.log(
   'OK Sin verificacion independiente no comienza la baja'
+);
+
+const missingBarrier = fixture();
+delete missingBarrier.args.verifyWriteBarrier;
+
+await assert.rejects(
+  executeDisposableAccountDeletion(missingBarrier.args),
+  /Faltan operaciones administrativas/
+);
+
+assert.deepEqual(missingBarrier.operations, []);
+console.log('OK Sin verificador de barrera no comienza baja');
+
+const rejectedBarrier = fixture();
+rejectedBarrier.args.verifyWriteBarrier = async () => {
+  rejectedBarrier.operations.push('barrier');
+  return {
+    verified: false,
+    databaseWritesBlocked: true,
+    storageWritesBlocked: false,
+    inFlightWritesDrained: false
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(rejectedBarrier.args),
+  /Barrera de escrituras no verificada/
+);
+
+assert(rejectedBarrier.operations.includes('impact'));
+assert(rejectedBarrier.operations.includes('barrier'));
+assert(!rejectedBarrier.operations.includes('remove'));
+assert(!rejectedBarrier.operations.includes('auth'));
+
+console.log(
+  'OK Barrera incompleta impide limpiar Storage y Auth'
 );
 
 const success = fixture();
