@@ -109,6 +109,29 @@ export async function executeDisposableAccountDeletion({
     throw new Error('Storage no verificado como vacio');
   }
 
+  // Revalidar despues de Storage y antes de eliminar Auth.
+  // Esta consulta no sustituye un bloqueo transaccional
+  // ni protege por si sola las escrituras concurrentes.
+  const finalClaim = await verifyDeletionClaim({
+    auditId,
+    targetId,
+    claimToken
+  });
+
+  if (
+    !finalClaim ||
+    finalClaim.id !== auditId ||
+    finalClaim.target_user_id !== targetId ||
+    finalClaim.claim_token !== claimToken ||
+    finalClaim.status !== 'processing' ||
+    !finalClaim.claimed_at ||
+    finalClaim.finished_at != null
+  ) {
+    throw new Error(
+      'Reclamacion administrativa revocada antes de Auth'
+    );
+  }
+
   // Segunda operación destructiva: eliminar Auth.
   const authResult = await deleteAuthUser(targetId);
 

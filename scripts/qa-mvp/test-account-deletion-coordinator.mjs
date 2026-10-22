@@ -214,6 +214,34 @@ await assert.rejects(
 assert(!storageFailure.operations.includes('auth'));
 console.log('OK Fallo Storage impide borrar Auth');
 
+const revoked = fixture();
+let claimReads = 0;
+revoked.args.verifyDeletionClaim = async ({
+  auditId, targetId, claimToken
+}) => {
+  revoked.operations.push('claim');
+  claimReads++;
+  return {
+    id: auditId,
+    target_user_id: targetId,
+    claim_token: claimToken,
+    status: claimReads === 1 ? 'processing' : 'failed',
+    claimed_at: '2026-10-22T10:00:00.000Z',
+    finished_at: claimReads === 1
+      ? null
+      : '2026-10-22T10:05:00.000Z'
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(revoked.args),
+  /revocada antes de Auth/
+);
+assert.equal(claimReads, 2);
+assert(revoked.operations.includes('remove'));
+assert(!revoked.operations.includes('auth'));
+console.log('OK Claim revocado impide eliminar Auth');
+
 const success = fixture();
 const result = await executeDisposableAccountDeletion(
   success.args
