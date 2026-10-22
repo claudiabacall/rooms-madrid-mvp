@@ -238,6 +238,74 @@ cookies y tecnologias similares utilizadas.
 autenticacion, mapas, recursos externos y eventual
 analitica para determinar si se requiere consentimiento.]
 
+## Verificaciones tecnicas de privacidad
+
+**Estado: inventario tecnico para revision juridica.
+Este apartado no constituye una politica aprobada.**
+
+### Autenticacion y almacenamiento del navegador
+
+El cliente JavaScript de Supabase se configura con
+`persistSession: true`, `autoRefreshToken: true` y
+`detectSessionInUrl: true`.
+
+Con la configuracion predeterminada de Supabase JS,
+la sesion de autenticacion se conserva mediante
+`localStorage` cuando este esta disponible. Puede
+incluir credenciales temporales de sesion y datos
+necesarios para renovar el acceso.
+
+ROOMS utiliza tambien `sessionStorage` para almacenar
+`rooms:last-main-view`, identificador de la ultima
+pantalla principal visitada. El codigo elimina este
+valor al restablecer la navegacion tras un cambio
+de cuenta.
+
+No se han identificado escrituras directas de cookies
+en el codigo propio examinado. Esto no equivale a
+certificar ausencia de cookies o almacenamiento usado
+por librerias, proveedores o infraestructura.
+
+### Recursos y proveedores externos
+
+- **Supabase:** autenticacion, base de datos y Storage.
+- **Vercel:** proveedor de alojamiento previsto
+  para la aplicacion desplegada.
+- **jsDelivr:** carga externa de la biblioteca
+  `@supabase/supabase-js@2` desde `index.html`.
+- **OpenStreetMap:** carga de teselas del mapa desde
+  `tile.openstreetmap.org`, mediante Leaflet.
+- **Leaflet:** biblioteca de mapas utilizada por
+  ROOMS; su dependencia npm se declara localmente.
+
+La carga de recursos externos puede transmitir datos
+tecnicos de conexion, como la direccion IP y cabeceras
+HTTP, a los operadores correspondientes. Esto
+requiere completar la informacion de destinatarios
+y evaluar los mecanismos de carga antes de la beta.
+
+### Comprobaciones pendientes para publicacion
+
+- Confirmar entidades contractuales y condiciones
+  de tratamiento de cada proveedor.
+- Verificar region de alojamiento y accesos o
+  transferencias internacionales.
+- Revisar contratos, subencargados y conservacion.
+- Auditar cookies y almacenamiento efectivos,
+  incluida la persistencia de sesion.
+- Determinar si corresponde consentimiento previo
+  para alguna tecnologia no esencial.
+- Revisar la politica de uso de teselas de OSM
+  y el comportamiento de las cabeceras Referer.
+- Validar juridicamente esta informacion antes
+  de integrarla en el texto publicado.
+
+Referencias tecnicas:
+- https://supabase.com/docs/reference/javascript/auth
+- https://operations.osmfoundation.org/policies/tiles/
+
+---
+
 ## 13. Cambios de esta politica
 
 La version publicada indicara fecha de entrada en vigor
