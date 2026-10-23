@@ -18945,3 +18945,18 @@ i:nth-child(3n+2){
     min-height: 44px;
   }
 }
+
+/* ROOMS M5.4 EXPLORE TOUCH TABS */
+@media (max-width: 620px) {
+  #exploreView .explore-mode-switch button {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #exploreView .view-toggle button {
+    box-sizing: border-box;
+    min-height: 44px;
+  }
+}
