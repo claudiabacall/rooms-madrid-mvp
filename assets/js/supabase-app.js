@@ -515,14 +515,16 @@
               <input id="authConfirmAdult" type="checkbox">
               Confirmo que soy mayor de 18 años.
             </label>
-            <label>
+            <label class="auth-consent-row">
               <input id="authAcceptTerms" type="checkbox">
-              He leído y acepto las
-              <a id="authTermsLink" hidden target="_blank"
-                 rel="noopener noreferrer">Condiciones de uso</a>
-              y la
-              <a id="authPrivacyLink" hidden target="_blank"
-                 rel="noopener noreferrer">Política de privacidad</a>.
+              <span class="auth-consent-copy">
+                He leído y acepto las
+                <a id="authTermsLink" hidden target="_blank"
+                   rel="noopener noreferrer">Condiciones de uso</a>
+                y la
+                <a id="authPrivacyLink" hidden target="_blank"
+                   rel="noopener noreferrer">Política de privacidad</a>.
+              </span>
             </label>
             <p id="authLegalNotice" role="status">
               Registro temporalmente cerrado hasta la
@@ -720,7 +722,10 @@
       if (mode === 'signup' && !result.data.session) {
         manualAuthNavigationPending = false;
         message.className = 'auth-message success';
-        message.textContent = 'Cuenta creada. Revisa tu email y confirma el enlace para entrar.';
+        message.textContent =
+          'Solicitud recibida. Si puedes completar el registro con ' +
+          'este correo, recibirás un enlace de confirmación. ' +
+          'Si ya tienes cuenta, entra con tu contraseña o recupérala.';
         return;
       }
       message.className = 'auth-message success';

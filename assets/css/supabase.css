@@ -314,3 +314,36 @@ body .auth-gate #authSignupLegal a:visited {
 body .auth-gate #authSignupLegal a:hover {
   text-decoration-thickness: 2px;
 }
+
+
+/* ROOMS M1 - CONSENTIMIENTO EN LINEA */
+body .auth-gate #authSignupLegal label {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 14px;
+  width: 100%;
+  line-height: 1.55;
+}
+
+body .auth-gate #authSignupLegal input[type="checkbox"] {
+  flex: 0 0 18px;
+  margin-top: 3px !important;
+}
+
+body .auth-gate #authSignupLegal .auth-consent-copy {
+  display: inline;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+body .auth-gate #authSignupLegal .auth-consent-copy a {
+  display: inline !important;
+  white-space: normal;
+  color: #171717;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
