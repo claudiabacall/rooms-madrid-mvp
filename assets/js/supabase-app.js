@@ -1918,8 +1918,13 @@
 
   async function loadRealContent({ onFeedReady } = {}) {
     await loadAllConnections();
-    const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] =
+    const [{ data: listings, error: listingsError }, { data: profiles }, { data: posts }, { data: communities }] =
       await discoveryRepository.loadDiscoveryData();
+
+    state.listingsLoadError = Boolean(listingsError);
+    if (listingsError) {
+      console.error('Rooms: error cargando viviendas', listingsError);
+    }
     const visibleListings =
       (listings || []).filter(listing =>
         !listing.owner_id ||
@@ -4986,6 +4991,7 @@
       getExploreCommunities,
       renderExploreCommunities,
       getExploreResults,
+      getListingsLoadError: () => Boolean(state.listingsLoadError),
       renderRealExplore,
       exploreFiltersState
     });

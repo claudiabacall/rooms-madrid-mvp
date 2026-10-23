@@ -8,6 +8,7 @@
     getExploreCommunities,
     renderExploreCommunities,
     getExploreResults,
+    getListingsLoadError,
     renderRealExplore,
     exploreFiltersState
   }) {
@@ -46,7 +47,24 @@
 
       const listings = getExploreResults();
 
-      renderRealExplore(listings);
+      const listingsFailed =
+        typeof getListingsLoadError === 'function' &&
+        Boolean(getListingsLoadError());
+
+      renderRealExplore(listingsFailed ? [] : listings);
+
+      if (listingsFailed) {
+        const notice = `
+          <section class="real-feed-empty explore-real-empty"
+                   role="status">
+            <h2>No hemos podido cargar las viviendas</h2>
+            <p>Inténtalo de nuevo en unos segundos.</p>
+          </section>
+        `;
+
+        if (list) list.innerHTML = notice;
+        if (map) map.innerHTML = notice;
+      }
 
       const mapActive =
         document.querySelector('[data-explore-view="map"]')
@@ -56,7 +74,7 @@
       if (map) map.hidden = !mapActive;
 
       if (empty) {
-        empty.hidden = listings.length !== 0;
+        empty.hidden = listingsFailed || listings.length !== 0;
       }
 
       const filterCount =
