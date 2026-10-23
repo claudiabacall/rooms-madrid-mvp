@@ -18927,3 +18927,21 @@ i:nth-child(3n+2){
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+/* ROOMS M5.3 TOUCH TARGETS */
+@media (max-width: 620px) {
+  #openNotifications,
+  #openChats,
+  #openOwnProfile,
+  .feed-header-actions button,
+  .rooms-home-gallery-arrow,
+  .rooms-home-property-save,
+  .explore-property-save {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .quick-filters button {
+    min-height: 44px;
+  }
+}
