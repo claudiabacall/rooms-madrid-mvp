@@ -18960,3 +18960,10 @@ i:nth-child(3n+2){
     min-height: 44px;
   }
 }
+
+/* ROOMS M5.5 REPORT TOUCH TARGET */
+@media (max-width: 620px) {
+  .real-report-button {
+    min-height: 44px;
+  }
+}
