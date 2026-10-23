@@ -1061,7 +1061,11 @@
 
     try {
       await loadOtherProfile();
-      await loadRealContent();
+      await loadRealContent({
+        onFeedReady: () => {
+          document.body.classList.remove('rooms-booting');
+        }
+      });
 
       await Promise.all([
         loadSavedItems(),
@@ -1912,7 +1916,7 @@
       .renderMemberCommunities(...args);
   }
 
-  async function loadRealContent() {
+  async function loadRealContent({ onFeedReady } = {}) {
     await loadAllConnections();
     const [{ data: listings }, { data: profiles }, { data: posts }, { data: communities }] =
       await discoveryRepository.loadDiscoveryData();
@@ -1987,6 +1991,12 @@
     // Las cards acaban de recrearse: aplicar ahora
     // el estado real de conexión de cada usuario.
     updateConnectButtons();
+
+    // El feed ya tiene sus datos filtrados y sus tarjetas renderizadas.
+    // Las cargas secundarias no deben mantener oculta toda la app.
+    if (typeof onFeedReady === 'function') {
+      onFeedReady();
+    }
 
     refreshOwnActivity();
     await loadHousehold();
