@@ -409,6 +409,7 @@
     termsLink.hidden = false;
     privacyLink.hidden = false;
 
+    notice.hidden = false;
     notice.textContent = 'Comprobando documentos legales...';
 
     try {
@@ -460,9 +461,14 @@
       signupTermsVersion = terms.version;
       checkbox.disabled = false;
 
-      notice.textContent = ROOMS_LEGAL_REGISTRATION_READY
-        ? 'Lee las condiciones y la politica de privacidad.'
-        : 'Documentos disponibles. Registro aun cerrado.';
+      if (ROOMS_LEGAL_REGISTRATION_READY) {
+        notice.textContent = '';
+        notice.hidden = true;
+      } else {
+        notice.hidden = false;
+        notice.textContent =
+          'Documentos disponibles. Registro aun cerrado.';
+      }
     } catch (error) {
       if (requestId !== signupLegalRequestId) return;
       console.error('Rooms: error consultando documentos legales', error);
