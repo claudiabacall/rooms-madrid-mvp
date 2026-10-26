@@ -21,7 +21,7 @@ const CHECKS = [
   {
     file: 'account-admin-shared-preflight.mjs',
     success: [
-      'Relaciones comprobadas: 9',
+      'Relaciones comprobadas: 26',
       'Registros con posible impacto: 0',
       'PREFLIGHT COMPARTIDO SUPERADO'
     ]
@@ -210,7 +210,7 @@ async function main() {
   console.log('');
   console.log('PREFLIGHT UNIFICADO SUPERADO');
   console.log('Inventario directo: 22/22');
-  console.log('Relaciones compartidas: 9/9');
+  console.log('Relaciones compartidas: 26/26');
   console.log('Storage: 4 buckets y propietarios/rutas DB verificados');
   console.log('Auditoria: started');
   console.log('Cobertura FK directa: verificada dinamicamente');
