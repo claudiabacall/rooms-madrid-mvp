@@ -196,6 +196,19 @@
           error
         );
 
+        const grid = document.querySelector(
+          '#savedView .collection-grid'
+        );
+
+        if (grid) {
+          grid.innerHTML = `
+            <div class="real-empty-state" role="status">
+              <b>No hemos podido cargar tus colecciones</b>
+              <p>Inténtalo de nuevo en unos segundos.</p>
+            </div>
+          `;
+        }
+
         return;
       }
 
@@ -667,6 +680,19 @@
           'Rooms: error cargando guardados',
           error
         );
+
+        const grid = document.querySelector(
+          '#savedView .saved-grid'
+        );
+
+        if (grid) {
+          grid.innerHTML = `
+            <div class="real-empty-state" role="status">
+              <b>No hemos podido cargar tus guardados</b>
+              <p>Inténtalo de nuevo en unos segundos.</p>
+            </div>
+          `;
+        }
 
         return;
       }
