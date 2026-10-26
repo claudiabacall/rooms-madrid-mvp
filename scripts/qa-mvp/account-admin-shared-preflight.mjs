@@ -20,7 +20,24 @@ const CHECKS = [
   ['community_members', 'user_id'],
   ['household_members', 'user_id'],
   ['household_person_candidates', 'user_id'],
-  ['listing_private_locations', 'owner_id']
+  ['listing_private_locations', 'owner_id'],
+  ['connections', 'recipient_id'],
+  ['connections', 'requester_id'],
+  ['conversation_preferences', 'other_user_id'],
+  ['conversation_preferences', 'user_id'],
+  ['household_candidate_votes', 'user_id'],
+  ['household_candidates', 'added_by'],
+  ['household_invitations', 'accepted_by'],
+  ['household_invitations', 'invited_by'],
+  ['household_person_candidates', 'added_by'],
+  ['messages', 'recipient_id'],
+  ['messages', 'sender_id'],
+  ['post_comments', 'author_id'],
+  ['post_likes', 'user_id'],
+  ['reports', 'reported_user_id'],
+  ['reports', 'reporter_id'],
+  ['user_blocks', 'blocked_id'],
+  ['user_blocks', 'blocker_id']
 ];
 
 async function main() {
