@@ -387,10 +387,19 @@
 
   async function loadRealInbox() {
     if (!state.user) return;
-    const { data: connections } = await db.from('connections').select('*')
+    const { data: connections, error: connectionsError } = await db.from('connections').select('*')
       .or(`requester_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .eq('status', 'accepted')
       .order('updated_at', { ascending: false });
+
+    if (connectionsError) {
+      console.error('Rooms: error cargando conexiones del chat', connectionsError);
+      const list = document.querySelector('#chatInboxModal .conversation-list');
+      if (list) {
+        list.innerHTML = '<div class="real-empty-state" role="status"><b>No hemos podido cargar tus conversaciones</b><p>Inténtalo de nuevo en unos segundos.</p></div>';
+      }
+      return;
+    }
     const otherIds = (connections || [])
       .map(item =>
         item.requester_id === state.user.id
@@ -402,9 +411,18 @@
       );
 
     const profiles = await fetchProfiles(otherIds);
-    const { data: messages } = await db.from('messages').select('*')
+    const { data: messages, error: messagesError } = await db.from('messages').select('*')
       .or(`sender_id.eq.${state.user.id},recipient_id.eq.${state.user.id}`)
       .order('created_at', { ascending: false });
+
+    if (messagesError) {
+      console.error('Rooms: error cargando mensajes del chat', messagesError);
+      const list = document.querySelector('#chatInboxModal .conversation-list');
+      if (list) {
+        list.innerHTML = '<div class="real-empty-state" role="status"><b>No hemos podido cargar tus conversaciones</b><p>Inténtalo de nuevo en unos segundos.</p></div>';
+      }
+      return;
+    }
     const latestByUser = new Map();
 
     (messages || []).forEach(message => {
