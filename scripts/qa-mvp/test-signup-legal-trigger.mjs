@@ -49,8 +49,11 @@ check(
 );
 
 check(
-  /ROOMS_LEGAL_REGISTRATION_READY = false/.test(app),
-  'Registro publico permanece cerrado'
+  /ROOMS_LEGAL_REGISTRATION_READY = true/.test(app) &&
+  /if \(!ROOMS_LEGAL_REGISTRATION_READY \|\| !signupTermsVersion\)/.test(app) &&
+  /if \(!document\.querySelector\('#authConfirmAdult'\)\.checked\)/.test(app) &&
+  /if \(!document\.querySelector\('#authAcceptTerms'\)\.checked\)/.test(app),
+  'Registro condicionado a documentos vigentes y declaraciones'
 );
 
 check(

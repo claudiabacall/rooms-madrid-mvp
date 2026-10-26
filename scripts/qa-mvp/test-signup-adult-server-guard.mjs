@@ -48,8 +48,11 @@ check(
 );
 
 check(
-  /ROOMS_LEGAL_REGISTRATION_READY = false/.test(app),
-  'Registro sigue cerrado en interfaz'
+  /ROOMS_LEGAL_REGISTRATION_READY = true/.test(app) &&
+  /if \(!ROOMS_LEGAL_REGISTRATION_READY \|\| !signupTermsVersion\)/.test(app) &&
+  /if \(!document\.querySelector\('#authConfirmAdult'\)\.checked\)/.test(app) &&
+  /if \(!document\.querySelector\('#authAcceptTerms'\)\.checked\)/.test(app),
+  'Registro exige version legal, mayoria de edad y aceptacion'
 );
 
 check(

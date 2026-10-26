@@ -8,15 +8,31 @@ const source = readFileSync(
 
 assert.match(
   source,
-  /const ROOMS_LEGAL_REGISTRATION_READY = false/
+  /const ROOMS_LEGAL_REGISTRATION_READY = true/
 );
-console.log('OK Registro cerrado hasta aprobacion legal');
+assert.match(
+  source,
+  /\.from\('legal_document_versions'\)/
+);
+assert.match(
+  source,
+  /\.eq\('is_current', true\)/
+);
+assert.match(
+  source,
+  /if \(!valid\(terms\) \|\| !valid\(privacy\)\)/
+);
+console.log('OK Registro condicionado a documentos legales vigentes');
 
 assert.match(
   source,
-  /const ROOMS_TERMS_VERSION = null/
+  /signupTermsVersion\s*=\s*null/
 );
-console.log('OK Version de condiciones pendiente');
+assert.match(
+  source,
+  /signupTermsVersion\s*=\s*terms\.version/
+);
+console.log('OK Version obtenida de Supabase y no prefijada');
 
 assert.match(source, /id="authAcceptTerms"/);
 assert.match(source, /type="checkbox"/);
@@ -44,5 +60,15 @@ assert.match(
   /if \(!document\.querySelector\('#authAcceptTerms'\)\.checked\)/
 );
 console.log('OK Aceptacion obligatoria prevista');
+
+assert.match(
+  source,
+  /if \(!document\.querySelector\('#authConfirmAdult'\)\.checked\)/
+);
+assert.match(
+  source,
+  /rooms_age_18_confirmed:\s*true/
+);
+console.log('OK Declaracion de mayoria de edad obligatoria');
 
 console.log('ROOMS LEGAL REGISTRATION CONTRACT OK');
