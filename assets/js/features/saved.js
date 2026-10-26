@@ -269,6 +269,14 @@
           'Rooms: error cargando elementos de colecciones',
           itemsError
         );
+
+        grid.innerHTML = `
+          <div class="real-empty-state" role="status">
+            <b>No hemos podido cargar los elementos de tus colecciones</b>
+            <p>Inténtalo de nuevo en unos segundos.</p>
+          </div>
+        `;
+        return;
       }
 
       const counts = {};
@@ -1189,6 +1197,12 @@ function ensureCollectionDetailModal() {
 
       if (savedError) {
         console.error('Rooms: error cargando guardados de colección', savedError);
+        container.innerHTML = `
+          <div class="real-empty-state" role="status">
+            <b>No hemos podido cargar los elementos de esta colección</b>
+            <p>Inténtalo de nuevo en unos segundos.</p>
+          </div>
+        `;
         return;
       }
 
@@ -1221,7 +1235,7 @@ function ensureCollectionDetailModal() {
       const container = document.querySelector('#collectionDetailContent');
       if (!container) return;
 
-      const [{ data: saved, error }, { data: existing }] = await Promise.all([
+      const [{ data: saved, error }, { data: existing, error: existingError }] = await Promise.all([
         db.from('saved_items')
           .select('id,item_type,item_id')
           .eq('user_id', state.user.id)
@@ -1234,6 +1248,12 @@ function ensureCollectionDetailModal() {
       if (error) {
         console.error('Rooms: error cargando guardados', error);
         notify('No se pudieron cargar tus guardados');
+        return;
+      }
+
+      if (existingError) {
+        console.error('Rooms: error cargando elementos ya añadidos', existingError);
+        notify('No hemos podido comprobar los elementos de la colección');
         return;
       }
 
