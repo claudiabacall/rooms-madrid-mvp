@@ -53,23 +53,30 @@ try {
   assert.match(notice, /registro cerrado/i);
   assert.doesNotMatch(notice, /no podemos verificar/i);
 
+  // Los documentos publicados pueden consultarse aunque
+  // el registro permanezca cerrado por decision de beta.
   assert.equal(
-    await page.locator('#authTermsLink').isHidden(),
+    await page.locator('#authTermsLink').isVisible(),
     true
   );
 
   assert.equal(
-    await page.locator('#authPrivacyLink').isHidden(),
+    await page.locator('#authPrivacyLink').isVisible(),
     true
   );
+
+  for (const id of ['#authTermsLink', '#authPrivacyLink']) {
+    const href = await page.locator(id).getAttribute('href');
+    assert.equal(new URL(href).protocol, 'https:');
+  }
 
   assert.equal(
-    await page.locator('#authAcceptTerms').isDisabled(),
+    await page.locator('#authAcceptTerms').isEnabled(),
     true
   );
 
-  console.log('OK Documentos no publicados permanecen ocultos');
-  console.log('OK Aceptacion deshabilitada sin documentos');
+  console.log('OK Documentos publicados visibles y accesibles');
+  console.log('OK Casilla disponible; registro permanece cerrado');
 
   await page.locator('#authName').fill('ROOMS QA');
   await page.locator('#authEmail')

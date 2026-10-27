@@ -386,7 +386,7 @@
 
   // El registro permanece cerrado hasta aprobar los
   // documentos legales y configurar su publicacion.
-  const ROOMS_LEGAL_REGISTRATION_READY = true;
+  const ROOMS_LEGAL_REGISTRATION_READY = false;
   const ROOMS_TERMS_VERSION = null;
   let signupTermsVersion = null;
   let signupLegalRequestId = 0;
@@ -467,7 +467,7 @@
       } else {
         notice.hidden = false;
         notice.textContent =
-          'Documentos disponibles. Registro aun cerrado.';
+          'Documentos disponibles. Registro cerrado hasta su aprobación legal.';
       }
     } catch (error) {
       if (requestId !== signupLegalRequestId) return;

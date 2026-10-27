@@ -17,7 +17,7 @@ check(
 );
 
 check(
-  /Confirmo que tengo 18 años o más/.test(source),
+  /Confirmo que soy mayor de 18 años\./.test(source),
   'Texto visible para el usuario'
 );
 
