@@ -173,6 +173,27 @@ export async function executeDisposableAccountDeletion({
     );
   }
 
+  // Revalidar la barrera inmediatamente antes de Auth.
+  // No sustituye bloqueo transaccional ni garantiza
+  // por si solo ausencia de escrituras concurrentes.
+  const finalBarrier = await verifyWriteBarrier({
+    auditId,
+    targetId,
+    claimToken
+  });
+
+  if (
+    !finalBarrier ||
+    finalBarrier.verified !== true ||
+    finalBarrier.databaseWritesBlocked !== true ||
+    finalBarrier.storageWritesBlocked !== true ||
+    finalBarrier.inFlightWritesDrained !== true
+  ) {
+    throw new Error(
+      'Barrera revocada antes de eliminar Auth'
+    );
+  }
+
   // Segunda operación destructiva: eliminar Auth.
   const authResult = await deleteAuthUser(targetId);
 
