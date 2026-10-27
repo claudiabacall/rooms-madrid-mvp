@@ -1,0 +1,180 @@
+{
+  "milestone": "M6.18I",
+  "deployment": "NOT_INSTALLED",
+  "purpose": "Ownership resolution for deletion guards",
+  "row_versions_required": [
+    "OLD",
+    "NEW"
+  ],
+  "fail_closed_on_missing_relation": true,
+  "notes": [
+    "Mapa de diseño, no triggers instalados",
+    "Comprobar concurrencia y propietarios de padres",
+    "Comprobar cascadas y ON DELETE SET NULL",
+    "Un guard debe comprobar todos los usuarios afectados",
+    "No habilitar borrados administrativos ni Storage"
+  ],
+  "tables": {
+    "community_members": {
+      "direct": [
+        "user_id"
+      ],
+      "relations": [
+        [
+          "community_id",
+          "communities",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "household_candidate_votes": {
+      "direct": [
+        "user_id"
+      ],
+      "relations": [
+        [
+          "household_id",
+          "households",
+          "owner_id"
+        ]
+      ],
+      "unresolved": [
+        "candidate_id: resolver segun candidate_type"
+      ],
+      "status": "BLOCKED_POLYMORPHIC"
+    },
+    "household_candidates": {
+      "direct": [
+        "added_by"
+      ],
+      "relations": [
+        [
+          "household_id",
+          "households",
+          "owner_id"
+        ],
+        [
+          "listing_id",
+          "listings",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "household_invitations": {
+      "direct": [
+        "invited_by",
+        "accepted_by"
+      ],
+      "relations": [
+        [
+          "household_id",
+          "households",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "household_members": {
+      "direct": [
+        "user_id"
+      ],
+      "relations": [
+        [
+          "household_id",
+          "households",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "household_person_candidates": {
+      "direct": [
+        "user_id",
+        "added_by"
+      ],
+      "relations": [
+        [
+          "household_id",
+          "households",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "listing_private_locations": {
+      "direct": [
+        "owner_id"
+      ],
+      "relations": [
+        [
+          "listing_id",
+          "listings",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "post_comments": {
+      "direct": [
+        "author_id"
+      ],
+      "relations": [
+        [
+          "post_id",
+          "posts",
+          "author_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "post_likes": {
+      "direct": [
+        "user_id"
+      ],
+      "relations": [
+        [
+          "post_id",
+          "posts",
+          "author_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "posts": {
+      "direct": [
+        "author_id"
+      ],
+      "relations": [
+        [
+          "community_id",
+          "communities",
+          "owner_id"
+        ],
+        [
+          "listing_id",
+          "listings",
+          "owner_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    },
+    "saved_collection_items": {
+      "direct": [],
+      "relations": [
+        [
+          "collection_id",
+          "saved_collections",
+          "user_id"
+        ],
+        [
+          "saved_item_id",
+          "saved_items",
+          "user_id"
+        ]
+      ],
+      "status": "MAPPED_NOT_TESTED"
+    }
+  }
+}
