@@ -9,6 +9,7 @@
 CREATE TABLE public.rooms_storage_cleanup_scope (
   bucket_id text NOT NULL,
   object_name text NOT NULL,
+  object_id uuid NOT NULL,
   target_user_id uuid NOT NULL,
   audit_id uuid NOT NULL,
   claim_token uuid NOT NULL,
@@ -83,7 +84,8 @@ BEGIN
     RAISE EXCEPTION 'Claim administrativo no vigente';
   END IF;
 
-  SELECT o.owner::text AS owner,
+  SELECT o.id AS id,
+         o.owner::text AS owner,
          o.owner_id,
          o.name
   INTO v_object
@@ -130,6 +132,7 @@ BEGIN
   INSERT INTO public.rooms_storage_cleanup_scope (
     bucket_id,
     object_name,
+    object_id,
     target_user_id,
     audit_id,
     claim_token,
@@ -138,6 +141,7 @@ BEGIN
   VALUES (
     p_bucket,
     p_name,
+    v_object.id,
     p_target_id,
     p_audit_id,
     p_claim_token,
@@ -158,3 +162,53 @@ public.rooms_admin_authorize_storage_cleanup(
   uuid,uuid,uuid,text,text
 )
 TO service_role;
+
+-- Predicado interno: NO permite borrar por si solo.
+-- Un trigger futuro necesitara ademas una identidad
+-- administrativa verificable y un protocolo seguro
+-- con la API oficial de Supabase Storage.
+
+CREATE OR REPLACE FUNCTION
+public.rooms_storage_cleanup_scope_valid(
+  p_bucket text,
+  p_name text,
+  p_object_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.rooms_storage_cleanup_scope s
+    JOIN public.account_deletion_audit a
+      ON a.id = s.audit_id
+     AND a.target_user_id = s.target_user_id
+     AND a.claim_token = s.claim_token
+    JOIN auth.users u
+      ON u.id = s.target_user_id
+    JOIN storage.objects o
+      ON o.id = s.object_id
+     AND o.bucket_id = s.bucket_id
+     AND o.name = s.object_name
+    WHERE s.bucket_id = p_bucket
+      AND s.object_name = p_name
+      AND s.object_id = p_object_id
+      AND s.expires_at > pg_catalog.clock_timestamp()
+      AND a.status = 'processing'
+      AND a.claimed_at IS NOT NULL
+      AND a.finished_at IS NULL
+      AND u.raw_user_meta_data
+        ->> 'rooms_deletion_test' = 'true'
+      AND u.email ~
+        '^rooms-delete-qa-[a-z0-9]+@example[.]com$'
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION
+public.rooms_storage_cleanup_scope_valid(
+  text,text,uuid
+)
+FROM PUBLIC, anon, authenticated, service_role;
