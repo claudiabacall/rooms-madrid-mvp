@@ -126,8 +126,16 @@ async function runScenario(name, rows, expectedEnabled) {
         /registro cerrado/i
       );
 
-      console.log('OK Registro bloqueado sin documentos vigentes');
-      console.log('OK Motivo de bloqueo visible');
+      const notice = await page.locator('#authLegalNotice').textContent();
+
+      if (rows.length > 0) {
+        assert.match(notice, /aprobación legal/i);
+      } else {
+        assert.match(notice, /documentos legales pendientes/i);
+      }
+
+      console.log('OK Registro cerrado correctamente:', name);
+      console.log('OK Consentimiento deshabilitado');
     }
 
     assert.equal(signupRequests, 0);
@@ -143,7 +151,7 @@ try {
   await runScenario(
     'documentos vigentes',
     documents,
-    true
+    false
   );
 
   await runScenario(

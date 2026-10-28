@@ -459,7 +459,7 @@
       privacyLink.hidden = false;
 
       signupTermsVersion = terms.version;
-      checkbox.disabled = false;
+      checkbox.disabled = !ROOMS_LEGAL_REGISTRATION_READY;
 
       if (ROOMS_LEGAL_REGISTRATION_READY) {
         notice.textContent = '';
