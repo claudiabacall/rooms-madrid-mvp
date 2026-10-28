@@ -127,10 +127,12 @@ test('Storage pre-Auth consulta el RPC esperado', async () => {
 
   assert.match(
     requestUrl,
-    /\/rest\/v1\/rpc\/rooms_admin_storage_inventory$/
+    /\/rest\/v1\/rpc\/rooms_admin_storage_inventory_claimed$/
   );
   assert.deepEqual(requestBody, {
-    p_target_id: TARGET
+    p_audit_id: AUDIT,
+    p_target_id: TARGET,
+    p_claim_token: TOKEN
   });
   assert.deepEqual(result, {
     verified: true,

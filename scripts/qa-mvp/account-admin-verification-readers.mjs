@@ -72,17 +72,19 @@ export function createVerificationReaders({
 
       // Inventario previo a Auth: esta funcion SQL
       // verifica que la cuenta desechable aun existe.
-      // El token y la auditoria se validan aqui en
-      // cuanto a formato, no en el RPC de inventario.
+      // El RPC verifica el claim y la auditoria
+      // en el servidor antes de consultar Storage.
       const response = await request(
-        '/rest/v1/rpc/rooms_admin_storage_inventory',
+        '/rest/v1/rpc/rooms_admin_storage_inventory_claimed',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            p_target_id: targetId
+            p_audit_id: auditId,
+            p_target_id: targetId,
+            p_claim_token: claimToken
           })
         }
       );
