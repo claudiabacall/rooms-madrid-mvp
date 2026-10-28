@@ -77,6 +77,15 @@ test(
           verified: true,
           remainingFiles: 0
         }),
+        verifyStorageDatabaseEmpty: async () => ({
+          verified: true,
+          archivos_encontrados: 0,
+          por_owner: 0,
+          por_owner_id: 0,
+          por_ruta: 0,
+          fuera_de_buckets_previstos: 0,
+          buckets_afectados: 0
+        }),
         deleteAuthUser: async () => {
           authCalls++;
           return { deleted: true };
