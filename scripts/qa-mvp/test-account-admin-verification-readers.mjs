@@ -89,3 +89,115 @@ test('BD bloquea error de permisos', async () => {
     /HTTP 403/
   );
 });
+
+// M6.19F: inventario SQL anterior a eliminar Auth.
+const emptyStorage = {
+  archivos_encontrados: 0,
+  por_owner: 0,
+  por_owner_id: 0,
+  por_ruta: 0,
+  fuera_de_buckets_previstos: 0,
+  buckets_afectados: 0
+};
+
+test('Storage pre-Auth consulta el RPC esperado', async () => {
+  let requestUrl;
+  let requestBody;
+
+  const reader = createVerificationReaders({
+    url: 'https://example.supabase.co',
+    key: 'clave-simulada',
+    fetchImpl: async (url, options) => {
+      requestUrl = url;
+      requestBody = JSON.parse(options.body);
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => [emptyStorage]
+      };
+    }
+  });
+
+  const result = await reader.verifyStorageDatabaseEmpty({
+    auditId: AUDIT,
+    targetId: TARGET,
+    claimToken: TOKEN
+  });
+
+  assert.match(
+    requestUrl,
+    /\/rest\/v1\/rpc\/rooms_admin_storage_inventory$/
+  );
+  assert.deepEqual(requestBody, {
+    p_target_id: TARGET
+  });
+  assert.deepEqual(result, {
+    verified: true,
+    ...emptyStorage
+  });
+});
+
+test('Storage pre-Auth rechaza residuos fuera de ruta', async () => {
+  const reader = readers(200, [{
+    ...emptyStorage,
+    archivos_encontrados: 1,
+    por_owner_id: 1
+  }]);
+
+  await assert.rejects(
+    reader.verifyStorageDatabaseEmpty({
+      auditId: AUDIT,
+      targetId: TARGET,
+      claimToken: TOKEN
+    }),
+    /ausencia total/
+  );
+});
+
+test('Storage pre-Auth rechaza inventario incompleto', async () => {
+  await assert.rejects(
+    readers(200, [{
+      archivos_encontrados: 0
+    }]).verifyStorageDatabaseEmpty({
+      auditId: AUDIT,
+      targetId: TARGET,
+      claimToken: TOKEN
+    }),
+    /ausencia total/
+  );
+});
+
+test('Storage pre-Auth rechaza error HTTP', async () => {
+  await assert.rejects(
+    readers(403, {}).verifyStorageDatabaseEmpty({
+      auditId: AUDIT,
+      targetId: TARGET,
+      claimToken: TOKEN
+    }),
+    /HTTP 403/
+  );
+});
+
+test('Storage pre-Auth rechaza UUID invalido', async () => {
+  await assert.rejects(
+    readers(200, [emptyStorage])
+      .verifyStorageDatabaseEmpty({
+        auditId: AUDIT,
+        targetId: 'usuario-invalido',
+        claimToken: TOKEN
+      }),
+    /Identificadores/
+  );
+});
+
+test('Storage pre-Auth rechaza respuesta vacia', async () => {
+  await assert.rejects(
+    readers(200, []).verifyStorageDatabaseEmpty({
+      auditId: AUDIT,
+      targetId: TARGET,
+      claimToken: TOKEN
+    }),
+    /ausencia total/
+  );
+});

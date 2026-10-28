@@ -61,6 +61,69 @@ export function createVerificationReaders({
       return { absent: false };
     },
 
+    async verifyStorageDatabaseEmpty({
+      auditId,
+      targetId,
+      claimToken
+    }) {
+      if (![auditId, targetId, claimToken].every(isUuid)) {
+        throw new Error('Identificadores de Storage invalidos');
+      }
+
+      // Inventario previo a Auth: esta funcion SQL
+      // verifica que la cuenta desechable aun existe.
+      // El token y la auditoria se validan aqui en
+      // cuanto a formato, no en el RPC de inventario.
+      const response = await request(
+        '/rest/v1/rpc/rooms_admin_storage_inventory',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_target_id: targetId
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Inventario Storage SQL HTTP ${response.status}`
+        );
+      }
+
+      const rows = await response.json();
+      const fields = [
+        'archivos_encontrados',
+        'por_owner',
+        'por_owner_id',
+        'por_ruta',
+        'fuera_de_buckets_previstos',
+        'buckets_afectados'
+      ];
+
+      if (
+        !Array.isArray(rows) ||
+        rows.length !== 1 ||
+        fields.some(field =>
+          !Number.isSafeInteger(rows[0]?.[field]) ||
+          rows[0][field] !== 0
+        )
+      ) {
+        throw new Error(
+          'Inventario SQL de Storage no acredita ausencia total'
+        );
+      }
+
+      return {
+        verified: true,
+        ...Object.fromEntries(
+          fields.map(field => [field, rows[0][field]])
+        )
+      };
+    },
+
     async getStorageDatabaseVerification({
       auditId,
       targetId,
