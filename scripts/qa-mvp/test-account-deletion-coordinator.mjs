@@ -105,6 +105,18 @@ function fixture({
           remainingFiles: files.size
         };
       },
+      async verifyStorageDatabaseEmpty() {
+        operations.push('storage-sql');
+        return {
+          verified: true,
+          archivos_encontrados: 0,
+          por_owner: 0,
+          por_owner_id: 0,
+          por_ruta: 0,
+          fuera_de_buckets_previstos: 0,
+          buckets_afectados: 0
+        };
+      },
       async deleteAuthUser() {
         operations.push('auth');
         return { deleted: authSuccess };
@@ -112,6 +124,65 @@ function fixture({
     }
   };
 }
+
+// M6.19E: inventario SQL previo a Auth.
+
+const missingSql = fixture();
+delete missingSql.args.verifyStorageDatabaseEmpty;
+
+await assert.rejects(
+  executeDisposableAccountDeletion(missingSql.args),
+  /Faltan operaciones administrativas/
+);
+assert.deepEqual(missingSql.operations, []);
+console.log('OK Sin inventario SQL no comienza la baja');
+
+const sqlResidual = fixture();
+sqlResidual.args.verifyStorageDatabaseEmpty = async () => {
+  sqlResidual.operations.push('storage-sql');
+  return {
+    verified: true,
+    archivos_encontrados: 1,
+    por_owner: 0,
+    por_owner_id: 1,
+    por_ruta: 0,
+    fuera_de_buckets_previstos: 0,
+    buckets_afectados: 1
+  };
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(sqlResidual.args),
+  /Inventario SQL de Storage/
+);
+assert(sqlResidual.operations.includes('storage-sql'));
+assert(!sqlResidual.operations.includes('auth'));
+console.log('OK Archivo fuera de carpeta bloquea Auth');
+
+const sqlIncomplete = fixture();
+sqlIncomplete.args.verifyStorageDatabaseEmpty = async () => ({
+  verified: true,
+  archivos_encontrados: 0
+});
+
+await assert.rejects(
+  executeDisposableAccountDeletion(sqlIncomplete.args),
+  /Inventario SQL de Storage/
+);
+assert(!sqlIncomplete.operations.includes('auth'));
+console.log('OK Inventario SQL incompleto bloqueado');
+
+const sqlError = fixture();
+sqlError.args.verifyStorageDatabaseEmpty = async () => {
+  throw new Error('SQL no disponible');
+};
+
+await assert.rejects(
+  executeDisposableAccountDeletion(sqlError.args),
+  /SQL no disponible/
+);
+assert(!sqlError.operations.includes('auth'));
+console.log('OK Error del inventario SQL bloquea Auth');
 
 const missingClaim = fixture();
 delete missingClaim.args.verifyDeletionClaim;

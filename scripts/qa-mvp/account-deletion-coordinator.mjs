@@ -28,6 +28,7 @@ export async function executeDisposableAccountDeletion({
   inspectSharedImpact,
   verifyWriteBarrier,
   verifyStorageEmpty,
+  verifyStorageDatabaseEmpty,
   deleteAuthUser
 }) {
   assertDisposableAccount(user, targetId);
@@ -48,6 +49,7 @@ export async function executeDisposableAccountDeletion({
     typeof inspectSharedImpact !== 'function' ||
     typeof verifyWriteBarrier !== 'function' ||
     typeof verifyStorageEmpty !== 'function' ||
+    typeof verifyStorageDatabaseEmpty !== 'function' ||
     typeof deleteAuthUser !== 'function'
   ) {
     throw new Error('Faltan operaciones administrativas');
@@ -170,6 +172,38 @@ export async function executeDisposableAccountDeletion({
   ) {
     throw new Error(
       'Storage ha cambiado antes de eliminar Auth'
+    );
+  }
+
+  // Inventario SQL independiente PREVIO a Auth.
+  // Debe consultar rooms_admin_storage_inventory en
+  // el backend con privilegios administrativos.
+  // Un inventario por carpetas NO basta.
+  const storageDatabase = await verifyStorageDatabaseEmpty({
+    auditId,
+    targetId,
+    claimToken
+  });
+
+  const storageFields = [
+    'archivos_encontrados',
+    'por_owner',
+    'por_owner_id',
+    'por_ruta',
+    'fuera_de_buckets_previstos',
+    'buckets_afectados'
+  ];
+
+  if (
+    !storageDatabase ||
+    storageDatabase.verified !== true ||
+    storageFields.some(field =>
+      !Number.isSafeInteger(storageDatabase[field]) ||
+      storageDatabase[field] !== 0
+    )
+  ) {
+    throw new Error(
+      'Inventario SQL de Storage no acredita ausencia total'
     );
   }
 
