@@ -10,6 +10,8 @@
 --
 -- La emision segura de tokens NO esta implementada.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION
   rooms_private.consume_beta_invite_on_signup()
 RETURNS trigger
@@ -92,6 +94,15 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Las funciones PostgreSQL pueden heredar EXECUTE
+-- para PUBLIC. Retirar esos permisos en la misma
+-- transaccion que crea o actualiza la funcion.
+REVOKE ALL ON FUNCTION
+  rooms_private.consume_beta_invite_on_signup()
+FROM PUBLIC, anon, authenticated;
+
+COMMIT;
 
 -- NO CREAR EL TRIGGER EN ESTA FASE.
 -- NO RETIRAR rooms_beta_registration_closed.
