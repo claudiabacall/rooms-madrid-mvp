@@ -34,7 +34,7 @@ async function countRows(db, table, field, userId) {
   return count;
 }
 
-export async function inspectAccountSharedImpact(db, userId) {
+export async function countAccountSharedImpact(db, userId) {
   if (!db || typeof db.from !== 'function') {
     throw new Error('Cliente administrativo requerido');
   }
@@ -50,7 +50,11 @@ export async function inspectAccountSharedImpact(db, userId) {
     ])
   );
 
-  const impact = Object.fromEntries(counts);
+  return Object.fromEntries(counts);
+}
+
+export async function inspectAccountSharedImpact(db, userId) {
+  const impact = await countAccountSharedImpact(db, userId);
 
   if (Object.values(impact).some(value => value > 0)) {
     // El coordinador bloquea si alguno es positivo.

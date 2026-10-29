@@ -1,5 +1,9 @@
 import { validate as isUuid } from './account-deletion-uuid.mjs';
 
+import {
+  countAccountSharedImpact
+} from './account-shared-impact.mjs';
+
 async function countAffectedRows(db, table, first, second, targetId) {
   const result = await db
     .from(table)
@@ -41,4 +45,43 @@ export async function inspectSharedCommunicationImpact(db, targetId) {
     sharedMessagesAffected,
     sharedConnectionsAffected
   };
+}
+
+
+/**
+ * Inventario conjunto para un backend administrativo.
+ * No constituye barrera concurrente ni autoriza bajas.
+ * El cliente debe tener visibilidad administrativa completa.
+ */
+export async function inspectSixSharedImpact(db, targetId) {
+  if (!isUuid(targetId) || !db || typeof db.from !== 'function') {
+    throw new Error('Inventario administrativo no disponible');
+  }
+
+  const ownership = await countAccountSharedImpact(db, targetId);
+  const communication = await inspectSharedCommunicationImpact(
+    db, targetId
+  );
+
+  const impact = { ...ownership, ...communication };
+
+  const required = [
+    'communityMembersAffected',
+    'householdMembersAffected',
+    'ownedCommunities',
+    'ownedHouseholds',
+    'sharedMessagesAffected',
+    'sharedConnectionsAffected'
+  ];
+
+  if (
+    required.some(key =>
+      !Number.isSafeInteger(impact[key]) ||
+      impact[key] < 0
+    )
+  ) {
+    throw new Error('Inventario compartido incompleto');
+  }
+
+  return impact;
 }
