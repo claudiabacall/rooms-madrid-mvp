@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-BIN="$HOME/.rooms-pg-lab/Postgres.app/Contents/Versions/18/bin"
+BIN="/Applications/Postgres.app/Contents/Versions/latest/bin"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TEST="$ROOT/scripts/qa-mvp/test-deletion-postgres-concurrency.py"
 
