@@ -16,6 +16,8 @@ function fixture({
   householdMembers = 0,
   ownedCommunities = 0,
   ownedHouseholds = 0,
+  sharedMessages = 0,
+  sharedConnections = 0,
   removalError = false,
   authSuccess = true
 } = {}) {
@@ -86,7 +88,9 @@ function fixture({
           communityMembersAffected: members,
           householdMembersAffected: householdMembers,
           ownedCommunities,
-          ownedHouseholds
+          ownedHouseholds,
+          sharedMessagesAffected: sharedMessages,
+          sharedConnectionsAffected: sharedConnections
         };
       },
       async verifyWriteBarrier() {
@@ -123,6 +127,46 @@ function fixture({
       }
     }
   };
+}
+
+
+// M5.18B: proteger conversaciones y conexiones compartidas.
+
+for (const [kind, options] of [
+  ['mensajes', { sharedMessages: 1 }],
+  ['conexiones', { sharedConnections: 1 }]
+]) {
+  const scenario = fixture(options);
+
+  await assert.rejects(
+    executeDisposableAccountDeletion(scenario.args),
+    /titularidad o miembros afectados/
+  );
+
+  assert.deepEqual(scenario.operations, ['claim', 'impact']);
+  console.log(`OK Baja bloqueada por ${kind} compartidos`);
+}
+
+for (const field of [
+  'sharedMessagesAffected',
+  'sharedConnectionsAffected'
+]) {
+  const scenario = fixture();
+  const original = scenario.args.inspectSharedImpact;
+
+  scenario.args.inspectSharedImpact = async () => {
+    const impact = await original();
+    delete impact[field];
+    return impact;
+  };
+
+  await assert.rejects(
+    executeDisposableAccountDeletion(scenario.args),
+    new RegExp(`Impacto no verificado: ${field}`)
+  );
+
+  assert.deepEqual(scenario.operations, ['claim', 'impact']);
+  console.log(`OK Inventario incompleto bloqueado: ${field}`);
 }
 
 // M6.19E: inventario SQL previo a Auth.

@@ -14,7 +14,9 @@ const IMPACT_FIELDS = [
   'communityMembersAffected',
   'householdMembersAffected',
   'ownedCommunities',
-  'ownedHouseholds'
+  'ownedHouseholds',
+  'sharedMessagesAffected',
+  'sharedConnectionsAffected'
 ];
 
 export async function executeDisposableAccountDeletion({
