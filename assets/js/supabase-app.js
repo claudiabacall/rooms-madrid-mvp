@@ -495,6 +495,9 @@
           <label id="authNameField" hidden>Nombre o alias
             <input id="authName" type="text" maxlength="40" autocomplete="name">
           </label>
+          <label id="authInviteField" hidden>Codigo de invitacion
+            <input id="authInviteToken" type="text" maxlength="43" autocomplete="off" spellcheck="false" autocapitalize="none">
+          </label>
           <label>Email
             <input id="authEmail" type="email" required autocomplete="email">
           </label>
@@ -544,6 +547,7 @@
       mode = button.dataset.authMode;
       gate.querySelectorAll('[data-auth-mode]').forEach(item => item.classList.toggle('active', item === button));
       document.querySelector('#authNameField').hidden = mode !== 'signup';
+      document.querySelector('#authInviteField').hidden = mode !== 'signup';
       document.querySelector('#authSignupLegal').hidden = mode !== 'signup';
       document.querySelector('#authAcceptTerms').checked = false;
       document.querySelector('#authConfirmAdult').checked = false;
@@ -690,6 +694,19 @@
         }
       }
 
+      const inviteToken = mode === 'signup'
+        ? document.querySelector('#authInviteToken').value.trim()
+        : '';
+
+      if (
+        mode === 'signup' &&
+        !/^[A-Za-z0-9_-]{43}$/.test(inviteToken)
+      ) {
+        document.querySelector('#authMessage').textContent =
+          'Introduce un codigo de invitacion valido.';
+        return;
+      }
+
       const email = document.querySelector('#authEmail').value.trim();
       const password = document.querySelector('#authPassword').value;
       const name = document.querySelector('#authName').value.trim();
@@ -707,7 +724,8 @@
             alias: name,
             rooms_terms_accepted: true,
             rooms_terms_version: signupTermsVersion,
-            rooms_age_18_confirmed: true
+            rooms_age_18_confirmed: true,
+            rooms_beta_invite_token: inviteToken
           } } })
         : await db.auth.signInWithPassword({ email, password });
 
