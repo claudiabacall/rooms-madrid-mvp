@@ -265,6 +265,27 @@ INSERT INTO public.messages(sender_id,recipient_id,body)
 VALUES ('{OTHER}','{TARGET}','privileged');
 """, "Escritura privilegiada bloqueada")
 
+        # Una limpieza directa con permisos privilegiados
+        # tampoco puede esquivar los triggers.
+        must_block(env, f"""
+SET ROLE service_role;
+DELETE FROM public.messages
+WHERE sender_id = '{TARGET}';
+""", "DELETE privilegiado de mensajes bloqueado")
+
+        must_block(env, f"""
+SET ROLE service_role;
+DELETE FROM public.connections
+WHERE requester_id = '{TARGET}';
+""", "DELETE privilegiado de conexiones bloqueado")
+
+        must_block(env, f"""
+SET ROLE service_role;
+UPDATE public.connections
+SET status = 'accepted'
+WHERE requester_id = '{TARGET}';
+""", "UPDATE privilegiado de conexiones bloqueado")
+
         psql(env, f"""
 INSERT INTO public.messages(sender_id,recipient_id,body)
 VALUES ('{OTHER}','{THIRD}','unaffected');
