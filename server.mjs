@@ -44,6 +44,52 @@ async function readJsonBody(request) {
 }
 
 createServer(async (request, response) => {
+
+  // ROOMS_LOCAL_QA_CONFIG
+  // Solo el servidor local puede activar esta conexion de pruebas.
+  if (
+    process.env.ROOMS_SUPABASE_ENV === "qa" &&
+    new URL(request.url || "/", "http://127.0.0.1").pathname ===
+      "/assets/js/supabase-config.js"
+  ) {
+    try {
+      const file = `${process.env.HOME}/.config/rooms/qa-public.json`;
+      const qaConfig = JSON.parse(await readFile(file, "utf8"));
+
+      if (
+        qaConfig.url !==
+          "https://gpfmocptevpyzrwsubkj.supabase.co" ||
+        typeof qaConfig.key !== "string" ||
+        !(
+          qaConfig.key.startsWith("sb_publishable_") ||
+          qaConfig.key.startsWith("eyJ")
+        )
+      ) {
+        throw new Error("Invalid QA configuration");
+      }
+
+      response.writeHead(200, {
+        "Content-Type": "application/javascript; charset=utf-8",
+        "Cache-Control": "no-store"
+      });
+
+      response.end(
+        `window.ROOMS_SUPABASE = ${JSON.stringify({
+          url: qaConfig.url,
+          key: qaConfig.key
+        })};\n`
+      );
+    } catch {
+      response.writeHead(503, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store"
+      });
+      response.end("ROOMS QA configuration unavailable");
+    }
+
+    return;
+  }
+
   try {
     const url = new URL(
       request.url,
