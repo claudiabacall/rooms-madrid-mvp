@@ -72,11 +72,16 @@ try {
 
   assert.equal(
     await page.locator('#authAcceptTerms').isEnabled(),
-    true
+    false
+  );
+
+  assert.equal(
+    await page.locator('#authAcceptTerms').isChecked(),
+    false
   );
 
   console.log('OK Documentos publicados visibles y accesibles');
-  console.log('OK Casilla disponible; registro permanece cerrado');
+  console.log('OK Casilla deshabilitada; registro permanece cerrado');
 
   await page.locator('#authName').fill('ROOMS QA');
   await page.locator('#authEmail')
