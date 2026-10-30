@@ -5861,6 +5861,10 @@ BEGIN
     status = 'accepted'
   WHERE public.household_members.role = 'member';
 
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Membership could not be accepted';
+  END IF;
+
   UPDATE public.household_invitations
   SET
     status = 'accepted',
@@ -5975,6 +5979,10 @@ BEGIN
     exact_longitude = EXCLUDED.exact_longitude,
     updated_at = now()
   WHERE public.listing_private_locations.owner_id = v_user;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Private location could not be saved';
+  END IF;
 END;
 $function$;
 

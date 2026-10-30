@@ -7,7 +7,7 @@ No esta aprobado para instalacion permanente.
 No habilita el registro beta.
 
 SHA256 del SQL:
-4f5c9be49011524429703ff919b765cc488c1d89935f7d0269ed6e4209c9162f
+f8681b5bd89c67c4464618d6c2543a6f178fc9dfe2e8f82b9e97be47e44129fc
 
 Migraciones historicas y SHA256:
 d03374389b06d2b0cfbb2cad64cb9ca4649601064aa5f79068c79d4ec827f4b6  supabase/migrations/20260901_initial_schema.sql
