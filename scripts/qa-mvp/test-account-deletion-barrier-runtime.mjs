@@ -62,7 +62,9 @@ test(
           communityMembersAffected: 0,
           householdMembersAffected: 0,
           ownedCommunities: 0,
-          ownedHouseholds: 0
+          ownedHouseholds: 0,
+          sharedMessagesAffected: 0,
+          sharedConnectionsAffected: 0
         }),
         verifyWriteBarrier: async () => {
           checks++;
