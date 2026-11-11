@@ -4489,7 +4489,7 @@
   padding: 24px;
   background: rgba(10,10,10,.42);
   backdrop-filter: blur(10px);
-  z-index: 1200;
+  z-index: 3100 !important;
 }
 
 #editListingModal article{
