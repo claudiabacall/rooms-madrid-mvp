@@ -136,6 +136,8 @@
 
   const savedFeature =
     window.ROOMS_SAVED_FEATURE?.create({
+      getListingPhotos: listing =>
+        listingPhotoPresentation.get(listing)?.photos || [],
       db,
       state,
       escapeHtml,

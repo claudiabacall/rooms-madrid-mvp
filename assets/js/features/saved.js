@@ -7,7 +7,8 @@
     escapeHtml,
     notify,
     updateSavedCount,
-    connectionButtonLabel
+    connectionButtonLabel,
+    getListingPhotos = () => []
   }) {
     if (!db) {
       throw new Error(
@@ -75,10 +76,10 @@
 
           image:
             Array.isArray(
-              listing.photos
+              getListingPhotos(listing)
             ) &&
-            listing.photos.length
-              ? listing.photos[0]
+            getListingPhotos(listing).length
+              ? getListingPhotos(listing)[0]
               : null
         };
       }
@@ -835,11 +836,11 @@
               )}">
               ${
                 Array.isArray(
-                  listing.photos
+                  getListingPhotos(listing)
                 ) &&
-                listing.photos.length
+                getListingPhotos(listing).length
                   ? `<img src="${escapeHtml(
-                      listing.photos[0]
+                      getListingPhotos(listing)[0]
                     )}" alt="${escapeHtml(
                       listing.title ||
                       listing.zone
