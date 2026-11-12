@@ -2441,10 +2441,23 @@
 
   const { renderRealMapCard } = exploreMapCardFeature;
 
+  // Resolver siempre contra las referencias originales.
+  // La misma proteccion cubre Leaflet y la seleccion de pins.
+  function renderPrivateMapCard(listing) {
+    if (!listing) return '';
+
+    const original =
+      state.listings.get(listing.id) || listing;
+
+    return renderRealMapCard(
+      listingPhotoPresentation.get(original)
+    );
+  }
+
   const exploreLeafletMapFeature =
     window.ROOMS_EXPLORE_LEAFLET_MAP_FEATURE?.create({
       escapeHtml,
-      renderRealMapCard
+      renderRealMapCard: renderPrivateMapCard
     });
 
   if (!exploreLeafletMapFeature) {
@@ -2461,7 +2474,7 @@
   const exploreRenderFeature =
     window.ROOMS_EXPLORE_RENDER_FEATURE?.create({
       escapeHtml,
-      renderRealMapCard,
+      renderRealMapCard: renderPrivateMapCard,
       destroyExploreLeafletMap,
       initExploreLeafletMap
     });
@@ -5049,7 +5062,7 @@
     window.ROOMS_EXPLORE_VIEW_FEATURE?.create({
       state,
       renderFilteredExplore,
-      renderRealMapCard
+      renderRealMapCard: renderPrivateMapCard
     });
 
   if (!exploreViewFeature) {
@@ -5098,7 +5111,12 @@
       renderExploreCommunities,
       getExploreResults,
       getListingsLoadError: () => Boolean(state.listingsLoadError),
-      renderRealExplore,
+      renderRealExplore: listings =>
+        renderRealExplore(
+          listings.map(listing =>
+            listingPhotoPresentation.get(listing)
+          )
+        ),
       exploreFiltersState
     });
 
