@@ -63,6 +63,32 @@
     throw new Error('Rooms: falta Listing Photo View');
   }
 
+  const listingPhotoCache =
+    window.ROOMS_LISTING_PHOTO_CACHE?.create({
+      view: listingPhotoView
+    });
+
+  if (!listingPhotoCache) {
+    throw new Error('Rooms: falta Listing Photo Cache');
+  }
+
+  // La cache se mantiene separada de state.listings.
+  // Las referencias originales siguen siendo canonicas.
+  let listingPhotoSessionUserId = null;
+
+  function invalidateListingPhotosForSession(event, session) {
+    const nextUserId = session?.user?.id || null;
+
+    if (
+      event === 'SIGNED_OUT' ||
+      nextUserId !== listingPhotoSessionUserId
+    ) {
+      listingPhotoCache.invalidate();
+    }
+
+    listingPhotoSessionUserId = nextUserId;
+  }
+
   const state = {
     user: null,
     profile: null,
@@ -4405,6 +4431,7 @@
     readAuthUrlError();
 
   db.auth.onAuthStateChange((event, session) => {
+    invalidateListingPhotosForSession(event, session);
     if (
       event === 'PASSWORD_RECOVERY' &&
       session
