@@ -2079,7 +2079,15 @@
       );
     });
 
-    renderRealFeed(listings || [], profiles || [], posts || [], communities || []);
+    // Preparar fotografias autorizadas sin modificar state.listings.
+    await listingPhotoPresentation.prepare(visibleListings);
+
+    renderRealFeed(
+      visibleListings,
+      profiles || [],
+      posts || [],
+      communities || []
+    );
     renderFilteredExplore();
     window.ROOMS_HOME_RECOMMENDATIONS?.render({ state });
 
@@ -2142,7 +2150,10 @@
   const feedCoreFeature =
     window.ROOMS_FEED_CORE_FEATURE?.create({
       state,
-      renderListingCard: (...args) => renderListingCard(...args),
+      renderListingCard: listing =>
+        renderListingCard(
+          listingPhotoPresentation.get(listing)
+        ),
       renderPersonCard: (...args) => renderPersonCard(...args),
       renderPostCard: (...args) => renderPostCard(...args),
       renderCommunityCard: (...args) => renderCommunityCard(...args)

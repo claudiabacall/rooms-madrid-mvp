@@ -27,9 +27,13 @@ assert(app.includes('ROOMS_FEED_CORE_FEATURE?.create'));
 assert(/function renderRealFeed\s*\(/.test(source));
 assert(!/function renderRealFeed\s*\(/.test(app));
 assert(
-  app.includes(
-    'renderRealFeed(listings || [], profiles || [], posts || [], communities || [])'
-  )
+  /await\s+listingPhotoPresentation\.prepare\(visibleListings\)\s*;\s*renderRealFeed\(\s*visibleListings\s*,\s*profiles\s*\|\|\s*\[\]\s*,\s*posts\s*\|\|\s*\[\]\s*,\s*communities\s*\|\|\s*\[\]\s*\)/.test(app),
+  'Feed debe preparar fotos privadas y renderizar solo viviendas visibles'
+);
+
+assert(
+  /renderListingCard:\s*listing\s*=>\s*renderListingCard\(\s*listingPhotoPresentation\.get\(listing\)/.test(app),
+  'Feed debe utilizar la copia visual, no las URLs originales'
 );
 assert(
   /const\s*\{\s*renderRealFeed\s*\}\s*=\s*feedCoreFeature/.test(app),
