@@ -88,10 +88,24 @@
       cache: listingPhotoCache
     });
 
+  const listingPhotoDomGuard =
+    window.ROOMS_LISTING_PHOTO_DOM_GUARD?.create({
+      document,
+      storageOrigin: config.url
+    });
+
+  if (!listingPhotoDomGuard) {
+    throw new Error('Rooms: falta Listing Photo DOM Guard');
+  }
+
   function invalidateListingPhotoDisplays(listingId) {
     listingPhotoCache.invalidate(listingId);
     listingPhotoPresentation.invalidate(listingId);
     householdPhotoPresentation.invalidate(listingId);
+
+    // Retirar imagenes ya visibles tras cambiar autorizaciones.
+    // No activar el temporizador hasta implementar renovacion.
+    listingPhotoDomGuard.clear();
   }
 
   // La cache se mantiene separada de state.listings.
