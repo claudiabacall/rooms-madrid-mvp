@@ -57,7 +57,7 @@ TO authenticated
 USING (
   bucket_id = 'listing-images'
 
-  AND cardinality(storage.foldername(name)) = 3
+  AND cardinality(storage.foldername(name)) = 2
 
   AND EXISTS (
     SELECT 1
