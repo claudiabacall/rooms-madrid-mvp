@@ -201,6 +201,57 @@ const presentation = create({
   console.log('OK Carga vacia controlada');
 }
 
+
+{
+  let time = 100000;
+  let requestCount = 0;
+
+  const expiring = create({
+    now: () => time,
+    cache: {
+      async resolve(item) {
+        requestCount++;
+        return {
+          ...item,
+          photos: [
+            `https://signed.example/renewed-${requestCount}`
+          ]
+        };
+      }
+    }
+  });
+
+  await expiring.prepare([listing]);
+
+  assert.equal(
+    expiring.get(listing).photos[0],
+    'https://signed.example/renewed-1'
+  );
+
+  time += 39999;
+  assert.equal(expiring.get(listing).photos.length, 1);
+
+  time += 1;
+  assert.equal(expiring.get(listing).photos.length, 0);
+
+  assert.equal(
+    listing.photos[0],
+    'https://public.example/photo.jpg'
+  );
+
+  console.log('OK URL visual caduca a los 40 segundos');
+  console.log('OK Caducidad nunca recupera URL publica');
+
+  await expiring.prepare([listing]);
+
+  assert.equal(
+    expiring.get(listing).photos[0],
+    'https://signed.example/renewed-2'
+  );
+
+  console.log('OK Preparacion posterior renueva URL');
+}
+
 assert.equal(presentation.get(null), null);
 
 assert.throws(

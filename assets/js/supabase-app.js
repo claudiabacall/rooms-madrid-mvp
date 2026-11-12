@@ -72,6 +72,20 @@
     throw new Error('Rooms: falta Listing Photo Cache');
   }
 
+  const listingPhotoPresentation =
+    window.ROOMS_LISTING_PHOTO_PRESENTATION?.create({
+      cache: listingPhotoCache
+    });
+
+  if (!listingPhotoPresentation) {
+    throw new Error('Rooms: falta Listing Photo Presentation');
+  }
+
+  function invalidateListingPhotoDisplays(listingId) {
+    listingPhotoCache.invalidate(listingId);
+    listingPhotoPresentation.invalidate(listingId);
+  }
+
   // La cache se mantiene separada de state.listings.
   // Las referencias originales siguen siendo canonicas.
   let listingPhotoSessionUserId = null;
@@ -83,7 +97,7 @@
       event === 'SIGNED_OUT' ||
       nextUserId !== listingPhotoSessionUserId
     ) {
-      listingPhotoCache.invalidate();
+      invalidateListingPhotoDisplays();
     }
 
     listingPhotoSessionUserId = nextUserId;
@@ -390,7 +404,7 @@
       loadRealNotifications,
       openRealUser,
       invalidateListingPhotos: () =>
-        listingPhotoCache.invalidate()
+        invalidateListingPhotoDisplays()
     });
 
   if (!moderationFeature) {
@@ -2617,7 +2631,7 @@
       loadSavedItems,
       refreshOwnActivity,
       invalidateListingPhotos: listingId =>
-        listingPhotoCache.invalidate(listingId)
+        invalidateListingPhotoDisplays(listingId)
     });
 
   if (!listingEditorFeature) {
@@ -2642,7 +2656,7 @@
       loadRealContent,
       loadSavedItems,
       invalidateListingPhotos: listingId =>
-        listingPhotoCache.invalidate(listingId)
+        invalidateListingPhotoDisplays(listingId)
     });
 
   if (!listingDeleteFeature) {

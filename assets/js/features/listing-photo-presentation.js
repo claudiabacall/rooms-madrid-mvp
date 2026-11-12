@@ -1,13 +1,14 @@
 (function () {
   'use strict';
 
-  function create({ cache }) {
+  function create({ cache, now = () => Date.now() }) {
     if (typeof cache?.resolve !== 'function') {
       throw new Error('Rooms: falta Listing Photo Cache');
     }
 
     const display = new Map();
     let generation = 0;
+    const MAX_DISPLAY_AGE_MS = 40000;
 
     function signature(listing) {
       return JSON.stringify([
@@ -25,7 +26,9 @@
       const stored = display.get(String(listing.id));
 
       const photos =
-        stored && stored.signature === signature(listing)
+        stored &&
+          stored.signature === signature(listing) &&
+          now() < stored.expires
           ? [...stored.photos]
           : [];
 
@@ -59,12 +62,14 @@
 
           const index = next++;
           const listing = items[index];
+          const startedAt = now();
 
           try {
             const projected = await cache.resolve(listing);
 
             results[index] = {
               listing,
+              expires: startedAt + MAX_DISPLAY_AGE_MS,
               photos: Array.isArray(projected?.photos)
                 ? projected.photos.filter(url =>
                     typeof url === 'string' &&
@@ -73,7 +78,11 @@
                 : []
             };
           } catch {
-            results[index] = { listing, photos: [] };
+            results[index] = {
+              listing,
+              photos: [],
+              expires: startedAt
+            };
           }
         }
       });
@@ -91,7 +100,8 @@
 
         display.set(String(result.listing.id), {
           signature: signature(result.listing),
-          photos: [...result.photos]
+          photos: [...result.photos],
+          expires: result.expires
         });
       }
 
