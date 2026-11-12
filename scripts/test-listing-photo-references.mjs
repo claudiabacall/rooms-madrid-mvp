@@ -7,7 +7,7 @@ const source = readFileSync(
   'utf8'
 );
 
-const context = {window: {}};
+const context = {window: {}, URL};
 vm.runInNewContext(source, context);
 
 const create =
