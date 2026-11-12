@@ -14,7 +14,8 @@
     loadHouseholdCandidates,
     loadRealInbox,
     loadRealNotifications,
-    openRealUser
+    openRealUser,
+    invalidateListingPhotos = () => {}
   }) {
 
   function openRealReport(target) {
@@ -619,6 +620,7 @@
     }
 
     state.blockedUsers.add(target.id);
+    invalidateListingPhotos();
     state.blockTarget = null;
 
     updateBlockedUsersCount();
@@ -665,6 +667,7 @@
     }
 
     state.blockedUsers.delete(userId);
+    invalidateListingPhotos();
 
     updateBlockedUsersCount();
 

@@ -7,7 +7,8 @@
     notify,
     hideAllModals,
     loadRealContent,
-    loadSavedItems
+    loadSavedItems,
+    invalidateListingPhotos = () => {}
   }) {
     async function deleteOwnListing(listingId) {
       const listing = state.listings.get(listingId);
@@ -31,6 +32,7 @@
         if (message) message.textContent = 'No se pudo eliminar el anuncio. Inténtalo de nuevo.';
         return;
       }
+      invalidateListingPhotos(listingId);
       await db.from('saved_items').delete().eq('user_id', state.user.id).eq('item_id', listingId);
       const marker = '/storage/v1/object/public/listing-images/';
       const storagePaths = (listing.photos || []).map(url => {

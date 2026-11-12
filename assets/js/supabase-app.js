@@ -388,7 +388,9 @@
       loadHouseholdCandidates,
       loadRealInbox,
       loadRealNotifications,
-      openRealUser
+      openRealUser,
+      invalidateListingPhotos: () =>
+        listingPhotoCache.invalidate()
     });
 
   if (!moderationFeature) {
@@ -2613,7 +2615,9 @@
       uploadListingPhotos,
       loadRealContent,
       loadSavedItems,
-      refreshOwnActivity
+      refreshOwnActivity,
+      invalidateListingPhotos: listingId =>
+        listingPhotoCache.invalidate(listingId)
     });
 
   if (!listingEditorFeature) {
@@ -2636,7 +2640,9 @@
       notify,
       hideAllModals,
       loadRealContent,
-      loadSavedItems
+      loadSavedItems,
+      invalidateListingPhotos: listingId =>
+        listingPhotoCache.invalidate(listingId)
     });
 
   if (!listingDeleteFeature) {

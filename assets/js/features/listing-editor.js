@@ -10,7 +10,8 @@
     uploadListingPhotos,
     loadRealContent,
     loadSavedItems,
-    refreshOwnActivity
+    refreshOwnActivity,
+    invalidateListingPhotos = () => {}
   }) {
     function ensureEditListingModal() {
       let modal = document.querySelector('#editListingModal');
@@ -171,6 +172,8 @@
         message.textContent = 'No se pudieron guardar los cambios. Inténtalo de nuevo.';
         return;
       }
+
+      invalidateListingPhotos(listingId);
 
       const originalPhotos =
         state.editListingOriginalPhotos || [];
