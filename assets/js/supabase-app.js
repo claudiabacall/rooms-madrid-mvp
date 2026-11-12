@@ -81,9 +81,17 @@
     throw new Error('Rooms: falta Listing Photo Presentation');
   }
 
+  // Hogar obtiene viviendas mediante una consulta independiente.
+  // Su presentacion no debe vaciar las fotos del Feed.
+  const householdPhotoPresentation =
+    window.ROOMS_LISTING_PHOTO_PRESENTATION.create({
+      cache: listingPhotoCache
+    });
+
   function invalidateListingPhotoDisplays(listingId) {
     listingPhotoCache.invalidate(listingId);
     listingPhotoPresentation.invalidate(listingId);
+    householdPhotoPresentation.invalidate(listingId);
   }
 
   // La cache se mantiene separada de state.listings.
@@ -5387,6 +5395,10 @@
       state,
       notify,
       escapeHtml,
+      prepareListingPhotos: listings =>
+        householdPhotoPresentation.prepare(listings),
+      getListingPhotos: listing =>
+        householdPhotoPresentation.get(listing)?.photos || [],
       initials:
         savedFeature.initials,
       labelSeeking,

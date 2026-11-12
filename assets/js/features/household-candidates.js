@@ -8,7 +8,9 @@
     escapeHtml,
     initials,
     labelSeeking,
-    renderSearchGroupsHome
+    renderSearchGroupsHome,
+    prepareListingPhotos = async () => false,
+    getListingPhotos = () => []
   }) {
     async function addPersonToHousehold(userId) {
       if (!state.user) return;
@@ -54,6 +56,7 @@
       if (!state.household) {
         state.householdCandidates = [];
         state.householdPersonCandidates = [];
+        await prepareListingPhotos([]);
         return;
       }
 
@@ -101,6 +104,14 @@
 
       state.householdCandidates = homes || [];
       state.householdPersonCandidates = people || [];
+
+      // Firmar solo las referencias de esta carga de Hogar.
+      // Los anuncios originales permanecen en el estado.
+      await prepareListingPhotos(
+        (homes || [])
+          .map(item => item.listing)
+          .filter(Boolean)
+      );
 
       const { data: votes, error: votesError } = await db
         .from('household_candidate_votes')
@@ -182,9 +193,11 @@
       const homeCards = homes.map(item => {
         const listing = item.listing || {};
 
+        const authorizedPhotos = getListingPhotos(listing);
+
         const photos =
-          Array.isArray(listing.photos)
-            ? listing.photos
+          Array.isArray(authorizedPhotos)
+            ? authorizedPhotos
             : [];
 
         const image = photos[0] || '';
