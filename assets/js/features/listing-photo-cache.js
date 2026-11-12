@@ -9,6 +9,7 @@
     const cache = new Map();
     const pending = new Map();
     const versions = new Map();
+    let generation = 0;
 
     const MAX_AGE_MS = 45000;
 
@@ -21,6 +22,7 @@
     }
 
     function invalidate(listingId) {
+      generation++;
       if (listingId == null) {
         cache.clear();
         pending.clear();
@@ -40,6 +42,7 @@
       const id = String(listing.id);
       const key = keyFor(listing);
       const version = versions.get(id) || 0;
+      const currentGeneration = generation;
       const existing = cache.get(id);
 
       if (
@@ -82,6 +85,7 @@
           photos.length === (listing.photos || []).length &&
           photos.length > 0 &&
           (versions.get(id) || 0) === version &&
+          generation === currentGeneration &&
           pending.get(id)?.promise === task
         ) {
           cache.set(id, {
@@ -92,6 +96,14 @@
           });
         }
 
+        // No entregar respuestas emitidas antes de una invalidacion.
+        if (
+          generation !== currentGeneration ||
+          (versions.get(id) || 0) !== version ||
+          pending.get(id)?.promise !== task
+        ) {
+          return [];
+        }
         return photos;
       })();
 

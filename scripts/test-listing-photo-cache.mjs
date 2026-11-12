@@ -119,4 +119,109 @@ assert.throws(
 );
 console.log('OK Dependencias verificadas');
 
+
+{
+  let release;
+  let started;
+  const begun = new Promise(resolve => { started = resolve; });
+  const barrier = new Promise(resolve => { release = resolve; });
+
+  const delayed = create({
+    view: {
+      async projectListing(listing) {
+        started();
+        await barrier;
+        return {
+          ...listing,
+          photos: ['https://signed.example/stale']
+        };
+      }
+    }
+  });
+
+  const outstanding = delayed.resolve(source);
+  await begun;
+
+  delayed.invalidate(source.id);
+  release();
+
+  const result = await outstanding;
+  assert.equal(result.photos.length, 0);
+  console.log('OK Respuesta anterior a invalidacion descartada');
+}
+
+{
+  let release;
+  let started;
+  const begun = new Promise(resolve => { started = resolve; });
+  const barrier = new Promise(resolve => { release = resolve; });
+
+  const delayed = create({
+    view: {
+      async projectListing(listing) {
+        started();
+        await barrier;
+        return {
+          ...listing,
+          photos: ['https://signed.example/stale-global']
+        };
+      }
+    }
+  });
+
+  const outstanding = delayed.resolve(source);
+  await begun;
+
+  delayed.invalidate();
+  release();
+
+  const result = await outstanding;
+  assert.equal(result.photos.length, 0);
+  console.log('OK Respuesta anterior a cierre de sesion descartada');
+}
+
+{
+  let release;
+  let started;
+  let calls = 0;
+
+  const begun = new Promise(resolve => { started = resolve; });
+  const barrier = new Promise(resolve => { release = resolve; });
+
+  const delayed = create({
+    view: {
+      async projectListing(listing) {
+        calls++;
+        if (calls === 1) {
+          started();
+          await barrier;
+        }
+        return {
+          ...listing,
+          photos: [`https://signed.example/${calls}`]
+        };
+      }
+    }
+  });
+
+  const oldRequest = delayed.resolve(source);
+  await begun;
+
+  delayed.invalidate(source.id);
+
+  const newResult = await delayed.resolve(source);
+  assert.equal(newResult.photos[0], 'https://signed.example/2');
+
+  release();
+
+  const oldResult = await oldRequest;
+  assert.equal(oldResult.photos.length, 0);
+
+  const cachedResult = await delayed.resolve(source);
+  assert.equal(cachedResult.photos[0], newResult.photos[0]);
+  assert.equal(calls, 2);
+
+  console.log('OK Respuesta antigua no sobrescribe URL renovada');
+}
+
 console.log('OK M8.38 GESTOR DE RENOVACION VALIDADO');
