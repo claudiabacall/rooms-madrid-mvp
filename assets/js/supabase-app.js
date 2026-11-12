@@ -182,8 +182,29 @@
   }
 
   const {
-    openRealListingDetail
+    openRealListingDetail: renderListingDetail
   } = listingsFeature;
+
+  // Todas las aperturas pasan por la copia visual autorizada.
+  // state.listings conserva las referencias originales.
+  function openPrivateListingDetail(listing) {
+    if (!listing) return;
+
+    if (
+      listing.owner_id &&
+      state.blockedUsers?.has(listing.owner_id)
+    ) {
+      return;
+    }
+
+    return renderListingDetail(
+      listingPhotoPresentation.get(listing)
+    );
+  }
+
+  // Mantener el contrato de llamadas existente sin
+  // redeclarar la funcion extraida de Listings.
+  const openRealListingDetail = openPrivateListingDetail;
 
   const matchingFeature =
     window.ROOMS_MATCHING_FEATURE?.create({
