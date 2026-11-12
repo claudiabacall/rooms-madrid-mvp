@@ -161,6 +161,19 @@ window.eval(
   moderationSource
 );
 
+let photoInvalidations = 0;
+
+const moderationCreate =
+  window.ROOMS_MODERATION_FEATURE.create;
+
+window.ROOMS_MODERATION_FEATURE.create = options =>
+  moderationCreate({
+    ...options,
+    invalidateListingPhotos: () => {
+      photoInvalidations++;
+    }
+  });
+
 assert(
   window.ROOMS_MODERATION_FEATURE?.create,
   'Moderation no expone factory'
@@ -813,6 +826,13 @@ assert(
   'Botones de conexión no se actualizan'
 );
 
+assert(
+  photoInvalidations === 1,
+  'Bloqueo confirmado debe invalidar cache una vez'
+);
+
+ok('Bloqueo confirmado invalida fotos');
+
 ok(
   'Bloqueo limpia relaciones y refresca estado'
 );
@@ -843,6 +863,13 @@ assert(
     ),
   'Usuario sigue bloqueado tras desbloquear'
 );
+
+assert(
+  photoInvalidations === 2,
+  'Desbloqueo confirmado debe invalidar cache'
+);
+
+ok('Desbloqueo confirmado invalida fotos');
 
 ok(
   'Desbloqueo correcto'

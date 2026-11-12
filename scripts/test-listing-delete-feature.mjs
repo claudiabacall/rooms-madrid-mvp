@@ -67,6 +67,16 @@ function setup({
   const { window } = dom;
   window.eval(source);
 
+  const deletionCreate =
+    window.ROOMS_LISTING_DELETE_FEATURE.create;
+
+  window.ROOMS_LISTING_DELETE_FEATURE.create = options =>
+    deletionCreate({
+      ...options,
+      invalidateListingPhotos: listingId =>
+        calls.push(['invalidatePhoto', listingId])
+    });
+
   const calls = [];
   const notifications = [];
 
@@ -211,6 +221,14 @@ async function run() {
       ['confirm']
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto'
+      ).length,
+      0
+    );
+
+    console.log('OK  Cancelacion conserva cache');
     console.log('OK  Cancelacion sin eliminar');
     t.close();
   }
@@ -240,6 +258,14 @@ async function run() {
       !t.calls.some(call => call[0] === 'hideModals')
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto'
+      ).length,
+      0
+    );
+
+    console.log('OK  Error de eliminacion conserva cache');
     console.log('OK  Error de Supabase controlado');
     t.close();
   }
@@ -259,6 +285,14 @@ async function run() {
       !t.calls.some(call => call[0] === 'deleteSaved')
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto'
+      ).length,
+      0
+    );
+
+    console.log('OK  Sin filas eliminadas no invalida cache');
     console.log('OK  Eliminacion sin filas controlada');
     t.close();
   }
@@ -304,6 +338,15 @@ async function run() {
       t.notifications.includes('Anuncio eliminado')
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto' &&
+        call[1] === 'listing-1'
+      ).length,
+      1
+    );
+
+    console.log('OK  Eliminacion confirmada invalida foto');
     console.log('OK  Eliminacion y filtros de propiedad');
     console.log('OK  Limpieza de guardados y actualizacion');
 

@@ -92,6 +92,16 @@ function setup({
   const { window } = dom;
   window.eval(source);
 
+  const editorCreate =
+    window.ROOMS_LISTING_EDITOR_FEATURE.create;
+
+  window.ROOMS_LISTING_EDITOR_FEATURE.create = options =>
+    editorCreate({
+      ...options,
+      invalidateListingPhotos: listingId =>
+        calls.push(['invalidatePhoto', listingId])
+    });
+
   const calls = [];
   const notifications = [];
 
@@ -382,6 +392,15 @@ async function run() {
 
     assert(!t.modal().classList.contains('open'));
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto' &&
+        call[1] === 'listing-1'
+      ).length,
+      1
+    );
+
+    console.log('OK  Guardado confirmado invalida fotografia');
     console.log('OK  Guardado de datos y caracteristicas');
     console.log('OK  Actualizacion del feed y guardados');
 
@@ -489,6 +508,14 @@ async function run() {
       !t.notifications.includes('Anuncio actualizado')
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto'
+      ).length,
+      0
+    );
+
+    console.log('OK  Error de guardado conserva cache');
     console.log('OK  Error de guardado controlado');
 
     t.close();
@@ -525,6 +552,14 @@ async function run() {
       !t.calls.some(call => call[0] === 'update')
     );
 
+    assert.equal(
+      t.calls.filter(call =>
+        call[0] === 'invalidatePhoto'
+      ).length,
+      0
+    );
+
+    console.log('OK  Fotografia rechazada no invalida cache');
     console.log('OK  Limite de tamano de fotografias');
 
     t.close();
