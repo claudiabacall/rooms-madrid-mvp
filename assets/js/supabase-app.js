@@ -98,7 +98,72 @@
     throw new Error('Rooms: falta Listing Photo DOM Guard');
   }
 
+  const listingPhotoRenewal =
+    window.ROOMS_LISTING_PHOTO_RENEWAL?.create({
+      cache: listingPhotoCache,
+      mainPresentation: listingPhotoPresentation,
+      householdPresentation: householdPhotoPresentation,
+      domGuard: listingPhotoDomGuard,
+      getMainListings: () =>
+        [...state.listings.values()].filter(listing =>
+          !listing.owner_id ||
+          !state.blockedUsers?.has(listing.owner_id)
+        ),
+      getHouseholdListings: () =>
+        (state.householdCandidates || [])
+          .map(candidate => candidate.listing)
+          .filter(listing =>
+            listing?.id &&
+            (
+              !listing.owner_id ||
+              !state.blockedUsers?.has(listing.owner_id)
+            )
+          ),
+      getSessionUserId: () => state.user?.id || null
+    });
+
+  if (!listingPhotoRenewal) {
+    throw new Error('Rooms: falta Listing Photo Renewal');
+  }
+
+  let listingPhotoRenewalTimer = null;
+
+  function stopListingPhotoRenewal() {
+    if (listingPhotoRenewalTimer !== null) {
+      window.clearInterval(listingPhotoRenewalTimer);
+      listingPhotoRenewalTimer = null;
+    }
+
+    listingPhotoRenewal.cancel();
+  }
+
+  function startListingPhotoRenewalForSession(userId) {
+    if (
+      !userId ||
+      state.user?.id !== userId ||
+      listingPhotoSessionUserId !== userId ||
+      listingPhotoRenewalTimer !== null
+    ) {
+      return;
+    }
+
+    listingPhotoRenewalTimer = window.setInterval(() => {
+      if (
+        state.user?.id !== userId ||
+        listingPhotoSessionUserId !== userId
+      ) {
+        stopListingPhotoRenewal();
+        return;
+      }
+
+      void listingPhotoRenewal.renew();
+    }, 30000);
+  }
+
   function invalidateListingPhotoDisplays(listingId) {
+    // Una mutacion nunca debe permitir que una respuesta
+    // anterior restaure fotografias en el navegador.
+    listingPhotoRenewal.cancel();
     listingPhotoCache.invalidate(listingId);
     listingPhotoPresentation.invalidate(listingId);
     householdPhotoPresentation.invalidate(listingId);
@@ -119,6 +184,7 @@
       event === 'SIGNED_OUT' ||
       nextUserId !== listingPhotoSessionUserId
     ) {
+      stopListingPhotoRenewal();
       invalidateListingPhotoDisplays();
     }
 
@@ -1208,6 +1274,10 @@
         loadRealNotifications(),
         loadRealInbox()
       ]);
+
+      // Activar solo al terminar la carga principal
+      // y solo si sigue autenticada la misma persona.
+      startListingPhotoRenewalForSession(session.user.id);
     } finally {
       document.body.classList.remove(
         'rooms-booting'
@@ -1219,6 +1289,8 @@
   }
 
   function endSession() {
+    stopListingPhotoRenewal();
+
     /*
       Cerrar cualquier suscripción realtime de la sesión anterior.
     */
