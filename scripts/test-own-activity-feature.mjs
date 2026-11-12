@@ -53,7 +53,12 @@ window.eval(source);
 const feature = window.ROOMS_OWN_ACTIVITY_FEATURE.create({
   state,
   escapeHtml,
-  relativeTime: () => 'hace un dia'
+  relativeTime: () => 'hace un dia',
+  getListingPhotos: listing =>
+    listing.id === 'listing-1' &&
+    listing.owner_id === state.user?.id
+      ? ['https://signed.example/piso?token=test']
+      : []
 });
 
 assert.equal(typeof feature.refreshOwnActivity, 'function');
@@ -133,6 +138,11 @@ assert(preview.textContent.includes(
   Number(1800).toLocaleString('es-ES')
 ));
 assert(preview.querySelector('img'));
+assert.equal(
+  preview.querySelector('img').getAttribute('src'),
+  'https://signed.example/piso?token=test'
+);
+assert(!preview.innerHTML.includes('https://example.com/piso.jpg'));
 assert(!preview.querySelector('script'));
 assert(preview.innerHTML.includes('&lt;script&gt;'));
 

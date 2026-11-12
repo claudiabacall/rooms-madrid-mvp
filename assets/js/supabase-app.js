@@ -2512,6 +2512,8 @@
 
   const ownActivityFeature =
     window.ROOMS_OWN_ACTIVITY_FEATURE?.create({
+      getListingPhotos: listing =>
+        listingPhotoPresentation.get(listing)?.photos || [],
       state,
       escapeHtml,
       relativeTime

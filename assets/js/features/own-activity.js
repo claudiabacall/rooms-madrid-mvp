@@ -4,7 +4,8 @@
   function createOwnActivityFeature({
     state,
     escapeHtml,
-    relativeTime
+    relativeTime,
+    getListingPhotos = () => []
   }) {
   function refreshOwnActivity(type) {
     if (!state.user) return;
@@ -43,7 +44,7 @@
     if (type === 'listings' && ownListings.length) {
       target.innerHTML = `<div class="own-real-activity-list">${ownListings.map(listing => {
         const kind = listing.kind === 'apartment' ? 'Piso entero' : 'Habitación';
-        const photo = listing.photos?.[0];
+        const photo = getListingPhotos(listing)?.[0];
         return `<article class="own-real-listing" data-real-listing="${listing.id}">
           ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(listing.title)}">` : '<div class="own-listing-placeholder">rooms.</div>'}
           <div><small>${escapeHtml(kind)}</small><h3>${
