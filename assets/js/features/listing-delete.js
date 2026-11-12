@@ -37,11 +37,40 @@
         const index = String(url).indexOf(marker);
         return index >= 0 ? decodeURIComponent(String(url).slice(index + marker.length)) : null;
       }).filter(Boolean);
-      if (storagePaths.length) db.storage.from('listing-images').remove(storagePaths);
+      let photoCleanupFailed = false;
+
+      if (storagePaths.length) {
+        try {
+          const { error: storageError } =
+            await db.storage
+              .from('listing-images')
+              .remove(storagePaths);
+
+          if (storageError) {
+            photoCleanupFailed = true;
+            console.warn(
+              'Rooms: error limpiando fotos de anuncio eliminado',
+              storageError
+            );
+          }
+        } catch (storageError) {
+          photoCleanupFailed = true;
+          console.warn(
+            'Rooms: excepcion limpiando fotos de anuncio eliminado',
+            storageError
+          );
+        }
+      }
+
       hideAllModals();
       await loadRealContent();
       await loadSavedItems();
-      notify('Anuncio eliminado');
+
+      notify(
+        photoCleanupFailed
+          ? 'Anuncio eliminado, pero no se pudo confirmar la limpieza de todas sus fotos. Contacta con soporte.'
+          : 'Anuncio eliminado'
+      );
     }
 
     return {
