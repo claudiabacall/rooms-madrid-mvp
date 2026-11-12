@@ -33,6 +33,36 @@
     throw new Error('Rooms: falta Discovery Repository');
   }
 
+  // M8.36: servicios preparados, aun sin activar en las vistas.
+  // Mantener state.listings con las referencias originales.
+  const listingPhotoReferences =
+    window.ROOMS_LISTING_PHOTO_REFERENCES?.create({
+      supabaseUrl: config.url
+    });
+
+  if (!listingPhotoReferences) {
+    throw new Error('Rooms: falta Listing Photo References');
+  }
+
+  const listingPhotoResolver =
+    window.ROOMS_LISTING_PHOTO_RESOLVER?.create({
+      db,
+      references: listingPhotoReferences
+    });
+
+  if (!listingPhotoResolver) {
+    throw new Error('Rooms: falta Listing Photo Resolver');
+  }
+
+  const listingPhotoView =
+    window.ROOMS_LISTING_PHOTO_VIEW?.create({
+      resolver: listingPhotoResolver
+    });
+
+  if (!listingPhotoView) {
+    throw new Error('Rooms: falta Listing Photo View');
+  }
+
   const state = {
     user: null,
     profile: null,
